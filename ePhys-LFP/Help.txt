@@ -1,0 +1,26 @@
+1. First run Bin2Chan.py
+2. Next run Bin2Trials.py
+3. Next run Analyze.py
+
+
+GitHub Python Neuroscience:
+
+Mark-Kramer
+https://github.com/Mark-Kramer/Case-Studies-Python
+https://mark-kramer.github.io/Case-Studies-Python/01.html
+
+NeuroKit2
+https://github.com/neuropsychology/NeuroKit
+
+Nilearn
+https://github.com/nilearn/nilearn
+https://github.com/mrahim/nilearn_tutorials
+
+NiTime
+https://github.com/nipy/nitime
+http://nipy.org/nitime/documentation.html
+
+MNE Python
+https://github.com/mne-tools/mne-python
+https://mne.tools/dev/overview/index.html
+
