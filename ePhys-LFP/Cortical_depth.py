@@ -10,6 +10,7 @@ from scipy.interpolate import interp1d
 import numpy as np
 from matplotlib import pyplot as plt
 import os
+import pandas as pd
 
 def nan_helper(y):
 	"""Helper to handle indices and logical indices of NaNs.
@@ -82,6 +83,8 @@ stim_start_time = arr_exp_summary[4,1]  # Stimulation start
 dir_data_mat = os.path.join(dir_data_mat,os.listdir(dir_data_mat)[0])
 df_temp = loadmat(dir_data_mat)
 delta_t = df_temp['time_MUA']
+delta_t = np.reshape(delta_t,(delta_t.size,))
+delta_t = delta_t[1] - delta_t[0]
 
 
 # Loading Data
@@ -96,8 +99,8 @@ depth_shank = df['depth_shank']
 depth_shank = np.reshape(depth_shank,(depth_shank.size,))
 
 # Data categorization
-MUA_depth_peak = MUA_depth_peak[:,:,0]
 MUA_depth_peak_time = MUA_depth_peak[:,:,1]
+MUA_depth_peak = MUA_depth_peak[:,:,0]
 LFPHigh_depth_mean = LFP_depth_mean[:,:,3]
 LFPHigh_depth_peak = LFP_depth_peak[:,:,3]
 LFPHigh_depth_mean_post = LFP_depth_mean_post[:,:,3]
@@ -136,28 +139,28 @@ Alpha_depth_mean_post_interp = interpol_4shank(depth_shank,Alpha_depth_mean_post
 # Avg during stimulation
 fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(nrows=1,ncols = 5,sharex=True, sharey=True)
 fig.suptitle('Avg normalized change in baseline during stimulation', fontsize=14)
-max_lim = 1.0
-min_lim = -0.1
+max_lim = 0.01
+min_lim = -0.005
 # max_lim = np.nanmean(MUA_depth_mean) + 2*np.nanstd(MUA_depth_mean)
 # min_lim = np.nanmean(MUA_depth_mean) - 1*np.nanstd(MUA_depth_mean)
 im1 = ax1.imshow(MUA_depth_mean, vmax = max_lim, vmin = min_lim, cmap = 'jet')
-max_lim = 2.0
-min_lim = -0.2
+max_lim = 8.0
+min_lim = 0.0
 # max_lim = np.nanmean(LFPHigh_depth_mean) + 2*np.nanstd(LFPHigh_depth_mean)
 # min_lim = np.nanmean(LFPHigh_depth_mean) - 1*np.nanstd(LFPHigh_depth_mean)
 im2 = ax2.imshow(LFPHigh_depth_mean,vmax = max_lim, vmin = min_lim, cmap = 'jet')
-max_lim = 6.5
-min_lim = 0.1
+max_lim = 25
+min_lim = 0.0
 # max_lim = np.nanmean(Gamma_depth_mean) + 2*np.nanstd(Gamma_depth_mean)
 # min_lim = np.nanmean(Gamma_depth_mean) - 1*np.nanstd(Gamma_depth_mean)
 im3 = ax3.imshow(Gamma_depth_mean,vmax = max_lim, vmin = min_lim, cmap = 'jet')
-max_lim = 7.0
-min_lim = -0.1
+max_lim = 90
+min_lim = 5
 # max_lim = np.nanmean(Beta_depth_mean) + 2*np.nanstd(Beta_depth_mean)
 # min_lim = np.nanmean(Beta_depth_mean) - 1*np.nanstd(Beta_depth_mean)
 im4 = ax4.imshow(Beta_depth_mean,vmax = max_lim, vmin = min_lim, cmap = 'jet')
-max_lim = 9.0
-min_lim = 0.1
+max_lim = 120
+min_lim = 5
 # max_lim = np.nanmean(Alpha_depth_mean) + 2*np.nanstd(Alpha_depth_mean)
 # min_lim = np.nanmean(Alpha_depth_mean) - 1*np.nanstd(Alpha_depth_mean)
 im5 = ax5.imshow(Alpha_depth_mean,vmax = max_lim, vmin = min_lim, cmap = 'jet')
@@ -185,28 +188,28 @@ plt.cla()
 # Avg post stimulation
 fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(nrows=1,ncols = 5,sharex=True, sharey=True)
 fig.suptitle('Avg normalized change in baseline 160 ms post stimulation', fontsize=14)
-max_lim = 1.0
-min_lim = -0.1
+max_lim = 0.09
+min_lim = -0.002
 # max_lim = np.nanmean(MUA_depth_mean) + 2*np.nanstd(MUA_depth_mean)
 # min_lim = np.nanmean(MUA_depth_mean) - 1*np.nanstd(MUA_depth_mean)
 im1 = ax1.imshow(MUA_depth_mean_post, vmax = max_lim, vmin = min_lim, cmap = 'jet')
-max_lim = 1.0
-min_lim = -0.2
+max_lim = 2.5
+min_lim = -0.1
 # max_lim = np.nanmean(LFPHigh_depth_mean) + 2*np.nanstd(LFPHigh_depth_mean)
 # min_lim = np.nanmean(LFPHigh_depth_mean) - 1*np.nanstd(LFPHigh_depth_mean)
 im2 = ax2.imshow(LFPHigh_depth_mean_post,vmax = max_lim, vmin = min_lim, cmap = 'jet')
-max_lim = 4.0
+max_lim = 9
 min_lim = -0.1
 # max_lim = np.nanmean(Gamma_depth_mean) + 2*np.nanstd(Gamma_depth_mean)
 # min_lim = np.nanmean(Gamma_depth_mean) - 1*np.nanstd(Gamma_depth_mean)
 im3 = ax3.imshow(Gamma_depth_mean_post,vmax = max_lim, vmin = min_lim, cmap = 'jet')
-max_lim = 8.0
-min_lim = -0.1
+max_lim = 80
+min_lim = 2
 # max_lim = np.nanmean(Beta_depth_mean) + 2*np.nanstd(Beta_depth_mean)
 # min_lim = np.nanmean(Beta_depth_mean) - 1*np.nanstd(Beta_depth_mean)
 im4 = ax4.imshow(Beta_depth_mean_post,vmax = max_lim, vmin = min_lim, cmap = 'jet')
-max_lim = 10.0
-min_lim = 0.1
+max_lim = 90
+min_lim = 2
 # max_lim = np.nanmean(Alpha_depth_mean) + 2*np.nanstd(Alpha_depth_mean)
 # min_lim = np.nanmean(Alpha_depth_mean) - 1*np.nanstd(Alpha_depth_mean)
 im5 = ax5.imshow(Alpha_depth_mean_post,vmax = max_lim, vmin = min_lim, cmap = 'jet')
@@ -234,28 +237,28 @@ plt.cla()
 # Peak during stimulation
 fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(nrows=1,ncols = 5,sharex=True, sharey=True)
 fig.suptitle('Peak normalized change in baseline during stimulation', fontsize=14)
-max_lim = 4.5
-min_lim = 0.3
+max_lim = 0.04
+min_lim = 0.005
 # max_lim = np.nanmean(MUA_depth_mean) + 2*np.nanstd(MUA_depth_mean)
 # min_lim = np.nanmean(MUA_depth_mean) - 1*np.nanstd(MUA_depth_mean)
 im1 = ax1.imshow(MUA_depth_peak, vmax = max_lim, vmin = min_lim, cmap = 'jet')
-max_lim = 12.0
-min_lim = 1.5
+max_lim = 50
+min_lim = 5
 # max_lim = np.nanmean(LFPHigh_depth_mean) + 2*np.nanstd(LFPHigh_depth_mean)
 # min_lim = np.nanmean(LFPHigh_depth_mean) - 1*np.nanstd(LFPHigh_depth_mean)
 im2 = ax2.imshow(LFPHigh_depth_peak,vmax = max_lim, vmin = min_lim, cmap = 'jet')
-max_lim = 18.0
-min_lim = 2
+max_lim = 180
+min_lim = 10
 # max_lim = np.nanmean(Gamma_depth_mean) + 2*np.nanstd(Gamma_depth_mean)
 # min_lim = np.nanmean(Gamma_depth_mean) - 1*np.nanstd(Gamma_depth_mean)
 im3 = ax3.imshow(Gamma_depth_peak,vmax = max_lim, vmin = min_lim, cmap = 'jet')
-max_lim = 18.0
-min_lim = 2
+max_lim = 200
+min_lim = 20
 # max_lim = np.nanmean(Beta_depth_mean) + 2*np.nanstd(Beta_depth_mean)
 # min_lim = np.nanmean(Beta_depth_mean) - 1*np.nanstd(Beta_depth_mean)
 im4 = ax4.imshow(Beta_depth_peak,vmax = max_lim, vmin = min_lim, cmap = 'jet')
-max_lim = 15.0
-min_lim = 1.5
+max_lim = 230
+min_lim = 20
 # max_lim = np.nanmean(Alpha_depth_mean) + 2*np.nanstd(Alpha_depth_mean)
 # min_lim = np.nanmean(Alpha_depth_mean) - 1*np.nanstd(Alpha_depth_mean)
 im5 = ax5.imshow(Alpha_depth_peak,vmax = max_lim, vmin = min_lim, cmap = 'jet')
@@ -281,25 +284,21 @@ plt.clf()
 plt.cla()
 
 # Peak time during stimulation
-fig, (ax1, ax2) = plt.subplots(nrows=1,ncols = 2,sharex=True, sharey=True)
+fig, (ax2) = plt.subplots(nrows=1,ncols = 1)
 fig.suptitle('Time to peak during stimulation', fontsize=14)
-max_lim = 50
-min_lim = 1
-im1 = ax1.imshow(MUA_depth_peak_time, cmap = 'jet_r')
 MUA_depth_peak_time = MUA_depth_peak_time * delta_t + stim_start_time
 min_lim = stim_start_time
 max_lim = stim_start_time + 1
 im2 = ax2.imshow(MUA_depth_peak_time,vmax = max_lim, vmin = min_lim, cmap = 'jet_r')
-plt.setp(ax1, xticks = [0,1,2,3], xticklabels=['A','B','C','D'])
-plt.setp(ax1, yticks = [0,15,31], yticklabels = [0,400,800])
+plt.setp(ax2, xticks = [0,1,2,3], xticklabels=['A','B','C','D'])
+plt.setp(ax2, yticks = [0,15,31], yticklabels = [0,400,800])
 #plt.setp(ax2,yticks = [0,15,31], yticklabels = [250,650,1050])
 #plt.setp(ax3,yticks = [0,15,31], yticklabels = [500,900,1300])
 #plt.setp(ax4,yticks = [0,15,31], yticklabels = [500,900,1300])
-ax1.title.set_text('MUA')
 ax2.title.set_text('MUA')
-ax1.set_xlabel('Shank #')
-ax1.set_ylabel('Cortical depth (um)')
-fig.set_size_inches((10, 6), forward=False)
+ax2.set_xlabel('Shank #')
+ax2.set_ylabel('Cortical depth (um)')
+fig.set_size_inches((4, 6), forward=False)
 cbar = fig.colorbar(im2, ax = ax2,label =  'Peak Time (s)')
 filename = 'pkTime-duringStim' + '.png'
 filename = os.path.join(output_dir_cortical_depth,filename)
