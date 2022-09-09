@@ -8,7 +8,7 @@ Created on Thu May 20 15:07:16 2021
 # Notes: 
 # Baseline time is selected to be 700 ms. It should not be too long since electrical activity can change very fast and very dramatically.
 
-# Fix line 58 : stim_start_time variable 50 ms delay?
+
 
 from scipy.io import loadmat, savemat      # Import function to read data.
 from matplotlib import pyplot as plt

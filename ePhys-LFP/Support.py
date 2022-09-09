@@ -13,7 +13,7 @@ from scipy import signal, interpolate
 from matplotlib import pyplot as plt
 import numpy as np
 
-def ShowFFT(input_signal,Fs):
+def ShowFFT(input_signal,Fs, fig_flag = 1):
     N = len(input_signal)
     fnyquist = Fs/2.0
 
@@ -22,86 +22,24 @@ def ShowFFT(input_signal,Fs):
     bin_vals = np.arange(0,N)
     freq_ax_Hz = bin_vals * Fs/N
     N_2 = int(np.ceil(N/2))
-
-    # plotting
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-    fig.suptitle('Single-sided Magnitude spectrum (Hz)')
-    ax1.plot(freq_ax_Hz[0:N_2],X_mags[0:N_2])
-    ax2.plot(freq_ax_Hz[0:N_2],20*np.log10(X_mags[0:N_2]))
-    # ax1.xlabel('Frequency (Hz)')
-    ax1.set_ylabel('Magnitude')
-    ax1.set_xlabel('Frequency (Hz)')
-    ax2.set_xlabel('Frequency (Hz)')
-    ax2.set_ylabel('Magnitude (dB)')
     
+    if (fig_flag == 1):
+        # plotting
+        fig, (ax1, ax2) = plt.subplots(1, 2)
+        fig.suptitle('Single-sided Magnitude spectrum (Hz)')
+        ax1.plot(freq_ax_Hz[0:N_2],X_mags[0:N_2])
+        ax2.plot(freq_ax_Hz[0:N_2],20*np.log10(X_mags[0:N_2]))
+        # ax1.xlabel('Frequency (Hz)')
+        ax1.set_ylabel('Magnitude')
+        ax1.set_xlabel('Frequency (Hz)')
+        ax2.set_xlabel('Frequency (Hz)')
+        ax2.set_ylabel('Magnitude (dB)')
     
-def filterSignal_LFP_Gamma_IIR(input_signal,Fs):
-    # Prep
-    signal_out = np.empty((input_signal.shape),dtype=np.single)
-    if len(input_signal.shape) != 1:
-        axis_value = 1
-    else:
-        axis_value = 0
-    # Loading filter data
-    filename_FilterData = os.path.join(os.getcwd(),'filterData.xlsx')
-    df = pd.read_excel(filename_FilterData,sheet_name = 0, header = None)
-    X = df.to_numpy()
-    SoS = X[0:38,0:6]               # Hard coded SOS matrix imported from Excel file
-    ScaleValues = X[:,7]            # Hard coded G scale values imported from Excel file
-    SoS = SoS.copy(order = 'C')     # because python imports this matrix as Fortran order style
-    signal_out = signal.sosfiltfilt(SoS,input_signal, axis = axis_value) * np.prod(ScaleValues)
-    return signal_out
-
-def filterSignal_LFP_Gamma_FIR(input_signal,Fs):
-    # Prep
-    signal_out = np.empty((input_signal.shape),dtype=np.single)
-    if len(input_signal.shape) != 1:
-        axis_value = 1
-    else:
-        axis_value = 0
-    # Loading filter data
-    filename_FilterData = os.path.join(os.getcwd(),'filterData.xlsx')
-    df = pd.read_excel(filename_FilterData,sheet_name = 1)
-    X = df.to_numpy()
-    Num_coeff = X[:,0]              # Numerator coeeficients
-    signal_out = signal.filtfilt(Num_coeff,1,input_signal, axis = axis_value)          # Using forward-backward filtering
-    # signal_out = signal.lfilt(Num_coeff,1,input_signal)           # Using one way filtering
-    return signal_out
-
-# 16 Hz to 150 Hz
-def filterSignal_LFP_FIR(input_signal,Fs):
-    # Prep
-    signal_out = np.empty((input_signal.shape),dtype=np.single)
-    if len(input_signal.shape) != 1:
-        axis_value = 1
-    else:
-        axis_value = 0
-    # Loading filter data
-    filename_FilterData = os.path.join(os.getcwd(),'filterData.xlsx')
-    df = pd.read_excel(filename_FilterData,sheet_name = 2)
-    X = df.to_numpy()
-    Num_coeff = X[:,0]              # Numerator coeeficients
-    signal_out = signal.filtfilt(Num_coeff,1,input_signal, axis = axis_value)          # Using forward-backward filtering
-    # signal_out = signal.lfilt(Num_coeff,1,input_signal)           # Using one way filtering
-    return signal_out
-
-def filterSignal_Notch(input_signal,Fs):
-    # Prep
-    signal_out = np.empty((input_signal.shape),dtype=np.single)
-    if len(input_signal.shape) != 1:
-        axis_value = 1
-    else:
-        axis_value = 0
-    # Loading filter data
-    filename_FilterData = os.path.join(os.getcwd(),'filterData.xlsx')
-    df = pd.read_excel(filename_FilterData,sheet_name = 3, header = None)
-    X = df.to_numpy()
-    SoS = X[0:8,0:6]                          # Hard coded SOS matrix imported from Excel file
-    ScaleValues = X[:,7]                      # Hard coded G scale values imported from Excel file
-    SoS = SoS.copy(order = 'C')               # because python imports this matrix as Fortran order style
-    signal_out = signal.sosfiltfilt(SoS,input_signal, axis = axis_value) * np.prod(ScaleValues)
-    return signal_out
-
+    f = freq_ax_Hz[0:N_2]
+    FFT = X_mags[0:N_2]
+    
+    return f, FFT
+    
 # 10-200 Hz
 def filterSignal_LFP(input_signal,Fs):
     # Prep
@@ -134,7 +72,7 @@ def filterSignal_notch(input_signal, Fs, C0 = 60, axis_value = 0):
     signal_out = signal.filtfilt(b,a, input_signal, axis = axis_value)
     return signal_out
 
-# 12 - 160 Hz
+# 13 - 160 Hz
 def filterSignal_lowpassLFP(input_signal, Fs, axis_value = 0):
     signal_out = np.empty((input_signal.shape),dtype=np.single)
     # if len(input_signal.shape) != 1:
@@ -142,7 +80,7 @@ def filterSignal_lowpassLFP(input_signal, Fs, axis_value = 0):
     # else:
     #     axis_value = 0
     cutoff_high = 160                # High pass freq for LFP band
-    cutoff_low = 4                  # Low pass freq for LFP band
+    cutoff_low = 13                  # Low pass freq for LFP band
     # cutoff = cutoff / (0.5*Fs)
     sos = signal.butter(20, [cutoff_low,cutoff_high], btype = 'bandpass', output = 'sos', fs = Fs)  # IIR filter
     
@@ -186,10 +124,16 @@ def filterSignal_MUA(input_signal,Fs, axis_value = 0):
     # signal_out = signal.filtfilt(b,a, input_signal, axis = axis_value)
     # signal_out = signal.sosfiltfilt(SoS,input_signal, axis = axis_value) * np.prod(ScaleValues)
     cutoff = np.array([300,3000])
-    sos = signal.butter(10, cutoff, btype = 'bandpass', output = 'sos', fs = Fs)  # IIR filter
+    sos = signal.butter(20, cutoff, btype = 'bandpass', output = 'sos', fs = Fs)  # IIR filter
     signal_out = signal.sosfiltfilt(sos, input_signal, axis = axis_value)
     return signal_out
 
+# High-Pass at 12 Hz
+def filterSignal_High(input_signal, Fs, cutoff, axis_value = 0):
+    signal_out = np.empty((input_signal.shape),dtype=np.single)
+    sos = signal.butter(6, cutoff, btype = 'highpass', output = 'sos', fs = Fs)  # IIR filter
+    signal_out = signal.sosfiltfilt(sos, input_signal, axis = axis_value)
+    return signal_out
 
 def compute_PSD(arr, Fs, window_length, axis_value = 0):
     # arr is the input data array
@@ -204,25 +148,45 @@ def compute_PSD(arr, Fs, window_length, axis_value = 0):
     f, t, Sxx = signal.spectrogram(arr, fs=Fs, window = truncate_window, noverlap = Noverlap, scaling = 'density', axis = axis_value, mode = 'psd')
     return f, t, Sxx
     
-def detect_peak_basic(arr, num):
+def detect_peak_basic(arr, num, x):
     # arr is the array of values from which the peak will be detected
     # num is the number of peaks to consider when detecting the main peak
+    # x is the threshold for peak detection
     # Basic method of finding the first highest peak and their indices
     arr_max_indx = np.argpartition(arr,-num)[-num:]
     arr_max_indx = arr_max_indx[np.argsort(arr[arr_max_indx])]
     
-    if (arr_max_indx[-1] < arr_max_indx[-2]):
-        arr_max_indx = arr_max_indx[-1]
-        arr_max = arr[arr_max_indx] 
+    
+    arr_max = arr[arr_max_indx[:]]
+    arr_max = arr_max[arr_max > x]
+    
+    if arr_max.size == 0:
+        return x, 2000
     else:
-        pd = (arr[arr_max_indx[-1]] - arr[arr_max_indx[-2]])/arr[arr_max_indx[-2]]
-        if pd < 0.1:
-            arr_max_indx = arr_max_indx[-2]
-            arr_max = arr[arr_max_indx]
-        else:
-            arr_max_indx = arr_max_indx[-1]
-            arr_max = arr[arr_max_indx]
-    return arr_max, arr_max_indx
+        arr_max_indx = np.flip(arr_max_indx[np.arange(-1,-arr_max.size-1,-1)])
+        peak_val = arr[arr_max_indx[-1]]
+        for iter in np.flip(range(arr_max.size)):
+            pd = (peak_val - arr[arr_max_indx[iter]])/peak_val
+            if pd < 0.08:
+                pk_indx_new = iter
+        
+        arr_max_indx = arr_max_indx[pk_indx_new]
+        arr_max = arr_max[pk_indx_new]
+        return arr_max, arr_max_indx
+    
+    
+    # if (arr_max_indx[-1] < arr_max_indx[-2]):
+    #     arr_max_indx = arr_max_indx[-1]
+    #     arr_max = arr[arr_max_indx] 
+    # else:
+    #     pd = (arr[arr_max_indx[-1]] - arr[arr_max_indx[-2]])/arr[arr_max_indx[-2]]
+    #     if pd < 0.15:
+    #         arr_max_indx = arr_max_indx[-2]
+    #         arr_max = arr[arr_max_indx]
+    #     else:
+    #         arr_max_indx = arr_max_indx[-1]
+    #         arr_max = arr[arr_max_indx]
+    
 
 def interp_chan_loss(data_in, shank_missed):
     """
@@ -303,6 +267,28 @@ def CSD_compute(data, SR, spacing, conductivity = 0.3):
     # CSD_a = np.transpose(CSD_a) 
     return CSD_a      
 
+# Read from whisker_stim.txt file (generated by my Labview program)
+def read_stimtxt(matlabTXT):
+    # Read .txt file
+    Txt_File = open(matlabTXT,"r")
+    str1 = Txt_File.readlines()
+    stim_start_time = float(str1[3]) - 0.05       # Stimulation start time (50 ms error in labview)
+    stim_num = int(str1[6])                 # Number of stimulations
+    seq_period = float(str1[4])             # Period of each sequence consisting of 10 to 15 frames
+    len_trials = int(str1[1])               # Length of a single trial in # seq
+    num_trials = int(str1[7])               # total number of trials
+    FramePerSeq = int(str1[2])              # frames per sequence. Important info to read the data.timing file
+    total_seq = num_trials * len_trials
+    len_trials_arr = list(range(1,total_seq,len_trials))
+    print('Each sequence lasts...',seq_period,'sec')
+    print('Number of sequences in each trial...',len_trials)
+    print('Total number of trials in this dataset are:', num_trials)
+    print('Reading the total number of sequences in this dataset...',total_seq,'\n.\n.\n.')
+    Txt_File.close()
+    
+    return stim_start_time, stim_num, seq_period, len_trials, num_trials, FramePerSeq, total_seq, len_trials_arr
+
+# Write to excel files Append mode perfected
 def append_df_to_excel(filename, df, sheet_name='Sheet1', startrow=None,
                        truncate_sheet=False, 
                        **to_excel_kwargs):
