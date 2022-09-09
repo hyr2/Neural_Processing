@@ -8,7 +8,7 @@ Created on Thu May 20 15:07:16 2021
 # Notes: 
 # Baseline time is selected to be 700 ms. It should not be too long since electrical activity can change very fast and very dramatically.
 
-# Fix line 58 : stim_start_time variable 50 ms delay?
+
 
 from scipy.io import loadmat, savemat      # Import function to read data.
 from matplotlib import pyplot as plt
@@ -21,7 +21,7 @@ import numpy as np
 from natsort import natsorted
 from Support import *
 
-def Spectrogram_main(source_dir, pk_thresh, normalize_PSD_flag, t_activation_window, chan_map_knob):
+def Spectrogram_main(source_dir, pk_thresh, normalize_PSD_flag, t_activation_window):
 	
 	# INPUT ARGUMENTS:
 	#   source_dir: The directory location of source file. Please run this code after running the BinChan.py and Bin2Trials.py
@@ -36,10 +36,7 @@ def Spectrogram_main(source_dir, pk_thresh, normalize_PSD_flag, t_activation_win
 	filename_save_data = os.path.join(source_dir,'Processed','Spectrogram_mat')
 	output_dir_cortical_depth = os.path.join(source_dir,'Processed','Cortical-Depth')
 	dir_chan_list = os.path.join(source_dir,'chan_list.xlsx')
-	if (chan_map_knob == 1):
-		dir_chan_map = os.path.join(source_dir,'chan_map_1x32_128ch.xlsx')
-	elif (chan_map_knob == 2):
-		dir_chan_map = os.path.join(source_dir,'chan_map_2x16_128ch.xlsx')
+	dir_chan_map = os.path.join(source_dir,'chan_map_1x32_128ch.xlsx')
 	dir_Bin2Trials = os.path.join(source_dir,'Bin2Trials')
 	dir_expsummary = os.path.join(source_dir,'exp_summary.xlsx')
 	
@@ -67,10 +64,7 @@ def Spectrogram_main(source_dir, pk_thresh, normalize_PSD_flag, t_activation_win
 	time_seq = int(np.ceil(time_seq * Fs/2) * 2)                # Time of one sequence in samples (rounded up to even)
 	
 	# Extracting channel mapping info
-	if chan_map_knob == 1:
-		df_chanMap = pd.read_excel(dir_chan_map,usecols=[0,1,2,3],header = None,sheet_name = 2)
-	elif (chan_map_knob == 2):
-		df_chanMap = pd.read_excel(dir_chan_map,usecols=[0,1,2,3,4,5,6,7],header = None,sheet_name = 2)
+	df_chanMap = pd.read_excel(dir_chan_map,usecols=[0,1,2,3],header = None,sheet_name = 2)
 	arr_chanMap = df_chanMap.to_numpy()                 # 4 shank device 1x32 channels on each shank
 	df_chanList = pd.read_excel(dir_chan_list,header = 0)
 	chan_list = df_chanList.to_numpy()

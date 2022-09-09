@@ -15,6 +15,7 @@ from Support import *
 sys.path.append(os.path.join(os.getcwd(),'Intan-File-Reader'))
 from load_intan_rhd_format import read_data
 
+
 filename = '/run/media/hyr2/Data/Data/test/data_211002_153810.rhd'
 
 result = read_data(filename)
