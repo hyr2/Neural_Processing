@@ -1,0 +1,93 @@
+% Author: Hanlin
+% Modified by Jiaao (02-22-22)
+% Modified by Haad (03-01-22)
+clear all
+% folder = '/home/hyr2/Documents/git/Time-Series/CellExplorer/calc_CellMetrics';
+% addpath(genpath(folder));
+% TODO 
+% *****(1) read connectivity sauce code
+% *****(2) read trials_times.mat to obtain spikes during stim only
+% *****(3) read trials_times.mat to obtain spikes during baseline only
+
+% Input main directory (all datasets):
+% source_dir
+% |
+% |__2021-12-09
+% |__2021-12-12
+% |__2021-12-17
+%
+
+
+% Set these parameters --------------------------------- ***
+source_dir = '/home/hyr2/Documents/Data/BC7/2021-12-09/';
+datestr = '2021-12-09';
+% all parameters in seconds
+para_connect.binSize = 0.0005;     
+para_connect.sigWindow = 0.004;
+para_connect.conv_w = 0.01;
+para_connect.duration = 0.2; 
+
+CHMAP_2X16 = false;
+GW_BETWEENSHANK = 300;
+GH = 25;
+
+
+datafolder = fullfile(source_dir,'ePhys','Processed','msorted');
+respfolder   = fullfile(source_dir,'ePhys','Processed','count_analysis');
+resultfolder = fullfile(source_dir,'ePhys','Processed','Connectivity');
+mkdir(resultfolder);
+templates = readmda(fullfile(datafolder,'templates.mda'));
+firings = readmda(fullfile(datafolder,'firings.mda'));
+exp_summary = fullfile(source_dir,'ePhys','exp_summary.xlsx');
+exp_summary = readtable(exp_summary,'DataRange','A1:F6');
+
+Fs = exp_summary.(3)(2);        % Sampling frequency
+% Read stim.txt
+stim_txtpath = fullfile(source_dir,'ePhys','whisker_stim.txt');
+[len_trials,FramesPerSeq, stim_start_time, seq_period, stim_num, num_trials] = read_whiskerStimTxT(stim_txtpath);
+STIM_START_SAMPLES = floor(stim_start_time*Fs);
+STIM_DURATION_SAMPLES = floor(stim_num*seq_period*Fs);
+% Read trials_times
+trial_times_matpath = fullfile(source_dir,'ePhys','trials_times.mat');
+load(trial_times_matpath, 't_trial_start');
+
+% mask STIM CONNEC: trial_start_times + stim_onset : trial_start_times + stim_onset + stim_duration
+mask_stim = false(size(firings, 2),1);
+stim_start_times = t_trial_start + STIM_START_SAMPLES;
+for i = 7:length(t_trial_start) 
+    % discard first 6 trials
+    mask_stim(firings(2,:)>=stim_start_times(i) & firings(2,:)<stim_start_times(i)+STIM_DURATION_SAMPLES) = true;
+end
+idx_stim = find(mask_stim);
+
+% mask BASELINE CONNEC: trial_start_times : trial_start_times+stim_onset
+mask_baseline = false(size(firings, 2),1);
+for i = 7:length(t_trial_start) 
+    % discard first 6 trials
+    mask_baseline(firings(2,:)>=t_trial_start(i) & firings(2,:)<stim_start_times(i)) = true;
+end
+idx_baseline = find(mask_baseline);
+
+curation_mask = logical(csvread(fullfile(datafolder,'accept_mask.csv')));
+response_mask = csvread(fullfile(respfolder,'cluster_response_mask.csv'));
+clus_locations = csvread(fullfile(datafolder,'clus_locations.csv'));
+
+%% Calling main function for analysis:
+
+% STIM CONNEC
+figname = 'stim';
+[mono_res_stim, connectivityGraph_stim, connectivityCountByShank_stim] = core_CE_connec(...
+    firings, templates, idx_stim, Fs, GW_BETWEENSHANK, GH, CHMAP_2X16, ...
+    datestr, resultfolder, curation_mask, response_mask, clus_locations, figname, para_connect);
+save(fullfile(resultfolder,'con_graph_stim.mat'), 'connectivityGraph_stim');
+save(fullfile(resultfolder,'con_count_by_shank_stim.mat'), 'connectivityCountByShank_stim');
+save(fullfile(resultfolder,'mono_res_stim.mat'), 'mono_res_stim');
+
+% BASELINE CONNEC
+figname = 'baseline';
+[mono_res_baseline, connectivityGraph_baseline, connectivityCountByShank_baseline] = core_CE_connec(...
+    firings, templates, idx_baseline, Fs, GW_BETWEENSHANK, GH, CHMAP_2X16, ...
+    datestr, resultfolder, curation_mask, response_mask, clus_locations, figname, para_connect);
+save(fullfile(resultfolder,'con_graph_baseline.mat'), 'connectivityGraph_baseline');
+save(fullfile(resultfolder,'con_count_by_shank_baseline.mat'), 'connectivityCountByShank_baseline');
+save(fullfile(resultfolder,'mono_res_baseline.mat'), 'mono_res_baseline');
