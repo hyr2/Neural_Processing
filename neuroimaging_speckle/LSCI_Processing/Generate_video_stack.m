@@ -1,0 +1,112 @@
+function Generate_video_stack(Mat,fps,delta_t,output_dir,SC,BW,varargin)
+%Generate_video_stack Generates video files for a matrix stack. 
+%   [Row,Col] = [Image height, Image Width]
+%   Z axis : Time (stack of images in time)
+%
+%   INPUT PARAMETERS:
+%   Mat = Matrix of image stack
+%   delta_t = Time resolution of each frame in the file_mat folder
+%   sc_range = Display range for speckle contrast data [min max]
+%   fps = Framerate of the rendered video
+%   output_dir = output directory where the video files shall be saved
+% 
+%   'label' : Label of the colorbar 
+%   
+%   'overlay_range': Set display range for rICT overlay (Default = [0 0.5])
+%
+%   'show_scalebar': Toggle display of the scalebar (Default = true)
+%       Scale is hard-coded in SpeckleFigure to that of the multimodal system
+%
+%   'show_timestamp': Toggle display of timestamp overlay (Default = true)
+%   
+
+
+p = inputParser;
+addRequired(p, 'Mat');
+addRequired(p, 'fps', @isscalar);
+addRequired(p, 'delta_t', @isscalar);
+addRequired(p, 'output_dir', @(x) exist(x,'dir'));
+addRequired(p, 'SC');
+validateFnc = @(x) validateattributes(x, {'numeric'}, {'numel', 2, 'increasing'});
+addParameter(p, 'label','\DeltaCT_n');
+addParameter(p, 'sc_range',[0.018 0.36], validateFnc);
+addParameter(p, 'overlay_range', [0.0 0.05], validateFnc);    % for rICT
+addParameter(p, 'show_scalebar', true, @islogical);
+addParameter(p, 'show_timestamp', true, @islogical);
+
+
+parse(p, Mat, fps, delta_t, output_dir, SC ,varargin{:});
+
+Mat = p.Results.Mat;
+output_dir = p.Results.output_dir;
+fps = p.Results.fps;
+delta_t = p.Results.delta_t;
+SC = p.Results.SC;
+sc_range = p.Results.sc_range;
+label = p.Results.label;
+overlay_range = p.Results.overlay_range;
+show_scalebar = p.Results.show_scalebar;
+show_timestamp = p.Results.show_timestamp;
+
+
+% Timestamps
+num_bins = size(Mat,3); 
+time_vec = [0:delta_t:delta_t*(num_bins-1)];    
+
+% Open the VideoWriter
+v_rict = fullfile(output_dir,strcat(label(2:end),'.mp4'));
+v = VideoWriter(v_rict, 'MPEG-4');
+v.FrameRate = fps;
+open(v);
+tic;
+fprintf('Rendering %d frames to %s\n', num_bins, v_rict);
+WB = waitbar(0, '', 'Name', 'Generating Video');
+
+% Have user define craniotomy area
+% BW = defineCraniotomy(SC,sc_range);
+BW(SC > sc_range(2)) = false;
+
+% Create figure and overlay
+F = SpeckleFigure(SC, sc_range, 'visible', true);
+F.showOverlay(zeros(size(SC)), overlay_range, zeros(size(SC)),'use_divergent_cmap', false,'label',label);
+if show_scalebar
+  F.showScalebar();
+end
+if show_timestamp
+  F.showTimestamp(0);
+end
+
+% writing to video files
+for iter = 1:num_bins
+    
+    % Update the progressbar
+    waitbar(iter/num_bins, WB, sprintf('Frame %d of %d', iter, num_bins));
+    
+    avg = Mat(:,:,iter);
+    
+    % Generate the overlay alpha mask excluding values outside overlay range
+    alpha = 0.5*ones(size(SC)); % transparency
+    alpha(avg < overlay_range(1)) = false;
+    alpha(avg > overlay_range(2)) = false;
+    alpha = alpha & BW;
+
+    
+    % Update the figure
+    F.updateOverlay(avg, alpha);
+    if show_timestamp
+        F.updateTimestamp(time_vec(iter));
+    end
+  
+    % Write the frame
+    writeVideo(v, F.getFrame());
+    
+end
+
+close(v);
+delete(WB);
+fprintf('Elapsed time for video generation: %.2fs (%.1f fps)\n', toc, num_bins/toc);
+
+end
+
+
+
