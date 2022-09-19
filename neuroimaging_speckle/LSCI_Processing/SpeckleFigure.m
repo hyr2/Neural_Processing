@@ -19,7 +19,7 @@ classdef SpeckleFigure < handle
   end
   
   properties (Constant, Access = private)
-    SCALE = 2.36; % Figure size scaling factor (2.5 is theoretical value)
+    SCALE = 2.5; % Figure size scaling factor (2.5 is theoretical value)
     RESOLUTION = 426.62; % pixels/mm (Multimodal System w/ Basler acA1920-155um)  (426.62 px/mm is theoretical value)
   end
   

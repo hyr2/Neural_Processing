@@ -11,7 +11,8 @@ function scaleBar(varargin)
 if length(varargin) >= 1 && ~isempty(varargin{1})
   scale = varargin{1};
 else
-  scale = 355; % pixels/mm - Multimodal System (Basler acA1920-155um)
+%   scale = 355;    %OLD VALUE OF SYSTEM
+  scale = 426.6213; % pixels/mm - Multimodal System (Basler acA1920-155um) [355 is what the old Microscope Objective mag setting gave]
 end
 
 FS = 18;
