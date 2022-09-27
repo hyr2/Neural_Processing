@@ -32,7 +32,7 @@ for iter_local = folder_datasets_mouse
     sc_bl = reshape(sc_bl,size(sc_bl,1),size(sc_bl,2),Nexp,[]);
     sc_bl = mean(sc_bl,4);
     filename_local_sc_bl{iter_num} = fullfile(folder_local,[folder_datasets{1},'.sc']);
-    write_sc(sc_bl, filename_local_sc_bl{iter_num});
+%     write_sc(sc_bl, filename_local_sc_bl{iter_num});
     % Post-Stroke
     folder_datasets_st = fullfile(folder_local,folder_datasets{2});
     folder_datasets_st = dir_sorted(fullfile(folder_datasets_st,'*.sc'));
@@ -40,15 +40,26 @@ for iter_local = folder_datasets_mouse
     sc_st = reshape(sc_st,size(sc_st,1),size(sc_st,2),Nexp,[]);
     sc_st = mean(sc_st,4);
     filename_local_sc_st{iter_num} = fullfile(folder_local,[folder_datasets{2},'.sc']);
-    write_sc(sc_bl, filename_local_sc_st{iter_num});
+%     write_sc(sc_bl, filename_local_sc_st{iter_num});
     iter_num = iter_num + 1;
 end
-% reading all .sc image files 
-% read_subimage()
-% Averaging a few frames 
-
-% Write to disk
+% Prepare cell array for parallel proc
+cl = {};
+for it = 1:size(filename_local_sc_st,2)
+    cl{end+1} = filename_local_sc_st{it};
+    cl{end+1} = filename_local_sc_bl{it};
+end
 
 % Computing Tau (non-linear least squares fit)
+code_dir = matlab.desktop.editor.getActiveFilename;
+idx = strfind(code_dir,'/');
+code_dir = code_dir(1:idx(end)-1);
+c_compiled_mesi = fullfile(code_dir,'mesi.linux');
+parpool;
+parfor i = 1:size(filename_local_sc_bl,2)
+    CMD = sprintf('%s %s -n 1',c_compiled_mesi,filename_local_sc_bl{1,i});
+    system(CMD);
+end
+delete(gcp('nocreate'));
 
 %   
