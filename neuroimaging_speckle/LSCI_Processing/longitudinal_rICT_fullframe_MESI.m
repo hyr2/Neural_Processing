@@ -6,6 +6,9 @@
 %           |
 %           |
 %           |__09-02-aged
+%                       |
+%                       |___2022-01-06(baseline)
+%                       |___2022-01-09(post stroke)
 %           |__09-04B-aged
 %           |__09-05-aged
 
@@ -20,13 +23,16 @@ input_folder = input('Enter source dir:\n','s');     % ...
 % /home/hyr2-office/Documents/Data/Yifu_rICT/
 parameter_file = input('Enter location of parameter file for image registration:\n','s'); % ...
 % /home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/neuroimaging_speckle/Image_Registration/Parameters_48.txt
-dry_run = 0;
+dry_run = 0;            % Nothing is saved or changed
+vessel_flag = 0;        % Remove vessels 
+
 % cd(input_folder);
 folder_datasets_mouse = dir_sorted(input_folder);
 folderNames = {folder_datasets_mouse([folder_datasets_mouse.isdir]).name};
 folderNames = folderNames(~ismember(folderNames ,{'.','..'}));
 folder_datasets_mouse = folderNames;
 % Assumes 200 sequences and 15 MESI exposures
+r = [0.05 0.36];
 Nexp = 15;
 Nseq = 200;
 NFrames = Nexp * Nseq; 
@@ -55,6 +61,10 @@ for iter_local = folder_datasets_mouse
     if ~dry_run
         mask_bl = defineCraniotomy(sc_bl(:,:,9),[0.03,0.4]);
         sc_bl = sc_bl .* mask_bl;
+        fixed = mat2gray(sc_bl(:,:,9),r);
+        T = adaptthresh(fixed,0.8);         % remove vessels using locally adapative threshold
+        BW = imbinarize(fixed,T);
+        sc_bl = sc_bl .* BW;
         write_sc(sc_bl, filename_local_sc_bl{iter_num});
     end
     % Post-Stroke
@@ -68,22 +78,25 @@ for iter_local = folder_datasets_mouse
     if ~dry_run
         mask_st = defineCraniotomy(sc_st(:,:,9),[0.03,0.4]);
         sc_st = sc_st .* mask_st;
+        moving = mat2gray(sc_st(:,:,9),r);
+        T = adaptthresh(moving,0.8);         % remove vessels using locally adapative threshold
+        BW = imbinarize(moving,T);
+        sc_st = sc_st .* BW;
         write_sc(sc_st, filename_local_sc_st{iter_num});
     end
-    % Transformation (Image registration file)
-    r = [0.05 0.36];
-    fixed = mat2gray(sc_bl(:,:,9), r);
-    moving = mat2gray(sc_st(:,:,9), r);
-    d = elastix(fixed,moving,parameter_file);
-    if ~exist(fullfile(output_dir,'transform_param'))
-        mkdir(fullfile(output_dir,'transform_param'));
-        folder_datasets = dir_sorted(folder_local);
-        folderNames = {folder_datasets([folder_datasets.isdir]).name};
-        folderNames = folderNames(~ismember(folderNames ,{'.','..'}));
-        folder_datasets = folderNames;
+    if ~dry_run
+        % Transformation (Image registration file)
+        d = elastix(fixed,moving,parameter_file);
+        if ~exist(fullfile(output_dir,'transform_param'))
+            mkdir(fullfile(output_dir,'transform_param'));
+            folder_datasets = dir_sorted(folder_local);
+            folderNames = {folder_datasets([folder_datasets.isdir]).name};
+            folderNames = folderNames(~ismember(folderNames ,{'.','..'}));
+            folder_datasets = folderNames;
+        end
+        copyfile(d,fullfile(output_dir,'transform_param'));
+        [~,~] = transformix(d,moving);
     end
-    copyfile(d,fullfile(output_dir,'transform_param'));
-    [~,~] = transformix(d,moving);
     folder_datasets_reg{iter_num} = fullfile(folder_local,folder_datasets{contains(folder_datasets,'transform')});
     iter_num = iter_num + 1;
 end
@@ -107,13 +120,16 @@ if ~dry_run
     delete(gcp('nocreate'));
 end
 
-%% Applying transformations
+%% Applying transformations and Compute relative ICT
 j_iter = 1;
 for j_iter = 1:size(filename_local_sc_st,2)
     moving_local_st = strcat(filename_local_sc_st,'.mesi'); 
     moving_image_st_local = read_subimage(dir_sorted(moving_local_st{1,j_iter}),-1,-1,1);
-    [SC_REG,mask] = transformix_perm(folder_datasets_reg{1,j_iter},moving_image_st_local');
+    fixed_local_bl = strcat(filename_local_sc_bl,'.mesi'); 
+    fixed_image_bl_local = read_subimage(dir_sorted(fixed_local_bl{1,j_iter}),-1,-1,1);
+    [REG_img_st,mask] = transformix_perm(folder_datasets_reg{1,j_iter},moving_image_st_local);
+    rICT{1,j_iter} = fixed_image_bl_local./REG_img_st;  % compute rICT
+    rICT_filt{1,j_iter} = imgaussfilt(rICT{1,j_iter},4);     % compute rICT
 end
-%% Compute relative CT
 
 %% Plotting
