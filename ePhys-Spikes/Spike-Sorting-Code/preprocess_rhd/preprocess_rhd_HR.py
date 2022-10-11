@@ -41,10 +41,10 @@ else:
 #/media/luanlab/DATA/SpikeSorting/RawData/2021-09-04B-aged/2022-01-01/2022-01-01_moving
 
 # given a session
-DATA_ROOTPATH  = '/media/luanlab/DATA/SpikeSorting/RawData/2021-09-04B-aged'
+DATA_ROOTPATH  = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/data/HR/'
 # MDA_ROOTPATH   = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/converted/data_mda/Yifu"
-GEOM_ROOTPATH  = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Kai/'
-SESSION_REL_PATH = '2021-12-17'
+GEOM_ROOTPATH  = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/RH3'
+SESSION_REL_PATH = '10-7/ePhys/data_221007_123731'
 SESSION_FOLDER_RAW = os.path.join(DATA_ROOTPATH, SESSION_REL_PATH)
 # SESSION_FOLDER_MDA = os.path.join(MDA_ROOTPATH, SESSION_REL_PATH)
 SESSION_FOLDER_CSV = os.path.join(GEOM_ROOTPATH, SESSION_REL_PATH)
@@ -166,7 +166,7 @@ if not ELECTRODE_2X16:
         raise ValueError("Channel map is of shape %s, expected (32,4)" % (chmap_mat.shape))
 
     # find correct locations for valid chanels
-    geom_map = -1*np.ones((len(chs_native_order), 2), dtype=np.int)
+    geom_map = -1*np.ones((len(chs_native_order), 2), dtype= int)
 
     for i, native_order in enumerate(chs_native_order):
         loc = np.where(chmap_mat==native_order)
