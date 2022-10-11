@@ -1,3 +1,13 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Sep  7 15:14:00 2022
+
+@author: luanlab
+
+FILE PATH: /media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/processingCodes/post_msort_processing
+"""
+
 """ 
     Automatically discard noise clusters conservatively (by amplitude, spatial spread, ISI violation ratio) and viz
     Save CSV files for record
@@ -27,7 +37,7 @@ import scipy.signal as signal
 from utils.read_mda import readmda
 
 # Files and inputs 
-SESSION_FOLDER = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/2021-12-17"
+SESSION_FOLDER = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/RH3/data_221002_200158/temp"
 RASTER_PLOT_AMPLITUDE = False
 NO_READING_FILTMDA = False # set to False on first run of each session
 # -------------------------settings
@@ -67,11 +77,12 @@ if not os.path.exists(session_newsavefolder):
     os.makedirs(session_newsavefolder)
 
 COMMON_AVG_REREFERENCE = True
-ADJACENCY_RADIUS_SQUARED = 140**2 # um^2, [consistent with mountainsort shell script](not anymore)
+ADJACENCY_RADIUS_SQUARED = 200**2 # um^2, [consistent with mountainsort shell script](not anymore)
 SNR_THRESH = 1.5
 AMP_THRESH = 50 # 35 for Anesthetized # 50 for awake
-FIRING_RATE_THRESH = 0.05 # 0.5
-P2P_PROPORTION_THRESH = 0.3         # For spatial screening (p2p threshold %) AKA isolation in space
+FIRING_RATE_THRESH = 0.05#0.05 # 0.5
+P2P_PROPORTION_THRESH = 0.2         # For spatial screening (p2p threshold %) AKA isolation in space
+ISI_VIOLATION_RATIO = 0.0303         # ratio of spikes violating the inter spike interval criterion
 PARAMS = {}
 PARAMS['F_SAMPLE'] = F_SAMPLE
 PARAMS['ADJACENCY_RADIUS_SQUARED'] = ADJACENCY_RADIUS_SQUARED
@@ -100,6 +111,35 @@ with open(os.path.join(session_newsavefolder, "params_log.json"), 'w') as f:
 #     smoother = smoother / np.sum(smoother)
 #     firing_rate_series = signal.convolve(tmp_hist, smoother, mode='same')
 #     return firing_rate_series
+
+
+def decoding_algo_curation(val):
+    decoded_str= ""
+    final_str= ""
+    
+    decoded_str = "{0:08b}".format(val)
+    
+    if decoded_str[-1] == '1':
+        # violation peak SNR
+        final_str = final_str + "Peak SNR, "
+    if decoded_str[-2] == '1':
+        # violation peak amplitude
+        final_str = final_str + "Peak amplitude, "
+    if decoded_str[-3] == '1':
+        # violation FR 
+        final_str = final_str + "Peak FR, "
+    if decoded_str[-4] == '1':
+        # violation spatial spread
+        final_str = final_str + "Spatial localization, "
+    if decoded_str[-5] == '1':
+        # violation bursting children
+        final_str = final_str + "Bursting Child, "
+    if decoded_str[-6] == '1':
+        # Violation ISI (multiunit activity)
+        final_str = final_str + "ISI (multi-unit)"
+    
+    return final_str
+
 
 def postprocess_one_session(session_folder_load, session_folder_save):
     
@@ -177,17 +217,24 @@ def postprocess_one_session(session_folder_load, session_folder_save):
 
     #### reject clusters by average amplitude, ISI violation ratio, and spatial spread(from template amplitude at each channel)
     cluster_accept_mask = np.ones((n_clus,), dtype=bool)
+    violation_log = np.zeros(cluster_accept_mask.shape, dtype=np.int8)
     # reject by peak snr
     snr_thresh = SNR_THRESH
-    cluster_accept_mask[peak_snr<snr_thresh] = False
+    s = np.array(peak_snr<snr_thresh,dtype = bool)
+    cluster_accept_mask[s] = False
+    violation_log[s] = 1
     print("%d/%d clusters kept after peak SNR screening"%(np.sum(cluster_accept_mask), n_clus))
     # reject by spike amplitude
     amp_thresh = AMP_THRESH # in uV
-    cluster_accept_mask[peak_amplitudes < amp_thresh] = False
+    s = np.array(peak_amplitudes < amp_thresh,dtype = bool)
+    cluster_accept_mask[s] = False
+    violation_log[s] = violation_log[s] + 2
     print("%d/%d clusters kept after amplitude screening"%(np.sum(cluster_accept_mask), n_clus))
     # reject by firing rate
     firing_rate_thresh = FIRING_RATE_THRESH
-    cluster_accept_mask[firing_rates < firing_rate_thresh] = False
+    s = np.array(firing_rates < firing_rate_thresh, dtype = bool)
+    cluster_accept_mask[s] = False
+    violation_log[s] = violation_log[s] + 4
     print("%d/%d clusters kept after firing-rate screening"%(np.sum(cluster_accept_mask), n_clus))
     # reject by spatial spread of less than the designated ADJACENT_RADIUS_SQUARED
     geom = pd.read_csv(MAP_PATH, header=None).values
@@ -197,19 +244,22 @@ def postprocess_one_session(session_folder_load, session_folder_save):
         prim_x, prim_y = geom[prim_ch, :]
         p2p_by_channel = template_p2ps[:, i_clus]
         p2p_prim = np.max(p2p_by_channel)
-        p2p_near = p2p_by_channel>p2p_prim*P2P_PROPORTION_THRESH
+        p2p_near = p2p_by_channel > p2p_prim*P2P_PROPORTION_THRESH
         if np.any((geom[p2p_near,0]-prim_x)**2 + (geom[p2p_near,1]-prim_y)**2 >= ADJACENCY_RADIUS_SQUARED):
             cluster_accept_mask[i_clus] = False
+            violation_log[i_clus] += 8
     print("%d/%d clusters kept after spatial-spread screening"%(np.sum(cluster_accept_mask), n_clus))
     # reject bursting children
     for i_clus in range(n_clus):
         if abs(np.argmax(np.abs(template_waveforms[pri_ch_lut[i_clus], :, i_clus])) - waveform_len//2) >= 5:
             # peak is too far away from center, reject
             cluster_accept_mask[i_clus] = False
+            violation_log[i_clus] += 16
     print("%d/%d clusters kept after rejecting bursting children"%(np.sum(cluster_accept_mask), n_clus))
     # reject by 2ms-ISI violation ratio of 1%
-    multi_unit_mask = np.logical_and(cluster_accept_mask, refrac_violation_ratio > 0.01)
+    multi_unit_mask = np.logical_and(cluster_accept_mask, refrac_violation_ratio > ISI_VIOLATION_RATIO)
     cluster_accept_mask[multi_unit_mask] = False # cluster_accept_mask indicates single unit clusters
+    violation_log[multi_unit_mask] += 32
     print("%d/%d clusters kept after ISI screening"%(np.sum(cluster_accept_mask), n_clus))
     np.savez(os.path.join(session_folder_save, "cluster_rejection_mask.npz"),\
         single_unit_mask=cluster_accept_mask,
@@ -231,7 +281,6 @@ def postprocess_one_session(session_folder_load, session_folder_save):
         weights = weights / np.sum(weights)
         clus_coordinates[i_clus, :] = np.sum(weights[:,None] * geom, axis=0)
     pd.DataFrame(data=clus_coordinates).to_csv(os.path.join(session_folder_save, "clus_locations.csv"), index=False, header=False)
-
     # get spike waveforms and amplitudes with time
     print("Reading spikes")
     ts_readspikes = time()
@@ -299,7 +348,9 @@ def postprocess_one_session(session_folder_load, session_folder_save):
     spk_amp_stds = []
     n_bins_amphist_sameclus = 50
     ts_amphist = time()
+    print("nclus: %d" %(n_clus))
     for i_clus in range(n_clus):
+        print("%d, %d" %(i_clus, n_clus))
         peak_amp_hist, amphist_bin_edges = np.histogram(spk_amp_series[i_clus], bins=n_bins_amphist_sameclus)
         spk_amp_hists.append(peak_amp_hist)
         spk_amp_hist_bin_edges.append(amphist_bin_edges)
@@ -309,9 +360,6 @@ def postprocess_one_session(session_folder_load, session_folder_save):
         spk_amp_stds.append(np.std(spk_amp_series[i_clus]))
     print("Amplitude statistics computation time", time()-ts_amphist)
         
-
-    
-    
     #%% viz
     ################################## VISUALIZATION
 
@@ -550,7 +598,10 @@ def postprocess_one_session(session_folder_load, session_folder_save):
         str_annot += "Noise overlap score: %.4f\n" % (noise_overlap_score[i_clus_plot])
         str_annot += "Peak SNR: %.2f\n" % (peak_snr[i_clus_plot])
         str_annot += "Refractory 2ms violation ratio: %.4f\n" % (refrac_violation_ratio[i_clus_plot])
-        str_annot += "Automatic screening: %s\n" % ("passed" if cluster_accept_mask[i_clus_plot] else ("multi-unit" if multi_unit_mask[i_clus_plot] else "failed"))
+        screening_status = "passed" if cluster_accept_mask[i_clus_plot] else ("multi-unit" if multi_unit_mask[i_clus_plot] else "failed")
+        str_annot += "Automatic screening: %s\n" % (screening_status)
+        if screening_status=="failed":
+            str_annot += "Reason for Failure: %s\n" % (decoding_algo_curation(violation_log[i_clus_plot]))
         ax_text.text(0.5, 0.5, str_annot, va="center", ha="center", fontsize=28)
 
         # plt.suptitle("Cluster %d, kept=%d" % (i_clus_plot+1, clus_keep_mask[i_clus_plot]), fontsize=25)
@@ -692,7 +743,11 @@ def postprocess_one_session(session_folder_load, session_folder_save):
         str_annot += "Noise overlap score: %.4f\n" % (noise_overlap_score[i_clus_plot])
         str_annot += "Peak SNR: %.2f\n" % (peak_snr[i_clus_plot])
         str_annot += "Refractory 2ms violation ratio: %.4f\n" % (refrac_violation_ratio[i_clus_plot])
-        str_annot += "Automatic screening: %s\n" % ("passed" if cluster_accept_mask[i_clus_plot] else ("multi-unit" if multi_unit_mask[i_clus_plot] else "failed"))
+        screening_status = "passed" if cluster_accept_mask[i_clus_plot] else ("multi-unit" if multi_unit_mask[i_clus_plot] else "failed")
+        str_annot += "Automatic screening: %s\n" % (screening_status)
+        if screening_status=="failed":
+            str_annot += "Reason for Failure: %s\n" % (decoding_algo_curation(violation_log[i_clus_plot]))
+
         ax_text.text(0.5, 0.5, str_annot, va="center", ha="center", fontsize=28)
 
         # plt.suptitle("Cluster %d, kept=%d" % (i_clus_plot+1, clus_keep_mask[i_clus_plot]), fontsize=25)
