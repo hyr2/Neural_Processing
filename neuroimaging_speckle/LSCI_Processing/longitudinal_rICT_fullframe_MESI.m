@@ -40,6 +40,7 @@ idx = 95*Nexp+1:105*Nexp;      % middle 10 seq
 iter_num = 1;
 filename_local_sc_bl = {};
 filename_local_sc_st = {};
+fixed = {};
 
 %% Main processing for loop
 for iter_local = folder_datasets_mouse
@@ -61,9 +62,9 @@ for iter_local = folder_datasets_mouse
     if ~dry_run
         mask_bl = defineCraniotomy(sc_bl(:,:,9),[0.03,0.4]);
         sc_bl = sc_bl .* mask_bl;
-        fixed = mat2gray(sc_bl(:,:,9),r);
-        T = adaptthresh(fixed,0.8);         % remove vessels using locally adapative threshold
-        BW = imbinarize(fixed,T);
+        fixed{iter_num} = mat2gray(sc_bl(:,:,9),r);
+        T = adaptthresh(fixed{iter_num},0.8);         % remove vessels using locally adapative threshold
+        BW = imbinarize(fixed{iter_num},T);
         sc_bl = sc_bl .* BW;
         write_sc(sc_bl, filename_local_sc_bl{iter_num});
     end
@@ -86,7 +87,7 @@ for iter_local = folder_datasets_mouse
     end
     if ~dry_run
         % Transformation (Image registration file)
-        d = elastix(fixed,moving,parameter_file);
+        d = elastix(fixed{iter_num},moving,parameter_file);
         if ~exist(fullfile(output_dir,'transform_param'))
             mkdir(fullfile(output_dir,'transform_param'));
             folder_datasets = dir_sorted(folder_local);
@@ -128,8 +129,33 @@ for j_iter = 1:size(filename_local_sc_st,2)
     fixed_local_bl = strcat(filename_local_sc_bl,'.mesi'); 
     fixed_image_bl_local = read_subimage(dir_sorted(fixed_local_bl{1,j_iter}),-1,-1,1);
     [REG_img_st,mask] = transformix_perm(folder_datasets_reg{1,j_iter},moving_image_st_local);
-    rICT{1,j_iter} = fixed_image_bl_local./REG_img_st;  % compute rICT
-    rICT_filt{1,j_iter} = imgaussfilt(rICT{1,j_iter},4);     % compute rICT
+    rICT{1,j_iter} = REG_img_st./fixed_image_bl_local;  % compute rICT
+    rICT_filt{1,j_iter} = imgaussfilt(rICT{1,j_iter},5);     % compute rICT
 end
 
-%% Plotting
+%% Plotting and overlay
+close all;
+overlay_range = {};
+overlay_range{1} = [0.7,0.92];
+overlay_range{2} = [0.7,0.9];
+overlay_range{3} = [0.72,0.82];
+overlay_range{4} = [0.6,0.8];
+overlay_range{5} = [0.7,0.90];
+for j_iter = 1:size(filename_local_sc_st,2)
+
+    
+    F = SpeckleFigure(fixed{j_iter}, [0,1] , 'visible', true);
+    F.showOverlay(zeros(size(fixed{j_iter})), overlay_range{j_iter} , zeros(size(fixed{j_iter})),'use_divergent_cmap', false);
+    F.showScalebar();
+
+    % Generate the overlay alpha mask excluding values outside overlay range
+    alpha = 0.5*ones(size(fixed{j_iter})); % transparency
+    alpha(rICT{1,j_iter} < overlay_range{j_iter}(1)) = false;
+    alpha(rICT{1,j_iter} > overlay_range{j_iter}(2)) = false;
+    alpha = alpha;
+    % Update the figure
+    F.updateOverlay(rICT_filt{1,j_iter}, alpha);
+    F.savePNG(fullfile(input_folder,folder_datasets_mouse{j_iter}));
+end
+
+
