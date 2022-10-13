@@ -337,7 +337,7 @@ def append_df_to_excel(filename, df, sheet_name='Sheet1', startrow=None,
     if 'engine' in to_excel_kwargs:
         to_excel_kwargs.pop('engine')
 
-    writer = pd.ExcelWriter(filename, engine='openpyxl',mode='a')
+    writer = pd.ExcelWriter(filename, engine='openpyxl',mode='a',if_sheet_exists='overlay’)
 
     # try to open an existing workbook
     writer.book = load_workbook(filename)
