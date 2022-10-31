@@ -118,7 +118,7 @@ for j_iter = 3:size(filename_local_sc,2)    % skipping baseline in the loop
     alpha = alpha;
     % Update the figure
     F.updateOverlay(rICT_filt{1,j_iter}, alpha);
-%     F.savePNG(fullfile(input_folder,folder_datasets_mouse{j_iter}));
+    F.savePNG(fullfile(input_folder,folder_datasets_mouse{j_iter}));
 end
 
 
