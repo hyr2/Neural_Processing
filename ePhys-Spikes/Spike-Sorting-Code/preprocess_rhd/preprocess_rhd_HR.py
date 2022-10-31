@@ -41,10 +41,10 @@ else:
 #/media/luanlab/DATA/SpikeSorting/RawData/2021-09-04B-aged/2022-01-01/2022-01-01_moving
 
 # given a session
-DATA_ROOTPATH  = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/data/HR/'
+DATA_ROOTPATH  = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/data/HR'
 # MDA_ROOTPATH   = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/converted/data_mda/Yifu"
-GEOM_ROOTPATH  = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/RH3'
-SESSION_REL_PATH = '10-7/ePhys/data_221007_123731'
+GEOM_ROOTPATH  = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/RH3/'
+SESSION_REL_PATH = '10-26/'
 SESSION_FOLDER_RAW = os.path.join(DATA_ROOTPATH, SESSION_REL_PATH)
 # SESSION_FOLDER_MDA = os.path.join(MDA_ROOTPATH, SESSION_REL_PATH)
 SESSION_FOLDER_CSV = os.path.join(GEOM_ROOTPATH, SESSION_REL_PATH)
