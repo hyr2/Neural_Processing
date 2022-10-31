@@ -1,63 +1,96 @@
 '''
 Adapt to 2x16 channel maps
 Non visualization yet
-read Haad's rejection file
+read Haad's rejection file -> update: simply reject first 6 trials
+Author: Jia-ao
 '''
-import os 
+import os, sys
+sys.path.append(os.path.join(os.getcwd(),'utils-mountainsort'))
+sys.path.append(os.getcwd())
 from itertools import groupby
-
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import loadmat, savemat
 import scipy.signal as signal
 import pandas as pd
-
+from utils.Support import read_stimtxt
 from utils.read_mda import readmda
-from utils.read_stimtxt import read_stimtxt
+# from Support_MS import *
 
+# from utils.read_stimtxt import read_stimtxt
 
-F_SAMPLE = 25e3
-WINDOW_LEN_IN_SEC = 10e-3
-SMOOTHING_SIZE = 11
-session_path_str = "NVC/B-BC5/01-06-2022"
-PLOT_SCALE_Y = True
-# CHANNEL_MAP_FPATH = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/128chMap_flex.mat"
-CHANNEL_MAP_FPATH = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/oversampling_palvo_flex_intanAdapterMap.mat"
-DURATION_OF_INTEREST = 0.5 # how many seconds to look at upon stim onset
-GH = 25
-GW = 300
-
-
-session_folder = os.path.join("/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/", session_path_str)
-session_trialtimes = os.path.join("/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/trial_times/", session_path_str , "trials_times.mat")
+# Files and Folders
+source_dir = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/RH3/10-26'
+CHANNEL_MAP_FPATH = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/chan_map_1x32_128ch_rigid.mat'
+stimtxt_path = os.path.join(source_dir,'whisker_stim.txt')
+# session_folder = os.path.join(source_dir,'Processed','msorted')     # MS output
+session_folder = source_dir
+session_trialtimes = os.path.join(source_dir,'trials_times.mat')    # Trial times mat file
 # manual_reject_fpath = os.path.join(session_folder, "manual_reject_clus.txt")
-geom_path = os.path.join(session_folder, "geom.csv")
+# geom_path = os.path.join(session_folder, "geom.csv")
 curation_mask_path = os.path.join(session_folder, "cluster_rejection_mask.npz")
-RESULT_PATH = os.path.join(session_folder, "firing_rate_by_channels_220111_refined_clusters")
+NATIVE_ORDERS = np.load(os.path.join(session_folder, "native_ch_order.npy"))
+RESULT_PATH = os.path.join(source_dir,'Processed','firing_rates')
+dir_expsummary = os.path.join(source_dir,'exp_summary.xlsx')
 if not os.path.exists(RESULT_PATH):
     os.makedirs(RESULT_PATH)
+	
+# Extracting data from summary file .xlsx
+df_exp_summary = pd.read_excel(dir_expsummary)
+arr_exp_summary = df_exp_summary.to_numpy()
+Num_chan = arr_exp_summary[0,0]         # Number of channels
+Notch_freq = arr_exp_summary[0,1]       # Notch frequencey selected (in Hz)
+Fs = arr_exp_summary[0,2]               # Sampling freq (in Hz)
+stim_start_time = arr_exp_summary[2,2]   # Stimulation start - 50ms of window
+stim_start_time_original = arr_exp_summary[2,2]# original stimulation start time
+n_stim_start = int(Fs * stim_start_time)# Stimulation start time in samples
+Ntrials = arr_exp_summary[2,4]          # Number of trials
+stim_end_time = arr_exp_summary[2,1] + stim_start_time  # End time of stimulation
+time_seq = arr_exp_summary[2,0]         # Time of one sequence in seconds
+Seq_perTrial =  arr_exp_summary[2,3]    # Number of sequences per trial
+total_time = time_seq * Seq_perTrial    # Total time of the trial
+print('Each sequence is: ', time_seq, 'sec')
+time_seq = int(np.ceil(time_seq * Fs/2) * 2)                # Time of one sequence in samples (rounded up to even)
+	
+# --------------------- SET THESE PARAMETERS ------------------------------  
+F_SAMPLE = Fs
+WINDOW_LEN_IN_SEC = 10e-3
+SMOOTHING_SIZE = 11
+PLOT_SCALE_Y = True
+DURATION_OF_INTEREST = 0.5  # how many seconds to look at upon stim onset
+chan_knob = 1
+
+# Channel mapping
+if (chan_knob == 2):    # 2x16 channel map
+    GH = 30
+    GW_BWTWEENSHANKS = 250
+elif (chan_knob == 1):  # 1x32 channel map
+    GH = 25
+    GW_BWTWEENSHANKS = 250
+    
+chmap_mat = loadmat(CHANNEL_MAP_FPATH)['Ch_Map_new']
+
+
+
 
 # read cluster rejection data
 single_unit_mask = np.load(curation_mask_path)['single_unit_mask']
 
-chmap_mat = loadmat(CHANNEL_MAP_FPATH)['Ch_Map_new']
+
 # print(list(chmap_mat.keys()))
 if np.min(chmap_mat)==1:
     print("Subtracted one from channel map to make sure channel index starts from 0 (Original map file NOT changed)")
     chmap_mat -= 1
 
+
+# Some local functions used over and over again in the script: ----------------------------
 def ch_convert_msort2intan(i_msort):
     """i_msort starts from 0; return index also starts from zero"""
-    x, y = geom[i_msort,:]
-    i_intan = chmap_mat[int(y/GH), int(x/GW)] # the real index in the complete 128 channel map
-    return i_intan
+    return NATIVE_ORDERS[i_msort]
 
 def ch_convert_intan2msort(i_intan):
     """i_intan starts from 0; return msort index also starts from zero"""
-    pos = np.where(chmap_mat==i_intan)
-    y_idx, x_idx = pos[0][0], pos[1][0]
-    i_msort = np.where(np.logical_and(geom[:,0]==int(x_idx*GW), geom[:,1]==int(y_idx*GH)))
-    return i_msort
+    return np.where(NATIVE_ORDERS==i_intan)[0][0]
 
 # def get_shanknum_from_intan_id(i_intan):
 #     """i_intan is the native channel used in the .mat channel map starts from 0"""
@@ -70,22 +103,39 @@ def get_shanknum_from_intan_id(i_intan):
 def get_shanknum_from_coordinate(x, y=None):
     "get shank number from coordinate"
     if isinstance(x, int):
-        return int(x/GW)
+        return int(x/GW_BWTWEENSHANKS)
     elif isinstance(x, np.ndarray) and x.shape==(2,):
-        return int(x[0]/GW)
+        return int(x[0]/GW_BWTWEENSHANKS)
     else:
         raise ValueError("wrong input")
 
-TRIAL_DURATION, NUM_TRIALS, STIM_START_TIME, STIM_DURATION = read_stimtxt(os.path.join("/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/data", session_path_str, "whisker_stim.txt"))
-STIM_START_TIME_PLOT = STIM_START_TIME - 30e-3
+def get_intan_from_coordinate(x, y, chan_knob):
+    "get intan index from coordinate"
+    if (chan_knob == 2):
+        return chmap_mat[int(y/GH), int(x/GW_BWTWEENSHANKS)*2+int((x%GW_BWTWEENSHANKS)>0)]
+    elif (chan_knob == 1):  # 1x32 channel map
+        return chmap_mat[int(y/GH), int(x/GW_BWTWEENSHANKS)]
+# End of local functions -----------------------------------------------------------------
+
+
+# Reading the whisker_stim.txt file 
+STIM_START_TIME, stim_num, seq_period, len_trials, NUM_TRIALS, FramePerSeq, total_seq, len_trials_arr = read_stimtxt(stimtxt_path)
+STIM_DURATION = stim_num * seq_period
+TRIAL_DURATION = len_trials * seq_period
+
+
+STIM_START_TIME_PLOT = STIM_START_TIME
 
 # read trial rejection
 TRIAL_KEEP_MASK = np.ones((NUM_TRIALS, ), dtype=bool)
-if os.path.exists(os.path.join(session_trialtimes, "reject.txt")):
-    with open(os.path.join(session_trialtimes, "reject.txt")) as f:
-        rejected_trials = f.read().split('\n')[0]
-    rejected_trials = np.array([int(k)-1 for k in rejected_trials.split(' ')]) # start from zero in this code
-    TRIAL_KEEP_MASK[rejected_trials] = False
+print("Reject first 6 trials")
+TRIAL_KEEP_MASK[:6] = False
+# if os.path.exists(os.path.join(session_trialtimes, "reject.txt")):
+#     print("We have trials to reject")
+#     with open(os.path.join(session_trialtimes, "reject.txt")) as f:
+#         rejected_trials = f.read().split('\n')[0]
+#     rejected_trials = np.array([int(k)-1 for k in rejected_trials.split(' ')]) # start from zero in this code
+#     TRIAL_KEEP_MASK[rejected_trials] = False
 
 trial_duration_in_samples = int(TRIAL_DURATION*F_SAMPLE)
 window_in_samples = int(WINDOW_LEN_IN_SEC*F_SAMPLE)
@@ -124,14 +174,14 @@ print(geom.shape)
 trials_start_times = loadmat(session_trialtimes)['t_trial_start'].squeeze()
 
 
-
-
 def process_single_cluster(firing_stamp, t_trial_start, trial_duration_in_samples, window_in_samples):
     # returns the spike bin counts; need to manuaaly divide result by window length to get real firing rate
     n_windows_in_trial = int(np.ceil(trial_duration_in_samples/window_in_samples))
     bin_edges = np.arange(0, window_in_samples*n_windows_in_trial+1, step=window_in_samples)
     n_trials = t_trial_start.shape[0]
-    assert n_trials==NUM_TRIALS, "%d %d" % (n_trials, NUM_TRIALS)
+    assert n_trials==NUM_TRIALS or n_trials==NUM_TRIALS+1, "%d %d" % (n_trials, NUM_TRIALS)
+    if n_trials > NUM_TRIALS:
+        n_trials = NUM_TRIALS
     firing_rate_series_by_trial = np.zeros((n_trials, n_windows_in_trial))
     for i in range(n_trials):
         trial_firing_mask = np.logical_and(firing_stamp>=t_trial_start[i], firing_stamp<=(t_trial_start[i]+trial_duration_in_samples))
@@ -160,33 +210,7 @@ for i_clus in range(n_clus):
     firing_rates_by_channels[prim_ch_this_session].append(firing_rate_series)
     # print(i_clus)
 
-# TODO change this to groupby shank
-# valid_channel_ids_intan = [[] for _ in range(4)]
-# valid_baseline_spike_rates = [[] for _ in range(4)]
-# valid_normalized_spike_rate_series = [[] for _ in range(4)]
-# peak_normalized_firing_rate_series = [[] for _ in range(4)]
-# mean_normalized_firing_rate_series = [[] for _ in range(4)]
-# channel_ids_this_session = []
 
-# for i in range(n_ch_this_session):
-#     firing_rates_this_ch = firing_rates_by_channels[i]
-#     if len(firing_rates_this_ch) == 0:
-#         continue
-#     firing_rates_this_ch_agg = np.sum(np.vstack(firing_rates_this_ch), axis=0)
-#     stim_start_idx = int(STIM_START_TIME/WINDOW_LEN_IN_SEC)
-#     stim_end_idx = int((STIM_START_TIME+STIM_DURATION)/WINDOW_LEN_IN_SEC)
-#     baseline_firing_rate = np.mean(firing_rates_this_ch_agg[:stim_start_idx])
-#     if baseline_firing_rate != 0:
-#         firing_rates_this_ch_agg = firing_rates_this_ch_agg/baseline_firing_rate - 1
-#     x, y = geom[i,:]
-#     i_shank = int(x/GW) 
-#     prim_ch_intan = chmap_mat[int(y/GH), int(x/GW)] # the real index in the complete 128 channel map
-#     valid_channel_ids_intan[i_shank].append(prim_ch_intan)
-#     valid_baseline_spike_rates[i_shank].append(baseline_firing_rate)
-#     valid_normalized_spike_rate_series[i_shank].append(firing_rates_this_ch_agg)
-#     channel_ids_this_session.append(i)
-#     peak_normalized_firing_rate_series[i_shank].append(np.max(firing_rates_this_ch_agg[stim_start_idx:stim_end_idx]))
-#     mean_normalized_firing_rate_series[i_shank].append(np.mean(firing_rates_this_ch_agg[stim_start_idx:stim_end_idx]))
 valid_channel_ids_intan = []
 valid_baseline_spike_rates = []
 valid_normalized_spike_rate_series = []
@@ -205,14 +229,14 @@ for i in range(n_ch_this_session):
     doi_end_idx = int((STIM_START_TIME+DURATION_OF_INTEREST)/WINDOW_LEN_IN_SEC)
     stim_end_idx = int((STIM_START_TIME+STIM_DURATION)/WINDOW_LEN_IN_SEC)
     baseline_firing_rate = np.mean(firing_rates_this_ch_agg[:stim_start_idx])
-    plt.plot(np.arange(firing_rates_this_ch_agg.shape[0])*WINDOW_LEN_IN_SEC, firing_rates_this_ch_agg, color='k')
-    plt.axvline(STIM_START_TIME, color='r')
-    plt.show()
+    # plt.plot(np.arange(firing_rates_this_ch_agg.shape[0])*WINDOW_LEN_IN_SEC, firing_rates_this_ch_agg, color='k')
+    # plt.axvline(STIM_START_TIME, color='r')
+    # plt.show()
     if baseline_firing_rate != 0:
         firing_rates_this_ch_agg = firing_rates_this_ch_agg/baseline_firing_rate - 1
     x, y = geom[i,:]
     # i_shank = int(x/GW) 
-    prim_ch_intan = chmap_mat[int(y/GH), int(x/GW)] # the real index in the complete 128 channel map
+    prim_ch_intan = get_intan_from_coordinate(x,y,1) # the real index in the complete 128 channel map
     valid_channel_ids_intan.append(prim_ch_intan)
     valid_baseline_spike_rates.append(baseline_firing_rate)
     valid_normalized_spike_rate_series.append(firing_rates_this_ch_agg)
@@ -250,12 +274,27 @@ print("Shank numbers obtained by groupby:", shanknums)
 # mean_normalized_firing_rate_series_sorted = [mean_normalized_firing_rate_series[i] for i in ch_order_sorted]
 
 
-valid_baseline_spike_rates = np.array(valid_baseline_spike_rates)
-valid_channel_ids_intan = np.array(valid_channel_ids_intan)
-valid_normalized_spike_rate_series = np.vstack(valid_normalized_spike_rate_series)
+
 # save
-for i_shank in range(len(shanknums)):
-    shanknum = shanknums[i_shank]
+##### !!!!! shanknums is a list of shanks where there are accepted clusters (starts from 0, e.g. shank 0 is shank A)
+i_shank = -1
+for i_shank_all in range(4):
+    shanknum = "ABCD"[i_shank_all]
+    if i_shank_all not in shanknums:
+        print(shanknum, "Empty shank")
+        matfile_dict = {
+            "channel_ids_intan": [],
+            "baseline_spike_rates": [],
+            "normalized_spike_rate_series": [],
+            "times_in_second": [],
+            "peak_normalized_firing_rate_during_stim": [],
+            "mean_normalized_firing_rate_during_stim": [],
+            "area_under_normalized_curve_during_stim": [],
+        }
+        savemat(os.path.join(RESULT_PATH, "valid_normalized_spike_rates_by_channels_shank%s.mat"%(shanknum)), matfile_dict)
+        continue
+    i_shank += 1
+    print(shanknum, i_shank)
     valid_baseline_spike_rates_byshank[i_shank] = np.array(valid_baseline_spike_rates_byshank[i_shank])
     valid_channel_ids_intan_byshank[i_shank] = np.array(valid_channel_ids_intan_byshank[i_shank])
     valid_normalized_spike_rate_series_byshank[i_shank] = np.vstack(valid_normalized_spike_rate_series_byshank[i_shank])
@@ -272,9 +311,12 @@ for i_shank in range(len(shanknums)):
         "mean_normalized_firing_rate_during_stim": mean_normalized_firing_rate_series_byshank[i_shank],
         "area_under_normalized_curve_during_stim": area_under_normalized_curve_series_byshank[i_shank],
     }
-    savemat(os.path.join(RESULT_PATH, "valid_normalized_spike_rates_by_channels_shank%d.mat"%(shanknum)), matfile_dict)
+    savemat(os.path.join(RESULT_PATH, "valid_normalized_spike_rates_by_channels_shank%s.mat"%(shanknum)), matfile_dict)
 
-exit(0)
+# exit(0)
+valid_baseline_spike_rates = np.array(valid_baseline_spike_rates)
+valid_channel_ids_intan = np.array(valid_channel_ids_intan)
+valid_normalized_spike_rate_series = np.vstack(valid_normalized_spike_rate_series)
 size_const=4
 if PLOT_SCALE_Y:
     print(valid_normalized_spike_rate_series.shape)
