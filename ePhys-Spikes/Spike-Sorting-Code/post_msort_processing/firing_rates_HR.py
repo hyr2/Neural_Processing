@@ -20,8 +20,8 @@ from utils.read_mda import readmda
 # from utils.read_stimtxt import read_stimtxt
 
 # Files and Folders
-source_dir = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/RH3/10-26'
-CHANNEL_MAP_FPATH = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/chan_map_1x32_128ch_rigid.mat'
+source_dir = input('Input the source directory containing spike sorted and curated dataset for a single session:\n')
+CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_1x32_128ch_rigid.mat'
 stimtxt_path = os.path.join(source_dir,'whisker_stim.txt')
 # session_folder = os.path.join(source_dir,'Processed','msorted')     # MS output
 session_folder = source_dir
@@ -255,8 +255,10 @@ valid_normalized_spike_rate_series_byshank = []
 peak_normalized_firing_rate_series_byshank = []
 mean_normalized_firing_rate_series_byshank = []
 area_under_normalized_curve_series_byshank = []
+stim_locked_byshank = []
 shanknums = []
-for k,g in groupby(ch_order_sorted, key=lambda idx: get_shanknum_from_intan_id(valid_channel_ids_intan[idx])):
+key = lambda idx: get_shanknum_from_intan_id(valid_channel_ids_intan[idx])
+for k,g in groupby(ch_order_sorted, key):
     group_this_shank = list(g)
     print("shanknum:%d; #channels recording valid single-unit clusters=%d" % (k, len(group_this_shank)))
     shanknums.append(k)
@@ -290,6 +292,7 @@ for i_shank_all in range(4):
             "peak_normalized_firing_rate_during_stim": [],
             "mean_normalized_firing_rate_during_stim": [],
             "area_under_normalized_curve_during_stim": [],
+            "stim_locked": []
         }
         savemat(os.path.join(RESULT_PATH, "valid_normalized_spike_rates_by_channels_shank%s.mat"%(shanknum)), matfile_dict)
         continue
@@ -300,6 +303,7 @@ for i_shank_all in range(4):
     valid_normalized_spike_rate_series_byshank[i_shank] = np.vstack(valid_normalized_spike_rate_series_byshank[i_shank])
     peak_normalized_firing_rate_series_byshank[i_shank] = np.array(peak_normalized_firing_rate_series_byshank[i_shank])
     mean_normalized_firing_rate_series_byshank[i_shank] = np.array(mean_normalized_firing_rate_series_byshank[i_shank])
+    stim_locked_byshank.append(np.absolute(mean_normalized_firing_rate_series_byshank[i_shank]) > 0.18)
     area_under_normalized_curve_series_byshank[i_shank] = np.array(area_under_normalized_curve_series_byshank[i_shank])
     print(valid_normalized_spike_rate_series_byshank[i_shank].shape)
     matfile_dict = {
@@ -310,6 +314,7 @@ for i_shank_all in range(4):
         "peak_normalized_firing_rate_during_stim": peak_normalized_firing_rate_series_byshank[i_shank],
         "mean_normalized_firing_rate_during_stim": mean_normalized_firing_rate_series_byshank[i_shank],
         "area_under_normalized_curve_during_stim": area_under_normalized_curve_series_byshank[i_shank],
+        "stim_locked": stim_locked_byshank[i_shank]
     }
     savemat(os.path.join(RESULT_PATH, "valid_normalized_spike_rates_by_channels_shank%s.mat"%(shanknum)), matfile_dict)
 
