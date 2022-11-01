@@ -37,7 +37,7 @@ import scipy.signal as signal
 from utils.read_mda import readmda
 
 # Files and inputs 
-SESSION_FOLDER = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/RH3/data_221002_200158/temp"
+SESSION_FOLDER = "/home/hyr2-office/Documents/Data/NVC/RH-3/processed_data_rh3/tmp/"
 RASTER_PLOT_AMPLITUDE = False
 NO_READING_FILTMDA = False # set to False on first run of each session
 # -------------------------settings
@@ -516,7 +516,7 @@ def postprocess_one_session(session_folder_load, session_folder_save):
         # gs_waveforms = gridspec.GridSpecFromSubplotSpec(16, 2, subplot_spec=gs_ovr[:, 4:8]) # syntactically correct?
         for i_ch in range(n_ch):
             x, y = geom[i_ch,:]
-            plot_row, plot_col = (31-int(y/GH)), (int(x/GW_BETWEENSHANK))
+            plot_row, plot_col = int(y/GH), (int(x/GW_BETWEENSHANK))
             ax = fig2.add_subplot(gs_ovr[plot_row, 10+plot_col*3:13+plot_col*3])# plt.subplot(16,2,plot_row*2+plot_col+1)
             ax.plot(\
                 np.arange(waveform_len)/F_SAMPLE*1000, \
