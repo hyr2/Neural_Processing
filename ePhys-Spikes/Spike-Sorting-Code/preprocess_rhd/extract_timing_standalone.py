@@ -1,6 +1,6 @@
 # Python script to extract timing info from ePhys recording
 
-import sys, os
+import sys, os, glob
 sys.path.append(os.path.join(os.getcwd(),'Intan-File-Reader'))
 sys.path.append(os.getcwd())
 import numpy as np
@@ -34,8 +34,23 @@ matlabTXT = os.path.join(Raw_dir,matlabTXT)
 stim_start_time, stim_num, seq_period, len_trials, num_trials, FramePerSeq, total_seq, len_trials_arr = read_stimtxt(matlabTXT)
 
 # Reading first file
-Raw_dir_list = natsorted(os.listdir(Raw_dir))
+Raw_dir_tmp = os.path.join(Raw_dir,'*.rhd')
+Raw_dir_list = glob.glob(Raw_dir_tmp)
 filename = os.path.join(Raw_dir, Raw_dir_list[0])
+result = read_data(filename)
+# Saving general info
+Num_chan = len(result['amplifier_channels'])
+Fs = result['frequency_parameters']['board_adc_sample_rate']
+data = {'Num Channels':[Num_chan],'Notch filter':[result['frequency_parameters']['notch_filter_frequency']],'Fs':[Fs]}
+df = pd.DataFrame(data,index=['1'],dtype=np.int32)
+filename_summary = os.path.join(Raw_dir,'exp_summary.xlsx')
+df.to_excel(filename_summary, index = False)
+data_summary = {'Sequence Time(s)':[seq_period],'Stimulation Time(s)':\
+                [stim_num*seq_period],'Stimulation Start Time(s)':\
+                    [stim_start_time],'Seq/trial':[len_trials],'# Trials':[num_trials],'FPS':[FramePerSeq]}
+df = pd.DataFrame(data_summary)
+append_df_to_excel(filename_summary,df, sheet_name='Sheet1' ,startrow=2, index = False)          # appends into excel files conveniently
+
 df_final = pd.DataFrame(columns=['Time','ADC'])
 for filename in Raw_dir_list:
     if filename.endswith('.rhd'):
