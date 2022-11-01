@@ -1,4 +1,4 @@
-import os
+import os, json
 from unittest import result
 
 import numpy as np
@@ -9,25 +9,49 @@ import pandas as pd
 from utils.read_mda import readmda
 from utils.read_stimtxt import read_stimtxt
 
-CHMAP2X16 = False
-F_SAMPLE = 25e3
-
-session_path_str = "NVC/BC7/12-17-2021"
-CHANNEL_MAP_FPATH = r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_ch_maps\128chMap_flex.mat" # BC7
-# CHANNEL_MAP_FPATH = r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_ch_maps\chan_map_1x32_128ch_rigid.mat" # BC6
-# CHANNEL_MAP_FPATH = r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_ch_maps\Mirro_Oversampling_hippo_map.mat" # B-BC5
-
-session_folder = os.path.join(r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_msort", session_path_str, r"ePhys\Processed\msorted")
-session_trialtimes = os.path.join(r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_trial_times", session_path_str , "trials_times.mat")
-result_folder = os.path.join(r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_msort", session_path_str, r"ePhys\Processed\count_analysis")
-
+# Input parameters ---------------------
 # Electrode layout
 GH = 25
 GW_BETWEENSHANKS = 300
-
 # firing rate calculation params
 WINDOW_LEN_IN_SEC = 10e-3
 SMOOTHING_SIZE = 11
+
+# Setting up
+# session_path_str = "NVC/BC7/12-17-2021"
+# CHANNEL_MAP_FPATH = r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_ch_maps\128chMap_flex.mat" # BC7
+# CHANNEL_MAP_FPATH = r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_ch_maps\chan_map_1x32_128ch_rigid.mat" # BC6
+# CHANNEL_MAP_FPATH = r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_ch_maps\Mirro_Oversampling_hippo_map.mat" # B-BC5
+CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_1x32_128ch_rigid.mat'
+
+session_folder = '/home/hyr2-office/Documents/Data/NVC/RH-3/processed_data_rh3/10-2/'
+session_trialtimes = os.path.join(session_folder,'trials_times.mat')
+result_folder = os.path.join(session_folder,'Processed', 'count_analysis')
+dir_expsummary = os.path.join(session_folder,'exp_summary.xlsx')
+
+# Extract sampling frequency
+file_pre_ms = os.path.join(session_folder,'pre_MS.json')
+with open(file_pre_ms, 'r') as f:
+  data_pre_ms = json.load(f)
+F_SAMPLE = float(data_pre_ms['SampleRate'])
+CHMAP2X16 = bool(data_pre_ms['ELECTRODE_2X16'])      # this affects how the plots are generated
+
+# Extracting data from summary file .xlsx
+df_exp_summary = pd.read_excel(dir_expsummary)
+arr_exp_summary = df_exp_summary.to_numpy()
+Num_chan = arr_exp_summary[0,0]         # Number of channels
+Notch_freq = arr_exp_summary[0,1]       # Notch frequencey selected (in Hz)
+Fs = arr_exp_summary[0,2]               # Sampling freq (in Hz)
+stim_start_time = arr_exp_summary[2,2]   # Stimulation start - 50ms of window
+stim_start_time_original = arr_exp_summary[2,2]# original stimulation start time
+n_stim_start = int(Fs * stim_start_time)# Stimulation start time in samples
+Ntrials = arr_exp_summary[2,4]          # Number of trials
+stim_end_time = arr_exp_summary[2,1] + stim_start_time  # End time of stimulation
+time_seq = arr_exp_summary[2,0]         # Time of one sequence in seconds
+Seq_perTrial =  arr_exp_summary[2,3]    # Number of sequences per trial
+total_time = time_seq * Seq_perTrial    # Total time of the trial
+print('Each sequence is: ', time_seq, 'sec')
+time_seq = int(np.ceil(time_seq * Fs/2) * 2)                # Time of one sequence in samples (rounded up to even)
 
 if not os.path.exists(result_folder):
     os.makedirs(result_folder)
@@ -86,11 +110,11 @@ def get_shanknum_from_coordinate(x, y=None):
     else:
         raise ValueError("wrong input")
 
-TRIAL_DURATION, NUM_TRIALS, STIM_START_TIME, STIM_DURATION = read_stimtxt(os.path.join(r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_raw_notes", session_path_str, "whisker_stim.txt"))
+# TRIAL_DURATION, NUM_TRIALS, STIM_START_TIME, STIM_DURATION = read_stimtxt(os.path.join(r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_raw_notes", session_path_str, "whisker_stim.txt"))
 # STIM_START_TIME_PLOT = STIM_START_TIME - 30e-3
 
 # read trial rejection
-TRIAL_KEEP_MASK = np.ones((NUM_TRIALS, ), dtype=bool)
+TRIAL_KEEP_MASK = np.ones((Ntrials, ), dtype=bool)
 print("Reject first 6 trials")
 TRIAL_KEEP_MASK[:6] = False
 # if os.path.exists(os.path.join(session_trialtimes, "reject.txt")):
@@ -99,7 +123,7 @@ TRIAL_KEEP_MASK[:6] = False
 #     rejected_trials = np.array([int(k)-1 for k in rejected_trials.split(' ')]) # start from zero in this code
 #     TRIAL_KEEP_MASK[rejected_trials] = False
 
-trial_duration_in_samples = int(TRIAL_DURATION*F_SAMPLE)
+trial_duration_in_samples = int(total_time*F_SAMPLE)
 window_in_samples = int(WINDOW_LEN_IN_SEC*F_SAMPLE)
 # read channel map
 geom = pd.read_csv(os.path.join(session_folder, "geom.csv"), header=None).values
@@ -114,7 +138,7 @@ firings = readmda(os.path.join(session_folder, "firings.mda")).astype(np.int64)
 spike_times_all = firings[1,:]
 spike_labels = firings[2,:]
 n_clus = np.max(spike_labels)
-print(n_clus)
+print('Total number of clusters found: ',n_clus)
 spike_times_by_clus =[[] for i in range(n_clus)]
 spike_count_by_clus = np.zeros((n_clus,))
 for spk_time, spk_lbl in zip(spike_times_all, spike_labels):
@@ -139,17 +163,17 @@ def get_single_cluster_spikebincouts_all_trials(firing_stamp, t_trial_start, tri
     n_windows_in_trial = int(np.ceil(trial_duration_in_samples/window_in_samples))
     bin_edges = np.arange(0, window_in_samples*n_windows_in_trial+1, step=window_in_samples)
     n_trials = t_trial_start.shape[0]
-    assert n_trials==NUM_TRIALS or n_trials==NUM_TRIALS+1, "%d %d" % (n_trials, NUM_TRIALS)
-    if n_trials > NUM_TRIALS:
-        n_trials = NUM_TRIALS
+    assert n_trials==Ntrials or n_trials==Ntrials+1, "%d %d" % (n_trials, Ntrials)
+    if n_trials > Ntrials:
+        n_trials = Ntrials
     firing_rate_series_by_trial = np.zeros((n_trials, n_windows_in_trial))
     for i in range(n_trials):
         trial_firing_mask = np.logical_and(firing_stamp>=t_trial_start[i], firing_stamp<=(t_trial_start[i]+trial_duration_in_samples))
         trial_firing_stamp = firing_stamp[trial_firing_mask] - t_trial_start[i]
         if trial_firing_stamp.shape[0]==0:
             continue
-        tmp_hist, _ = np.histogram(trial_firing_stamp, bin_edges)
-        firing_rate_series_by_trial[i,:] = tmp_hist
+        tmp_hist, _ = np.histogram(trial_firing_stamp, bin_edges)   # The firing rate series for each trial for a single cluster
+        firing_rate_series_by_trial[i,:] = tmp_hist     
     return firing_rate_series_by_trial
 
 def single_cluster_main(i_clus):
@@ -162,20 +186,44 @@ def single_cluster_main(i_clus):
         window_in_samples
         )
     firing_rate_avg = np.mean(firing_rate_series[TRIAL_KEEP_MASK, :], axis=0)
-    n_samples_baseline = int(np.ceil(STIM_START_TIME/WINDOW_LEN_IN_SEC))
-    n_samples_stim = int(np.ceil(STIM_DURATION/WINDOW_LEN_IN_SEC))
+    n_samples_baseline = int(np.ceil(stim_start_time/WINDOW_LEN_IN_SEC))
+    n_samples_stim = int(np.ceil((stim_end_time-stim_start_time)/WINDOW_LEN_IN_SEC))
     t_stat, pval_2t = ttest_ind(
         firing_rate_avg[:n_samples_baseline], 
         firing_rate_avg[1+n_samples_baseline:1+n_samples_baseline+n_samples_stim], 
         equal_var=False,
         random_state=0)
-    
-    if pval_2t > .001:
-        clus_property = ANALYSIS_NOCHANGE
-    elif t_stat < 0:
-        clus_property = ANALYSIS_EXCITATORY
+    if t_stat > 0:
+        # inhibitory
+        t_stat, pval_2t = ttest_ind(
+            firing_rate_avg[:n_samples_baseline], 
+            firing_rate_avg[1+n_samples_baseline:1+n_samples_baseline+n_samples_stim], 
+            equal_var=False,alternative = 'greater',
+            random_state=0)
+        if pval_2t < 0.01:  
+            # reject null
+            clus_property = ANALYSIS_INHIBITORY
+        else:
+            clus_property = ANALYSIS_NOCHANGE
     else:
-        clus_property = ANALYSIS_INHIBITORY
+        # excitatory
+        t_stat, pval_2t = ttest_ind(
+            firing_rate_avg[:n_samples_baseline], 
+            firing_rate_avg[1+n_samples_baseline:1+n_samples_baseline+n_samples_stim], 
+            equal_var=False,alternative = 'less',
+            random_state=0)
+        if pval_2t < 0.01:  
+            # reject null
+            clus_property = ANALYSIS_EXCITATORY
+        else:
+            clus_property = ANALYSIS_NOCHANGE
+        
+    # if pval_2t > .01:
+    #     clus_property = ANALYSIS_NOCHANGE
+    # elif t_stat < 0:
+    #     clus_property = ANALYSIS_EXCITATORY
+    # else:
+    #     clus_property = ANALYSIS_INHIBITORY
     # print(clus_property)
 
     return (clus_property, t_stat, pval_2t), firing_rate_avg
@@ -208,8 +256,10 @@ for i_clus in range(n_clus):
     if failed:
         continue
     
+    print(i_clus)
     prim_ch = pri_ch_lut[i_clus]
     
+    # Get shank ID from primary channel for the cluster
     shank_num = get_shanknum_from_msort_id(prim_ch)
     
     if clus_property==ANALYSIS_EXCITATORY:
