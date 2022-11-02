@@ -10,11 +10,8 @@ from utils.read_mda import readmda
 from utils.read_stimtxt import read_stimtxt
 
 # Input parameters ---------------------
-# Electrode layout
-GH = 25
-GW_BETWEENSHANKS = 300
 # firing rate calculation params
-WINDOW_LEN_IN_SEC = 10e-3
+WINDOW_LEN_IN_SEC = 50e-3
 SMOOTHING_SIZE = 11
 
 # Setting up
@@ -24,7 +21,8 @@ SMOOTHING_SIZE = 11
 # CHANNEL_MAP_FPATH = r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_ch_maps\Mirro_Oversampling_hippo_map.mat" # B-BC5
 CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_1x32_128ch_rigid.mat'
 
-session_folder = '/home/hyr2-office/Documents/Data/NVC/RH-3/processed_data_rh3/10-2/'
+session_folder = input('Input the source directory containing spike sorted and curated dataset for a single session:\n')
+# session_folder = '/home/hyr2-office/Documents/Data/NVC/RH-3/processed_data_rh3/10-19/'
 session_trialtimes = os.path.join(session_folder,'trials_times.mat')
 result_folder = os.path.join(session_folder,'Processed', 'count_analysis')
 dir_expsummary = os.path.join(session_folder,'exp_summary.xlsx')
@@ -35,6 +33,14 @@ with open(file_pre_ms, 'r') as f:
   data_pre_ms = json.load(f)
 F_SAMPLE = float(data_pre_ms['SampleRate'])
 CHMAP2X16 = bool(data_pre_ms['ELECTRODE_2X16'])      # this affects how the plots are generated
+
+# Channel mapping
+if (CHMAP2X16 == True):    # 2x16 channel map
+    GH = 30
+    GW_BWTWEENSHANKS = 250
+elif (CHMAP2X16 == False):  # 1x32 channel map
+    GH = 25
+    GW_BWTWEENSHANKS = 250
 
 # Extracting data from summary file .xlsx
 df_exp_summary = pd.read_excel(dir_expsummary)
@@ -104,9 +110,9 @@ def get_shanknum_from_msort_id(i_msort):
 def get_shanknum_from_coordinate(x, y=None):
     "get shank number from coordinate"
     if isinstance(x, int):
-        return int(x/GW_BETWEENSHANKS)
+        return int(x/GW_BWTWEENSHANKS)
     elif isinstance(x, np.ndarray) and x.shape==(2,):
-        return int(x[0]/GW_BETWEENSHANKS)
+        return int(x[0]/GW_BWTWEENSHANKS)
     else:
         raise ValueError("wrong input")
 
@@ -238,8 +244,13 @@ nor_nclus_by_shank = np.zeros(4)
 
 clus_response_mask = np.zeros(n_clus, dtype=int)
 
+FR_series_all_clusters = [ [] for i in range(n_clus) ]  # create empty list
+
 for i_clus in range(n_clus):
     (clus_property, t_stat, pval_2t), firing_rate_avg = single_cluster_main(i_clus)
+    
+    FR_series_all_clusters[i_clus].append(np.array(firing_rate_avg,dtype = float))
+    
     failed = (single_unit_mask[i_clus]==False and multi_unit_mask[i_clus]==False)
 
     if clus_property==ANALYSIS_EXCITATORY:
@@ -282,6 +293,7 @@ for i_clus in range(n_clus):
 #     {"clus_response_mask": clus_response_mask}
 # )
 
+FR_series_all_clusters = np.squeeze(np.array(FR_series_all_clusters))
 
 pd.DataFrame(data=clus_response_mask).to_csv(os.path.join(result_folder, "cluster_response_mask.csv"), index=False, header=False)
 
@@ -291,6 +303,7 @@ data_dict = {
     "multi_nclus_by_shank": multi_nclus_by_shank,
     "act_nclus_by_shank": act_nclus_by_shank,
     "inh_nclus_by_shank": inh_nclus_by_shank, 
-    "nor_nclus_by_shank": nor_nclus_by_shank
+    "nor_nclus_by_shank": nor_nclus_by_shank,
+    "FR_series_all_clusters": FR_series_all_clusters
 }
 savemat(os.path.join(result_folder, "population_stat_responsive_only.mat"), data_dict)
