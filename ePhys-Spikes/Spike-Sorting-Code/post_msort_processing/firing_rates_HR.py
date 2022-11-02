@@ -4,7 +4,7 @@ Non visualization yet
 read Haad's rejection file -> update: simply reject first 6 trials
 Author: Jia-ao
 '''
-import os, sys
+import os, sys, json
 sys.path.append(os.path.join(os.getcwd(),'utils-mountainsort'))
 sys.path.append(os.getcwd())
 from itertools import groupby
@@ -52,19 +52,26 @@ total_time = time_seq * Seq_perTrial    # Total time of the trial
 print('Each sequence is: ', time_seq, 'sec')
 time_seq = int(np.ceil(time_seq * Fs/2) * 2)                # Time of one sequence in samples (rounded up to even)
 	
+# Extract sampling frequency
+file_pre_ms = os.path.join(source_dir,'pre_MS.json')
+with open(file_pre_ms, 'r') as f:
+  data_pre_ms = json.load(f)
+F_SAMPLE = float(data_pre_ms['SampleRate'])
+CHANNELMAP2X16 = bool(data_pre_ms['ELECTRODE_2X16'])      # this affects how the plots are generated
+
 # --------------------- SET THESE PARAMETERS ------------------------------  
 F_SAMPLE = Fs
 WINDOW_LEN_IN_SEC = 10e-3
 SMOOTHING_SIZE = 11
 PLOT_SCALE_Y = True
 DURATION_OF_INTEREST = 0.5  # how many seconds to look at upon stim onset
-chan_knob = 1
+# chan_knob = 1
 
 # Channel mapping
-if (chan_knob == 2):    # 2x16 channel map
+if (CHANNELMAP2X16 == True):    # 2x16 channel map
     GH = 30
     GW_BWTWEENSHANKS = 250
-elif (chan_knob == 1):  # 1x32 channel map
+elif (CHANNELMAP2X16 == False):  # 1x32 channel map
     GH = 25
     GW_BWTWEENSHANKS = 250
     
@@ -109,11 +116,11 @@ def get_shanknum_from_coordinate(x, y=None):
     else:
         raise ValueError("wrong input")
 
-def get_intan_from_coordinate(x, y, chan_knob):
+def get_intan_from_coordinate(x, y, CHANNELMAP2X16):
     "get intan index from coordinate"
-    if (chan_knob == 2):
+    if (CHANNELMAP2X16 == True):
         return chmap_mat[int(y/GH), int(x/GW_BWTWEENSHANKS)*2+int((x%GW_BWTWEENSHANKS)>0)]
-    elif (chan_knob == 1):  # 1x32 channel map
+    elif (CHANNELMAP2X16 == False):  # 1x32 channel map
         return chmap_mat[int(y/GH), int(x/GW_BWTWEENSHANKS)]
 # End of local functions -----------------------------------------------------------------
 
