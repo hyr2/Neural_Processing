@@ -1,4 +1,5 @@
 clear all
+close all
 folder = '/home/hyr2/Documents/git/Time-Series/CellExplorer/calc_CellMetrics';
 addpath(genpath(folder));
 
@@ -6,17 +7,19 @@ addpath(genpath(folder));
 % *****(1) read connectivity sauce code
 % *****(2) read trials_times.mat to obtain spikes during stim only
 % *****(3) read trials_times.mat to obtain spikes during baseline only
-Fs=25E3;
+Fs=30e3;
 GW_BETWEENSHANK = 300;
 GH = 25;
-datestr = '2021-12-09';
-datafolder = '/home/hyr2/Documents/Data/BC7/2021-12-09/ePhys/Processed/MS_out/';
-plotfolder = '/home/hyr2/Documents/Data/BC7/2021-12-09/ePhys/Processed/Connectivity/';
+datestr = '10-2';
+datafolder = '/home/hyr2-office/Documents/Data/NVC/RH-3/processed_data_rh3/10-26/';
+plotfolder = fullfile(datafolder,'Processed','cell_type');
+% plotfolder = '/home/hyr2-office/Documents/Data/NVC/RH-3/processed_data_rh3/tmp/Processed/Connectivity/';
+mkdir(plotfolder);
 templates = readmda([datafolder 'templates.mda']);
 firings = readmda([datafolder 'firings.mda']);
 % Location = csvread("data/mustang220123/location.csv");
 curation_mask = logical(csvread([datafolder 'accept_mask.csv']));
-response_mask = csvread([datafolder 'cluster_response_mask.csv']);
+response_mask = csvread(fullfile(datafolder,'Processed','count_analysis','cluster_response_mask.csv'));
 clus_locations = csvread([datafolder 'clus_locations.csv']);
 % disp(Location(1,:))
 n_ch = size(templates,1);
@@ -79,8 +82,8 @@ if curation
     end
     for i=1:n_clus
         if curation_mask(i)==1
-            filtWaveform{spike_labels_mapping(i)} = templates(pri_ch_lut(i), 31:70, i);
-            timeWaveform{spike_labels_mapping(i)} = [-19:20]/Fs*1000;
+            filtWaveform{spike_labels_mapping(i)} = templates(pri_ch_lut(i), [25:75], i);
+            timeWaveform{spike_labels_mapping(i)} = [-25:25]/Fs*1000;
             % spike_times_by_clus{i} = spike_times_by_clus{i}';
         end
     end
@@ -179,6 +182,36 @@ cell_metrics.acg_tau_rise = fit_params.acg_tau_rise;
 preferences.putativeCellType.troughToPeak_boundary=0.425;
 preferences.putativeCellType.acg_tau_rise_boundary=6;
 cell_metrics.putativeCellType =celltype_classification.standard(cell_metrics,preferences);
+
+% Addition based on excitatory vs inhibitory (not connections but based on
+% whisker stimulation)
+idx_act = (response_mask == 1);
+idx_inhib = (response_mask == -1);
+acg_tau_rise_excit = cell_metrics.acg_tau_rise(idx_act);
+acg_tau_rise_inhib = cell_metrics.acg_tau_rise(idx_inhib);
+troughtopeak_excit = cell_metrics.troughToPeak(idx_act);
+troughtopeak_inhib = cell_metrics.troughToPeak(idx_inhib);
+type_excit = cell_metrics.putativeCellType(idx_act);
+type_inhib = cell_metrics.putativeCellType(idx_inhib);
+
+% scatter plot for cell type
+scatter(troughtopeak_excit,acg_tau_rise_excit,28,'r','filled')
+hold on;
+scatter(troughtopeak_inhib,acg_tau_rise_inhib,28,'b','filled');
+xlabel('Trough to Pk (ms)');
+ylabel('\tau_{rise} (ms)');
+xline(0.425,"--",'Wide Interneuron','Color','y','LineWidth',2.5);
+vec_line_x = linspace(0.425,1,10);
+vec_line_y = 6*ones(1,10);
+plot(vec_line_x,vec_line_y,'--','Color','g','LineWidth',2.5);
+text(0.7,5.75,'Pyramidal neuron')
+text(0.15,14,'Narrow Interneuron');
+axis([0.1,1,-inf,inf]);
+filename = fullfile(plotfolder,'cell_type_analysis.png');
+print(filename,'-dpng','-r0');
+filename = fullfile(plotfolder,'pop_celltypes.mat');
+save(filename,'type_excit','type_inhib');
+%{
 %% Copied from Graph Plotting example script Getting cell type groups (for coloring notes)
 cellTypes = unique(cell_metrics.putativeCellType,'stable');
 clusClas = ones(1,length(cell_metrics.putativeCellType));
@@ -270,3 +303,4 @@ savefig([plotfolder datestr '.fig']);
 saveas(gcf, [plotfolder datestr '.png']);
 % figure
 % gui_MonoSyn(mono_res) % Shows the GUI for manual curation
+%}
