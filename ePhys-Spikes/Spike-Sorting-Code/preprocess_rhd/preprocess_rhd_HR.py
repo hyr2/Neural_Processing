@@ -1,21 +1,20 @@
-#%%
-import os
-import gc
-import warnings
-from copy import deepcopy
-import json
+# This script is used to create geom.csv file for the channel mapping. In addition, it is also used to generate the trial_times.mat
 
+#%%
+import os, gc, warnings, json, sys, glob
+from copy import deepcopy
+sys.path.append(os.path.join(os.getcwd(),'Intan-File-Reader'))
+sys.path.append(os.getcwd())
+from load_intan_rhd_format import Support
 import numpy as np
 import pandas as pd
 from scipy.io import loadmat, savemat
-
-from load_intan_rhd_format import read_data, read_header, get_n_samples_in_data
+from load_intan_rhd_format import read_data, read_header, get_n_samples_in_data, read_stimtxt
 from utils.mdaio import DiskWriteMda
 from utils.write_mda import writemda16i
 from utils.filtering import notch_filter
 from natsort import natsorted
-
-
+from matplotlib import pyplot as plt
 
 # channel map .mat file
 # BC6, B-BC8 is rigid
@@ -41,16 +40,23 @@ else:
 #/media/luanlab/DATA/SpikeSorting/RawData/2021-09-04B-aged/2022-01-01/2022-01-01_moving
 
 # given a session
-DATA_ROOTPATH  = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/data/HR'
-# MDA_ROOTPATH   = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/converted/data_mda/Yifu"
-GEOM_ROOTPATH  = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/RH3/'
-SESSION_REL_PATH = '10-26/'
-SESSION_FOLDER_RAW = os.path.join(DATA_ROOTPATH, SESSION_REL_PATH)
-# SESSION_FOLDER_MDA = os.path.join(MDA_ROOTPATH, SESSION_REL_PATH)
-SESSION_FOLDER_CSV = os.path.join(GEOM_ROOTPATH, SESSION_REL_PATH)
+Raw_dir  = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/data/HR/11-2'
+SESSION_REL_PATH = Raw_dir.split('/')[-1]
+output_dir  = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/RH3/'
+# Raw_dir = os.path.join(Raw_dir, SESSION_REL_PATH)
+SESSION_FOLDER_CSV = os.path.join(output_dir, SESSION_REL_PATH)
 SESSION_FOLDER_MDA = SESSION_FOLDER_CSV
 
-filenames = os.listdir(SESSION_FOLDER_RAW)
+filename_trials_export = os.path.join(SESSION_FOLDER_CSV,'trials_times.mat')
+source_dir_list = natsorted(os.listdir(Raw_dir))
+matlabTXT = source_dir_list[source_dir_list.index('whisker_stim.txt')]
+matlabTXT = os.path.join(Raw_dir,matlabTXT)
+del source_dir_list
+
+# Read .txt file
+stim_start_time, stim_num, seq_period, len_trials, num_trials, FramePerSeq, total_seq, len_trials_arr = read_stimtxt(matlabTXT)
+
+filenames = os.listdir(Raw_dir)
 filenames = list(filter(lambda x: x.endswith(".rhd"), filenames))
 filenames = natsorted(filenames)
 
@@ -75,7 +81,7 @@ def check_header_consistency(hA, hB):
 n_samples_cumsum_by_file = [0]
 n_samples = 0
 for filename in filenames:
-    n_ch, n_samples_this_file =get_n_samples_in_data(os.path.join(SESSION_FOLDER_RAW, filename))
+    n_ch, n_samples_this_file =get_n_samples_in_data(os.path.join(Raw_dir, filename))
     n_samples += n_samples_this_file
     n_samples_cumsum_by_file.append(n_samples) #count of total V points
     
@@ -88,10 +94,10 @@ data_rhd_list = []
 ephys_data_whole = None
 chs_native_order = None
 sample_freq = None
+df_final = pd.DataFrame(columns=['Time','ADC'])
 for i_file, filename in enumerate(filenames):
-    print("----%s----"%(os.path.join(SESSION_FOLDER_RAW, filename)))
-    with open(os.path.join(SESSION_FOLDER_RAW, filename), "rb") as fh:
-    
+    print("----%s----"%(os.path.join(Raw_dir, filename)))
+    with open(os.path.join(Raw_dir, filename), "rb") as fh:
         head_dict = read_header(fh)
     # Saving sampling rate info for future use
     if i_file == 0:
@@ -99,15 +105,30 @@ for i_file, filename in enumerate(filenames):
             "Session": filename[0:filename.index('_')],
             "NumChannels": head_dict['num_amplifier_channels'],
             "SampleRate": head_dict['sample_rate'],
-            "ELECTRODE_2X16": ELECTRODE_2X16
+            "ELECTRODE_2X16": ELECTRODE_2X16,
+            "Notch filter": head_dict['notch_filter_frequency'],
+            "SequenceTime":seq_period,
+            "StimulationTime":stim_num*seq_period,
+            "StimulationStartTime":stim_start_time,
+            "SeqPerTrial":len_trials,
+            "NumTrials":num_trials,
+            "FPS":FramePerSeq
         }
         # Serializing json
         json_object = json.dumps(dictionary_summary, indent=4)
         with open(os.path.join(SESSION_FOLDER_MDA,'pre_MS.json'), "w") as outfile:
             outfile.write(json_object)
 
-    data_dict = read_data(os.path.join(SESSION_FOLDER_RAW, filename))
+    data_dict = read_data(os.path.join(Raw_dir, filename))
     chs_info = deepcopy(data_dict['amplifier_channels'])
+    
+    
+    arr_ADC = data_dict['board_dig_in_data']                       # Digital Trigger input 
+    Time = data_dict['t_amplifier']                        		# Timing info from INTAN
+    arr_ADC = np.reshape(arr_ADC,(arr_ADC.size,))
+    df = {'Time':Time,'ADC':arr_ADC}
+    df = pd.DataFrame(df,dtype = np.single)
+    df_final = pd.concat([df_final,df],axis = 0,ignore_index=True)
     
     # record and check key information
     if chs_native_order is None:
@@ -136,6 +157,7 @@ for i_file, filename in enumerate(filenames):
     writer.writeChunk(ephys_data, i1=0, i2=entry_offset)
     del(ephys_data)
     del(data_dict)
+    del(df)
     gc.collect()
     # print("Concatenating")
     # if ephys_data_whole is None:
@@ -150,6 +172,55 @@ for i_file, filename in enumerate(filenames):
 # ##save to mda
 # writemda16i(ephys_data_whole, os.path.join(SESSION_FOLDER_MDA, "converted_data.mda"))
 # print("MDA file saved to %s" % (os.path.join(SESSION_FOLDER_MDA, "converted_data.mda")))
+
+# Saving trial_times.mat
+arr_Time = pd.Series(df_final.Time)          # Time in seconds
+arr_Time = arr_Time.to_numpy(dtype = np.single)
+arr_ADC = pd.Series(df_final.ADC)            # ADC input (CMOS trigger)
+arr_ADC = arr_ADC.to_numpy(dtype = np.single)
+arr_ADC[arr_ADC >= 1] = 5                # Ceiling the ADC data (ideal signal)
+arr_ADC[arr_ADC < 1] = 0                # Flooring the ADC data (ideal signal)
+# Finding peaks
+arr_ADC_diff = np.diff(arr_ADC)
+arr_ADC_diff[arr_ADC_diff<0] = 0
+arr_Time_diff = np.delete(arr_Time,[-1])
+timestamp_frame = ( arr_ADC_diff - np.roll(arr_ADC_diff,1) > 0.5) & (arr_ADC_diff - np.roll(arr_ADC_diff,-1) > 0.5) # for digital
+# Here I compute the indices of the timestamps 
+timestamp_frame = timestamp_frame.nonzero()[0]                                        # Timestamp indices of the frames (FOIL Camera)
+# sequences
+temp_vec = np.diff(timestamp_frame)
+x = np.argwhere(temp_vec > sample_freq*0.03)                                                   # Detect sequences
+x = x.astype(int)
+x = np.reshape(x,(len(x),))
+x+=1
+x = np.insert(x,0,0)                                                                  # So that we dont miss the first seq
+timestamp_seq = timestamp_frame[x]
+# trials
+xx = np.argwhere(temp_vec > sample_freq*1)                                                      # Detect trials
+xx = xx.astype(int)
+xx = np.reshape(xx,(len(xx),))
+xx+=1
+xx = np.insert(xx,0,0)    
+
+# xx = np.delete(xx,-1)   # extra
+
+timestamp_trials = timestamp_frame[xx]
+
+# Actual timestamps of the sequences and trials
+timestamp_seq_times = arr_Time[timestamp_seq]           # in seconds
+timestamp_trials_times = arr_Time[timestamp_trials]     # in seconds
+
+#----------------------------- Plotting ---------------------------------------
+plt.figure()
+plt.plot(arr_Time,arr_ADC)
+plt.plot(timestamp_seq_times,arr_ADC[timestamp_frame[x]]+1,'ro')
+plt.plot(timestamp_trials_times,arr_ADC[timestamp_frame[xx]]+1,'go')
+plt.show()
+
+# Exporting Timestamps of the trial start times:
+tt_export = timestamp_frame[xx]
+export_timestamps_trials = {'empty':[0],'t_trial_start':tt_export}
+savemat(filename_trials_export,export_timestamps_trials)
 
 # generate geom.csv
 
@@ -202,6 +273,3 @@ with open(os.path.join(SESSION_FOLDER_CSV, "info.json"), "w") as fjson:
 np.save(os.path.join(SESSION_FOLDER_CSV, "native_ch_order.npy"), chs_native_order)
 print("Done!")
 
-
-# C:\Yifu\2021-09-04-aged\2021-12-15\2021-12-15_211215_221904
-# C:\Yifu\2021-09-04-ageds\2021-12-15\2021-12-15_211215_221904
