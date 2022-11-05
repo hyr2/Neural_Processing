@@ -25,7 +25,7 @@ session_folder = input('Input the source directory containing spike sorted and c
 # session_folder = '/home/hyr2-office/Documents/Data/NVC/RH-3/processed_data_rh3/10-19/'
 session_trialtimes = os.path.join(session_folder,'trials_times.mat')
 result_folder = os.path.join(session_folder,'Processed', 'count_analysis')
-dir_expsummary = os.path.join(session_folder,'exp_summary.xlsx')
+# dir_expsummary = os.path.join(session_folder,'exp_summary.xlsx')
 
 # Extract sampling frequency
 file_pre_ms = os.path.join(session_folder,'pre_MS.json')
@@ -33,6 +33,18 @@ with open(file_pre_ms, 'r') as f:
   data_pre_ms = json.load(f)
 F_SAMPLE = float(data_pre_ms['SampleRate'])
 CHMAP2X16 = bool(data_pre_ms['ELECTRODE_2X16'])      # this affects how the plots are generated
+Num_chan = int(data_pre_ms['NumChannels'])
+Notch_freq = float(data_pre_ms['Notch filter'])
+Fs = float(data_pre_ms['SampleRate'])
+stim_start_time = float(data_pre_ms['StimulationStartTime'])
+n_stim_start = int(Fs * stim_start_time)
+Ntrials = int(data_pre_ms['NumTrials'])
+stim_end_time = stim_start_time + float(data_pre_ms['StimulationTime'])
+time_seq = float(data_pre_ms['SequenceTime'])
+Seq_perTrial = float(data_pre_ms['SeqPerTrial'])
+total_time = time_seq * Seq_perTrial
+print('Each sequence is: ', time_seq, 'sec')
+time_seq = int(np.ceil(time_seq * Fs/2))
 
 # Channel mapping
 if (CHMAP2X16 == True):    # 2x16 channel map
@@ -42,22 +54,22 @@ elif (CHMAP2X16 == False):  # 1x32 channel map
     GH = 25
     GW_BWTWEENSHANKS = 250
 
-# Extracting data from summary file .xlsx
-df_exp_summary = pd.read_excel(dir_expsummary)
-arr_exp_summary = df_exp_summary.to_numpy()
-Num_chan = arr_exp_summary[0,0]         # Number of channels
-Notch_freq = arr_exp_summary[0,1]       # Notch frequencey selected (in Hz)
-Fs = arr_exp_summary[0,2]               # Sampling freq (in Hz)
-stim_start_time = arr_exp_summary[2,2]   # Stimulation start - 50ms of window
-stim_start_time_original = arr_exp_summary[2,2]# original stimulation start time
-n_stim_start = int(Fs * stim_start_time)# Stimulation start time in samples
-Ntrials = arr_exp_summary[2,4]          # Number of trials
-stim_end_time = arr_exp_summary[2,1] + stim_start_time  # End time of stimulation
-time_seq = arr_exp_summary[2,0]         # Time of one sequence in seconds
-Seq_perTrial =  arr_exp_summary[2,3]    # Number of sequences per trial
-total_time = time_seq * Seq_perTrial    # Total time of the trial
-print('Each sequence is: ', time_seq, 'sec')
-time_seq = int(np.ceil(time_seq * Fs/2) * 2)                # Time of one sequence in samples (rounded up to even)
+# # Extracting data from summary file .xlsx
+# df_exp_summary = pd.read_excel(dir_expsummary)
+# arr_exp_summary = df_exp_summary.to_numpy()
+# Num_chan = arr_exp_summary[0,0]         # Number of channels
+# Notch_freq = arr_exp_summary[0,1]       # Notch frequencey selected (in Hz)
+# Fs = arr_exp_summary[0,2]               # Sampling freq (in Hz)
+# stim_start_time = arr_exp_summary[2,2]   # Stimulation start - 50ms of window
+# stim_start_time_original = arr_exp_summary[2,2]# original stimulation start time
+# n_stim_start = int(Fs * stim_start_time)# Stimulation start time in samples
+# Ntrials = arr_exp_summary[2,4]          # Number of trials
+# stim_end_time = arr_exp_summary[2,1] + stim_start_time  # End time of stimulation
+# time_seq = arr_exp_summary[2,0]         # Time of one sequence in seconds
+# Seq_perTrial =  arr_exp_summary[2,3]    # Number of sequences per trial
+# total_time = time_seq * Seq_perTrial    # Total time of the trial
+# print('Each sequence is: ', time_seq, 'sec')
+# time_seq = int(np.ceil(time_seq * Fs/2) * 2)                # Time of one sequence in samples (rounded up to even)
 
 if not os.path.exists(result_folder):
     os.makedirs(result_folder)
