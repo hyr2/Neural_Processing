@@ -36,12 +36,11 @@ rmv_bsl = rmv_bsl.split(',')
 rmv_bsl = np.asarray(rmv_bsl, dtype = np.int8)
 source_dir_list = np.delete(source_dir_list,rmv_bsl)
 source_dir_list = source_dir_list.tolist()
-num_bsl = 3 - len(rmv_bsl)                              # Number of baselines in the longitudinal study
 
 
 # source_dir_list = natsorted(os.listdir(source_dir))
 
-x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21']
+x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 28']
 
 pop_stats = {}
 pop_stats_cell = {}
