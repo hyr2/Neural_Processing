@@ -20,11 +20,10 @@ from utils.read_mda import readmda
 # from utils.read_stimtxt import read_stimtxt
 
 # Files and Folders
-source_dir = input('Input the source directory containing spike sorted and curated dataset for a single session:\n')
-CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_1x32_128ch_rigid.mat'
+session_folder = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-06'
+CHANNEL_MAP_FPATH = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/128chMap_flex.mat'
 stimtxt_path = os.path.join(source_dir,'whisker_stim.txt')
 # session_folder = os.path.join(source_dir,'Processed','msorted')     # MS output
-session_folder = source_dir
 session_trialtimes = os.path.join(source_dir,'trials_times.mat')    # Trial times mat file
 # manual_reject_fpath = os.path.join(session_folder, "manual_reject_clus.txt")
 # geom_path = os.path.join(session_folder, "geom.csv")
@@ -34,39 +33,50 @@ RESULT_PATH = os.path.join(source_dir,'Processed','firing_rates')
 dir_expsummary = os.path.join(source_dir,'exp_summary.xlsx')
 if not os.path.exists(RESULT_PATH):
     os.makedirs(RESULT_PATH)
-	
-# Extracting data from summary file .xlsx
-df_exp_summary = pd.read_excel(dir_expsummary)
-arr_exp_summary = df_exp_summary.to_numpy()
-Num_chan = arr_exp_summary[0,0]         # Number of channels
-Notch_freq = arr_exp_summary[0,1]       # Notch frequencey selected (in Hz)
-Fs = arr_exp_summary[0,2]               # Sampling freq (in Hz)
-stim_start_time = arr_exp_summary[2,2]   # Stimulation start - 50ms of window
-stim_start_time_original = arr_exp_summary[2,2]# original stimulation start time
-n_stim_start = int(Fs * stim_start_time)# Stimulation start time in samples
-Ntrials = arr_exp_summary[2,4]          # Number of trials
-stim_end_time = arr_exp_summary[2,1] + stim_start_time  # End time of stimulation
-time_seq = arr_exp_summary[2,0]         # Time of one sequence in seconds
-Seq_perTrial =  arr_exp_summary[2,3]    # Number of sequences per trial
-total_time = time_seq * Seq_perTrial    # Total time of the trial
-print('Each sequence is: ', time_seq, 'sec')
-time_seq = int(np.ceil(time_seq * Fs/2) * 2)                # Time of one sequence in samples (rounded up to even)
-	
+
 # Extract sampling frequency
-file_pre_ms = os.path.join(source_dir,'pre_MS.json')
+file_pre_ms = os.path.join(session_folder,'pre_MS.json')
 with open(file_pre_ms, 'r') as f:
   data_pre_ms = json.load(f)
 F_SAMPLE = float(data_pre_ms['SampleRate'])
 CHANNELMAP2X16 = bool(data_pre_ms['ELECTRODE_2X16'])      # this affects how the plots are generated
+Num_chan = int(data_pre_ms['NumChannels'])
+Notch_freq = float(data_pre_ms['Notch filter'])
+Fs = float(data_pre_ms['SampleRate'])
+stim_start_time = float(data_pre_ms['StimulationStartTime'])
+n_stim_start = int(Fs * stim_start_time)
+Ntrials = int(data_pre_ms['NumTrials'])
+stim_end_time = stim_start_time + float(data_pre_ms['StimulationTime'])
+time_seq = float(data_pre_ms['SequenceTime'])
+Seq_perTrial = float(data_pre_ms['SeqPerTrial'])
+total_time = time_seq * Seq_perTrial
+print('Each sequence is: ', time_seq, 'sec')
+time_seq = int(np.ceil(time_seq * Fs/2))
 
+	
+# # Extracting data from summary file .xlsx
+# df_exp_summary = pd.read_excel(dir_expsummary)
+# arr_exp_summary = df_exp_summary.to_numpy()
+# Num_chan = arr_exp_summary[0,0]         # Number of channels
+# Notch_freq = arr_exp_summary[0,1]       # Notch frequencey selected (in Hz)
+# Fs = arr_exp_summary[0,2]               # Sampling freq (in Hz)
+# stim_start_time = arr_exp_summary[2,2]   # Stimulation start - 50ms of window
+# stim_start_time_original = arr_exp_summary[2,2]# original stimulation start time
+# n_stim_start = int(Fs * stim_start_time)# Stimulation start time in samples
+# Ntrials = arr_exp_summary[2,4]          # Number of trials
+# stim_end_time = arr_exp_summary[2,1] + stim_start_time  # End time of stimulation
+# time_seq = arr_exp_summary[2,0]         # Time of one sequence in seconds
+# Seq_perTrial =  arr_exp_summary[2,3]    # Number of sequences per trial
+# total_time = time_seq * Seq_perTrial    # Total time of the trial
+# print('Each sequence is: ', time_seq, 'sec')
+# time_seq = int(np.ceil(time_seq * Fs/2) * 2)                # Time of one sequence in samples (rounded up to even)
+	
 # --------------------- SET THESE PARAMETERS ------------------------------  
 F_SAMPLE = Fs
-WINDOW_LEN_IN_SEC = 10e-3
+WINDOW_LEN_IN_SEC = 100e-3
 SMOOTHING_SIZE = 11
 PLOT_SCALE_Y = True
 DURATION_OF_INTEREST = 0.5  # how many seconds to look at upon stim onset
-# chan_knob = 1
-
 # Channel mapping
 if (CHANNELMAP2X16 == True):    # 2x16 channel map
     GH = 30
@@ -74,15 +84,9 @@ if (CHANNELMAP2X16 == True):    # 2x16 channel map
 elif (CHANNELMAP2X16 == False):  # 1x32 channel map
     GH = 25
     GW_BWTWEENSHANKS = 250
-    
 chmap_mat = loadmat(CHANNEL_MAP_FPATH)['Ch_Map_new']
-
-
-
-
 # read cluster rejection data
 single_unit_mask = np.load(curation_mask_path)['single_unit_mask']
-
 
 # print(list(chmap_mat.keys()))
 if np.min(chmap_mat)==1:
@@ -118,7 +122,7 @@ def get_shanknum_from_coordinate(x, y=None):
 
 def get_intan_from_coordinate(x, y, CHANNELMAP2X16):
     "get intan index from coordinate"
-    if (CHANNELMAP2X16 == True):
+    if (CHANNELMAP2X16 == True):    # 2x16 channel map
         return chmap_mat[int(y/GH), int(x/GW_BWTWEENSHANKS)*2+int((x%GW_BWTWEENSHANKS)>0)]
     elif (CHANNELMAP2X16 == False):  # 1x32 channel map
         return chmap_mat[int(y/GH), int(x/GW_BWTWEENSHANKS)]
@@ -262,9 +266,9 @@ valid_normalized_spike_rate_series_byshank = []
 peak_normalized_firing_rate_series_byshank = []
 mean_normalized_firing_rate_series_byshank = []
 area_under_normalized_curve_series_byshank = []
-stim_locked_byshank = []
 shanknums = []
-key = lambda idx: get_shanknum_from_intan_id(valid_channel_ids_intan[idx])
+stim_locked_byshank = []
+key=lambda idx: get_shanknum_from_intan_id(valid_channel_ids_intan[idx])
 for k,g in groupby(ch_order_sorted, key):
     group_this_shank = list(g)
     print("shanknum:%d; #channels recording valid single-unit clusters=%d" % (k, len(group_this_shank)))
