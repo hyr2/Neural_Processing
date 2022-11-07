@@ -20,7 +20,7 @@ from matplotlib import pyplot as plt
 # BC6, B-BC8 is rigid
 # BC7, BC8 is flex
 # B-BC5 is 2x16 flex
-CHANNEL_MAP_FPATH = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/chan_map_1x32_128ch_rigid.mat" # rigid
+CHANNEL_MAP_FPATH = "/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_1x32_128ch_rigid.mat" # rigid
 # CHANNEL_MAP_FPATH = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/Fei2x16old/Mirro_Oversampling_hippo_map.mat" # flex 
 # CHANNEL_MAP_FPATH = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/oversampling_palvo_flex_intanAdapterMap.mat"
 ELECTRODE_2X16 = False
@@ -40,9 +40,9 @@ else:
 #/media/luanlab/DATA/SpikeSorting/RawData/2021-09-04B-aged/2022-01-01/2022-01-01_moving
 
 # given a session
-Raw_dir  = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/data/HR/11-2'
+Raw_dir  = '/home/hyr2-office/Documents/Data/NVC/BC6/11-4-21/ePhys/'
 SESSION_REL_PATH = Raw_dir.split('/')[-1]
-output_dir  = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/RH3/'
+output_dir  = '/home/hyr2-office/Documents/Data/NVC/BC6/11-4-21/output'
 # Raw_dir = os.path.join(Raw_dir, SESSION_REL_PATH)
 SESSION_FOLDER_CSV = os.path.join(output_dir, SESSION_REL_PATH)
 SESSION_FOLDER_MDA = SESSION_FOLDER_CSV
@@ -180,6 +180,21 @@ arr_ADC = pd.Series(df_final.ADC)            # ADC input (CMOS trigger)
 arr_ADC = arr_ADC.to_numpy(dtype = np.single)
 arr_ADC[arr_ADC >= 1] = 5                # Ceiling the ADC data (ideal signal)
 arr_ADC[arr_ADC < 1] = 0                # Flooring the ADC data (ideal signal)
+
+# If data was taken in two sessions:
+# If experiment was taken in two sessions (e.g: a b only) -------------------------------
+temp_arr = (arr_Time - np.roll(arr_Time,-1) > 1)
+temp_arr = np.where(temp_arr)
+iter = temp_arr[0]
+if len(iter) > 1:
+    iter = np.delete(iter,[-1])
+    iter = iter[0]
+    temp_arr = arr_Time[iter+1:]
+    temp_arr = temp_arr + arr_Time[iter]
+    arr_Time = np.delete(arr_Time,np.arange(iter+1,len(arr_Time),1))
+    arr_Time = np.concatenate((arr_Time,temp_arr))
+
+
 # Finding peaks
 arr_ADC_diff = np.diff(arr_ADC)
 arr_ADC_diff[arr_ADC_diff<0] = 0
