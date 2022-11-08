@@ -8,10 +8,8 @@ Created on Sun Nov  6 20:30:52 2022
 
 from preprocess_rhd_HR import *
 import os
+from natsort import natsorted
 # Automate batch processing of the pre processing step
-
-
-
 
 input_dir = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/data/HR/bc7'
 output_dir = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/'
