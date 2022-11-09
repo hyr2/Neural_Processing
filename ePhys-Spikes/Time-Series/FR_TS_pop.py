@@ -28,7 +28,7 @@ def sort_cell_type(input_arr):
     return output_arr
     
 
-source_dir = '/home/hyr2-office/Documents/Data/NVC/RH-3/processed_data_rh3/'
+source_dir = '/home/hyr2-office/Documents/Data/NVC/BC7/'
 rmv_bsl = input('Baselines to remove (specify as index: e.g: 0, 2)?\n')             # specify what baseline datasets need to be removed from the analysis
 source_dir_list = natsorted(os.listdir(source_dir))
 # Preparing variables
@@ -40,7 +40,8 @@ source_dir_list = source_dir_list.tolist()
 
 # source_dir_list = natsorted(os.listdir(source_dir))
 
-x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 28']
+# x_ticks_labels = ['bl-1','bl-2','bl-3','Day 2','Day 7','Day 14 ','Day 21','Day 28']
+x_ticks_labels = ['bl-2','bl-3','Day 2','Day 7','Day 14 ','Day 21','Day 28','Day 42']
 
 pop_stats = {}
 pop_stats_cell = {}
@@ -65,10 +66,12 @@ for iter in range(len(pop_stats)):
     act_nclus[iter,0] = np.squeeze(pop_stats[iter]['act_nclus_by_shank'])[0]     # Shank A
     act_nclus[iter,1] = np.squeeze(pop_stats[iter]['act_nclus_by_shank'])[1]     # Shank B 
     act_nclus[iter,2] = np.squeeze(pop_stats[iter]['act_nclus_by_shank'])[2]     # Shank C
+    act_nclus[iter,3] = np.squeeze(pop_stats[iter]['act_nclus_by_shank'])[3]     # Shank D
     
     inhib_nclus[iter,0] = np.squeeze(pop_stats[iter]['inh_nclus_by_shank'])[0]     # Shank A
     inhib_nclus[iter,1] = np.squeeze(pop_stats[iter]['inh_nclus_by_shank'])[1]     # Shank B 
     inhib_nclus[iter,2] = np.squeeze(pop_stats[iter]['inh_nclus_by_shank'])[2]     # Shank C
+    inhib_nclus[iter,3] = np.squeeze(pop_stats[iter]['inh_nclus_by_shank'])[3]     # Shank C
     
     # cell type extraction from dictionaries
     act_nclus_total[iter] = np.sum(act_nclus[iter,:])
@@ -98,12 +101,14 @@ a[0,0].set_title("Excitatory Neurons")
 a[0,0].plot(x_ticks_labels,act_nclus[:,0],'r', lw=1.5)
 a[0,0].plot(x_ticks_labels,act_nclus[:,1],'g', lw=1.5)
 a[0,0].plot(x_ticks_labels,act_nclus[:,2],'b', lw=1.5)
-a[0,0].legend(['ShankA','ShankB','ShankC'])
+a[0,0].plot(x_ticks_labels,act_nclus[:,3],'y', lw=1.5)
+a[0,0].legend(['ShankA','ShankB','ShankC', 'ShankD'])
 a[1,0].set_title("Inhibitory Neurons")
 a[1,0].plot(x_ticks_labels,inhib_nclus[:,0],'r', lw=1.5)
 a[1,0].plot(x_ticks_labels,inhib_nclus[:,1],'g', lw=1.5)
 a[1,0].plot(x_ticks_labels,inhib_nclus[:,2],'b', lw=1.5)
-a[1,0].legend(['ShankA','ShankB','ShankC'])
+a[1,0].plot(x_ticks_labels,inhib_nclus[:,3],'y', lw=1.5)
+a[1,0].legend(['ShankA','ShankB','ShankC', 'ShankD'])
 a[1,1].set_title("All neurons")
 a[1,1].plot(x_ticks_labels,act_nclus_total,'r', lw=1.5)
 a[1,1].plot(x_ticks_labels,inhib_nclus_total,'b', lw=1.5)
