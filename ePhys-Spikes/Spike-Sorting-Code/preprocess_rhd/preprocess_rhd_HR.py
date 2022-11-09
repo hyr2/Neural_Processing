@@ -59,6 +59,7 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     SESSION_FOLDER_MDA = SESSION_FOLDER_CSV
     
     filename_trials_export = os.path.join(SESSION_FOLDER_CSV,'trials_times.mat')
+    filename_trials_digIn = os.path.join(SESSION_FOLDER_CSV,'trials_digIn.png')
     source_dir_list = natsorted(os.listdir(Raw_dir))
     matlabTXT = source_dir_list[source_dir_list.index('whisker_stim.txt')]
     matlabTXT = os.path.join(Raw_dir,matlabTXT)
@@ -229,11 +230,14 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     timestamp_trials_times = arr_Time[timestamp_trials]     # in seconds
     
     #----------------------------- Plotting -----------------------------(suppressed)
-    # plt.figure()
-    # plt.plot(arr_Time,arr_ADC)
-    # plt.plot(timestamp_seq_times,arr_ADC[timestamp_frame[x]]+1,'ro')
-    # plt.plot(timestamp_trials_times,arr_ADC[timestamp_frame[xx]]+1,'go')
+    plt.figure()
+    plt.plot(arr_Time,arr_ADC)
+    plt.plot(timestamp_seq_times,arr_ADC[timestamp_frame[x]]+1,'ro')
+    plt.plot(timestamp_trials_times,arr_ADC[timestamp_frame[xx]]+1,'go')
     # plt.show()
+    fig = plt.gcf()
+    fig.set_size_inches((16, 9), forward=False)
+    fig.savefig(filename_trials_digIn, dpi=200, format = 'png')
     
     # Exporting Timestamps of the trial start times:
     tt_export = timestamp_frame[xx]
