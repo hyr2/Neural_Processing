@@ -15,6 +15,7 @@ from utils.write_mda import writemda16i
 from utils.filtering import notch_filter
 from natsort import natsorted
 from matplotlib import pyplot as plt
+plt.rcParams['agg.path.chunksize'] = 10000
 
 # channel map .mat file
 # BC6, B-BC8 is rigid

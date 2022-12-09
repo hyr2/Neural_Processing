@@ -1,10 +1,10 @@
-input_dirs=(\
-"/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-06" \
-"/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-07" \
-"/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-09" \
-"/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-12" \
-"/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-17" \
-"/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-24" \
+input_dirs=(
+# "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-06" \
+# "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-07" \
+# "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-09" \
+# "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-12" \
+# "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-17" \
+# "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-24" \
 "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-31" \
 "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2022-01-07" \
 "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2022-01-21"
