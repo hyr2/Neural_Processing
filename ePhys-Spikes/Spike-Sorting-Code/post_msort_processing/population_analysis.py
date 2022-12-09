@@ -11,8 +11,9 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
 
     # Input parameters ---------------------
     # firing rate calculation params
-    WINDOW_LEN_IN_SEC = 50e-3
+    WINDOW_LEN_IN_SEC = 100e-3
     SMOOTHING_SIZE = 11
+    DURATION_OF_INTEREST = 0.2  # how many seconds to look at upon stim onset (this is the activation or inhibition window)
     # Setting up
     # session_path_str = "NVC/BC7/12-17-2021"
     # CHANNEL_MAP_FPATH = r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_ch_maps\128chMap_flex.mat" # BC7
@@ -23,9 +24,10 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     # session_folder = input('Input the source directory containing spike sorted and curated dataset for a single session:\n')
     # session_folder = '/home/hyr2-office/Documents/Data/NVC/RH-3/processed_data_rh3/10-19/'
     session_trialtimes = os.path.join(session_folder,'trials_times.mat')
+    trial_mask_file = os.path.join(session_folder,'trial_mask.csv')
     result_folder = os.path.join(session_folder,'Processed', 'count_analysis')
     # dir_expsummary = os.path.join(session_folder,'exp_summary.xlsx')
-
+    
     # Extract sampling frequency
     file_pre_ms = os.path.join(session_folder,'pre_MS.json')
     with open(file_pre_ms, 'r') as f:
@@ -44,6 +46,11 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     total_time = time_seq * Seq_perTrial
     print('Each sequence is: ', time_seq, 'sec')
     time_seq = int(np.ceil(time_seq * Fs/2))
+    
+    # Trial mask (only for newer animals)
+    trial_mask = pd.read_csv(trial_mask_file, header=None, index_col=False,dtype = bool)
+    TRIAL_KEEP_MASK = trial_mask[0].to_numpy(dtype = bool)
+    TRIAL_KEEP_MASK = np.ones([Ntrials,],dtype = bool)
 
     # Channel mapping
     if (CHMAP2X16 == True):    # 2x16 channel map
@@ -126,19 +133,6 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             return int(x[0]/GW_BWTWEENSHANKS)
         else:
             raise ValueError("wrong input")
-
-    # TRIAL_DURATION, NUM_TRIALS, STIM_START_TIME, STIM_DURATION = read_stimtxt(os.path.join(r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_raw_notes", session_path_str, "whisker_stim.txt"))
-    # STIM_START_TIME_PLOT = STIM_START_TIME - 30e-3
-
-    # read trial rejection
-    TRIAL_KEEP_MASK = np.ones((Ntrials, ), dtype=bool)
-    print("Reject first 6 trials")
-    TRIAL_KEEP_MASK[:6] = False
-    # if os.path.exists(os.path.join(session_trialtimes, "reject.txt")):
-    #     with open(os.path.join(session_trialtimes, "reject.txt")) as f:
-    #         rejected_trials = f.read().split('\n')[0]
-    #     rejected_trials = np.array([int(k)-1 for k in rejected_trials.split(' ')]) # start from zero in this code
-    #     TRIAL_KEEP_MASK[rejected_trials] = False
 
     trial_duration_in_samples = int(total_time*F_SAMPLE)
     window_in_samples = int(WINDOW_LEN_IN_SEC*F_SAMPLE)
@@ -253,7 +247,10 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     clus_response_mask = np.zeros(n_clus, dtype=int)
 
     FR_series_all_clusters = [ [] for i in range(n_clus) ]  # create empty list
-
+    Avg_FR_byshank = np.zeros([4,])
+    FR_list_byshank_act =  [ [] for i in range(4) ]  # create empty list
+    FR_list_byshank_inh =  [ [] for i in range(4) ]  # create empty list
+    
     for i_clus in range(n_clus):
         (clus_property, t_stat, pval_2t), firing_rate_avg = single_cluster_main(i_clus)
         
@@ -261,12 +258,23 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         
         failed = (single_unit_mask[i_clus]==False and multi_unit_mask[i_clus]==False)
 
+        print(i_clus)
+        prim_ch = pri_ch_lut[i_clus]
+        
+        # Get shank ID from primary channel for the cluster
+        shank_num = get_shanknum_from_msort_id(prim_ch)
+
         if clus_property==ANALYSIS_EXCITATORY:
             clus_response_mask[i_clus] = 1
         elif clus_property==ANALYSIS_INHIBITORY:
             clus_response_mask[i_clus] = -1
         else:
             clus_response_mask[i_clus] = 0
+            
+        if not(failed) and clus_property==ANALYSIS_EXCITATORY:          # Extracting FR of only activated neurons
+            FR_list_byshank_act[shank_num].append(np.array(FR_series_all_clusters[i_clus],dtype = float))
+        elif not(failed) and clus_property==ANALYSIS_INHIBITORY:
+            FR_list_byshank_inh[shank_num].append(np.array(FR_series_all_clusters[i_clus],dtype = float))
 
         if clus_property != ANALYSIS_NOCHANGE:
             print("t=%.2f, p=%.4f"%(t_stat, pval_2t))
@@ -274,12 +282,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
                 print("    NOTE---- bad cluster with significant response to stim")
         if failed:
             continue
-        
-        print(i_clus)
-        prim_ch = pri_ch_lut[i_clus]
-        
-        # Get shank ID from primary channel for the cluster
-        shank_num = get_shanknum_from_msort_id(prim_ch)
+    
         
         if clus_property==ANALYSIS_EXCITATORY:
             act_nclus_by_shank[shank_num] += 1
@@ -300,11 +303,75 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     #     os.path.join(session_folder, "clusters_response_mask.mat"),
     #     {"clus_response_mask": clus_response_mask}
     # )
-
+    # Firing rate computation
     FR_series_all_clusters = np.squeeze(np.array(FR_series_all_clusters))
+    Time_vec = np.linspace(0,13.5,FR_series_all_clusters.shape[1])
+    stim_start_idx = int(stim_start_time/WINDOW_LEN_IN_SEC)
+    doi_end_idx = int((stim_start_time+DURATION_OF_INTEREST)/WINDOW_LEN_IN_SEC)
+    stim_end_idx = int((stim_start_time+float(data_pre_ms['StimulationTime']))/WINDOW_LEN_IN_SEC)
+    # activated neurons
+    shankA_act = np.squeeze(FR_list_byshank_act[0])
+    shankA_act = np.reshape(shankA_act,[int(shankA_act.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]]) 
+    shankB_act = np.squeeze(FR_list_byshank_act[1])
+    shankB_act = np.reshape(shankB_act,[int(shankB_act.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]]) 
+    shankC_act = np.squeeze(FR_list_byshank_act[2])
+    shankC_act = np.reshape(shankC_act,[int(shankC_act.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]]) 
+    shankD_act = np.squeeze(FR_list_byshank_act[3])
+    shankD_act = np.reshape(shankD_act,[int(shankD_act.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]]) 
+    # compute bsl FR
+    shankA_act_bsl = np.mean(shankA_act[:,:stim_start_idx],axis = 1) if np.size(shankA_act) != 0 else np.nan
+    shankB_act_bsl = np.mean(shankB_act[:,:stim_start_idx],axis = 1) if np.size(shankB_act) != 0 else np.nan
+    shankC_act_bsl = np.mean(shankC_act[:,:stim_start_idx],axis = 1) if np.size(shankC_act) != 0 else np.nan
+    shankD_act_bsl = np.mean(shankD_act[:,:stim_start_idx],axis = 1) if np.size(shankD_act) != 0 else np.nan
+    # bsl normalized FR
+    # shankA_act = (shankA_act / shankA_act_bsl[:, np.newaxis] - 1) if np.size(shankA_act) != 0 else np.nan
+    # shankB_act = (shankB_act / shankB_act_bsl[:, np.newaxis] - 1) if np.size(shankB_act) != 0 else np.nan
+    # shankC_act = (shankC_act / shankC_act_bsl[:, np.newaxis] - 1) if np.size(shankC_act) != 0 else np.nan
+    # shankD_act = (shankD_act / shankD_act_bsl[:, np.newaxis] - 1) if np.size(shankD_act) != 0 else np.nan
+    shankA_act = (shankA_act) if np.size(shankA_act) != 0 else np.nan
+    shankB_act = (shankB_act) if np.size(shankB_act) != 0 else np.nan
+    shankC_act = (shankC_act) if np.size(shankC_act) != 0 else np.nan
+    shankD_act = (shankD_act) if np.size(shankD_act) != 0 else np.nan
+    # average FR during activation
+    shankA_act = np.amax(np.amax(shankA_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankA_act).any() else np.nan  # average FR during activation
+    shankB_act = np.mean(np.amax(shankB_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankB_act).any()  else np.nan  # average FR during activation
+    shankC_act = np.mean(np.amax(shankC_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankC_act).any()  else np.nan  # average FR during activation
+    shankD_act = np.mean(np.amax(shankD_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankD_act).any()  else np.nan  # average FR during activation
+    
+    # inhibited neurons
+    # activated neurons
+    shankA_inh = np.squeeze(FR_list_byshank_inh[0])
+    shankA_inh = np.reshape(shankA_inh,[int(shankA_inh.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]]) 
+    shankB_inh = np.squeeze(FR_list_byshank_inh[1])
+    shankB_inh = np.reshape(shankB_inh,[int(shankB_inh.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]])
+    shankC_inh= np.squeeze(FR_list_byshank_inh[2])
+    shankC_inh = np.reshape(shankC_inh,[int(shankC_inh.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]]) 
+    shankD_inh= np.squeeze(FR_list_byshank_inh[3])
+    shankD_inh = np.reshape(shankD_inh,[int(shankD_inh.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]]) 
+    # compute bsl FR
+    shankA_inh_bsl = np.mean(shankA_inh[:,:stim_start_idx],axis = 1) if np.size(shankA_inh) != 0 else np.nan
+    shankB_inh_bsl = np.mean(shankB_inh[:,:stim_start_idx],axis = 1) if np.size(shankB_inh) != 0 else np.nan
+    shankC_inh_bsl = np.mean(shankC_inh[:,:stim_start_idx],axis = 1) if np.size(shankC_inh) != 0 else np.nan
+    shankD_inh_bsl = np.mean(shankD_inh[:,:stim_start_idx],axis = 1) if np.size(shankD_inh) != 0 else np.nan
+    # bsl normalized FR
+    # shankA_inh = (shankA_inh/ shankA_inh_bsl[:, np.newaxis] - 1) if (np.size(shankA_inh) != 0) else np.nan
+    # shankB_inh= (shankB_inh/ shankB_inh_bsl[:, np.newaxis] - 1) if np.size(shankB_inh) != 0 else np.nan
+    # shankC_inh= (shankC_inh/ shankC_inh_bsl[:, np.newaxis] - 1) if np.size(shankC_inh) != 0 else np.nan
+    # shankD_inh= (shankD_inh/ shankD_inh_bsl[:, np.newaxis] - 1) if np.size(shankD_inh) != 0 else np.nan
+    shankA_inh = (shankA_inh) if (np.size(shankA_inh) != 0) else np.nan
+    shankB_inh= (shankB_inh) if np.size(shankB_inh) != 0 else np.nan
+    shankC_inh= (shankC_inh) if np.size(shankC_inh) != 0 else np.nan
+    shankD_inh= (shankD_inh) if np.size(shankD_inh) != 0 else np.nan
+    # average FR during activation
+    shankA_inh= np.mean(shankA_inh[:,stim_start_idx:stim_end_idx]) if not np.isnan(shankA_inh).any() else np.nan  # average FR during activation
+    shankB_inh= np.mean(shankB_inh[:,stim_start_idx:stim_end_idx]) if not np.isnan(shankB_inh).any()  else np.nan  # average FR during activation
+    shankC_inh= np.mean(shankC_inh[:,stim_start_idx:stim_end_idx]) if not np.isnan(shankC_inh).any()  else np.nan  # average FR during activation
+    shankD_inh= np.mean(shankD_inh[:,stim_start_idx:stim_end_idx]) if not np.isnan(shankD_inh).any()  else np.nan  # average FR during activation
 
+    # Output .mat file
     pd.DataFrame(data=clus_response_mask).to_csv(os.path.join(result_folder, "cluster_response_mask.csv"), index=False, header=False)
-
+    avg_FR_inh = np.array([shankA_inh,shankB_inh,shankC_inh,shankD_inh],dtype = float)
+    avg_FR_act = np.array([shankA_act,shankB_act,shankC_act,shankD_act],dtype = float)
     data_dict = {
         "total_nclus_by_shank": total_nclus_by_shank,
         "single_nclus_by_shank": single_nclus_by_shank,
@@ -312,6 +379,8 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         "act_nclus_by_shank": act_nclus_by_shank,
         "inh_nclus_by_shank": inh_nclus_by_shank, 
         "nor_nclus_by_shank": nor_nclus_by_shank,
-        "FR_series_all_clusters": FR_series_all_clusters
+        "FR_series_all_clusters": FR_series_all_clusters,
+        "avg_FR_act_by_shank": avg_FR_act,
+        "avg_FR_inh_by_shank": avg_FR_inh
     }
     savemat(os.path.join(result_folder, "population_stat_responsive_only.mat"), data_dict)

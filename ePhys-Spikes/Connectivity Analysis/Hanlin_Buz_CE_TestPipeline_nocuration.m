@@ -7,11 +7,11 @@ addpath(genpath(folder));
 % *****(1) read connectivity sauce code
 % *****(2) read trials_times.mat to obtain spikes during stim only
 % *****(3) read trials_times.mat to obtain spikes during baseline only
-Fs=30e3;
+Fs=20e3;
 GW_BETWEENSHANK = 300;
 GH = 25;
 datestr = '10-2';
-datafolder = '/home/hyr2-office/Documents/Data/NVC/RH-3/processed_data_rh3/10-26/';
+datafolder = '/home/hyr2-office/Documents/Data/NVC/BC6/11-04-2021/';
 plotfolder = fullfile(datafolder,'Processed','cell_type');
 % plotfolder = '/home/hyr2-office/Documents/Data/NVC/RH-3/processed_data_rh3/tmp/Processed/Connectivity/';
 mkdir(plotfolder);
