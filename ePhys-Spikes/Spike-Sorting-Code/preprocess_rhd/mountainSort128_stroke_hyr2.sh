@@ -1,4 +1,3 @@
-
 input_dir=$1
 ouput_dir=$2
 samplerate=$3
@@ -6,6 +5,8 @@ geom_file=$4
 num_features_var=$5
 max_num_clips_for_pca_var=$6
 
+
+export ML_TEMPORARY_DIRECTORY=/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/ml_temp
 
 # Run bandpass filter stage of Mountainsort
 ml-run-process ephys.bandpass_filter \
@@ -84,3 +85,4 @@ ml-run-process ms3.combine_cluster_metrics \
 #		--samplerate=$samplerate \
 #	--cluster_metrics=$input_dir/cluster_metrics.json
 		
+rm -rf $ML_TEMPORARY_DIRECTORY
