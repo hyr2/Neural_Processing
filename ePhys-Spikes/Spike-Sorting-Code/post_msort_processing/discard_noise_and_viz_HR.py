@@ -750,7 +750,11 @@ def func_discard_noise_and_viz(SESSION_FOLDER):
     # Files and inputs 
     # SESSION_FOLDER = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-06"
     RASTER_PLOT_AMPLITUDE = False
-    NO_READING_FILTMDA = False # set to False on first run of each session
+    
+    if os.path.isfile(os.path.join(SESSION_FOLDER,'filt.mda')):
+        NO_READING_FILTMDA = False # set to False on first run of each session
+    else:
+        NO_READING_FILTMDA = True
     # -------------------------settings
     # Extract sampling frequency
     file_pre_ms = os.path.join(SESSION_FOLDER,'pre_MS.json')
