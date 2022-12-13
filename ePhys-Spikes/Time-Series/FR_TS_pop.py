@@ -30,8 +30,8 @@ def sort_cell_type(input_arr):
     return output_arr
     
 
-source_dir = '/home/hyr2-office/Documents/Data/NVC/RH-3/'
-rmv_bsl = input('Baselines to remove (specify as index: e.g: 0, 2)?\n')             # specify what baseline datasets need to be removed from the analysis
+source_dir = '/home/hyr2-office/Documents/Data/NVC/BC8/'
+rmv_bsl = input('Baselines to remove (specify as index: e.g: 0, 2)? Select -1 for no baselines.\n')             # specify what baseline datasets need to be removed from the analysis
 source_dir_list = natsorted(os.listdir(source_dir))
 # Preparing variables
 rmv_bsl = rmv_bsl.split(',')
@@ -43,9 +43,10 @@ if not np.any(rmv_bsl == -1):
 
 # source_dir_list = natsorted(os.listdir(source_dir))
 
-x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 28']  # RH3 (reject baselines 0 and 2)
+# x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 28']  # RH3 (reject baselines 0 and 2)
 # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 28','Day 42'] # BC7 (reject baseline 0)
 # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 12 ','Day 19','Day 26','Day 33','Day 47'] # BC6
+x_ticks_labels = ['bl-1','Day 2','Day 7','Day 14 ','Day 21','Day 42']
 
 pop_stats = {}
 pop_stats_cell = {}
