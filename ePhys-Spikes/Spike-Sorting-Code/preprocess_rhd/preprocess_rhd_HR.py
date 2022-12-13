@@ -1,7 +1,7 @@
 # This script is used to create geom.csv file for the channel mapping. In addition, it is also used to generate the trial_times.mat
 
 #%%
-import os, gc, warnings, json, sys, glob
+import os, gc, warnings, json, sys, glob, shutil
 from copy import deepcopy
 sys.path.append(os.path.join(os.getcwd(),'Intan-File-Reader'))
 sys.path.append(os.getcwd())
@@ -290,6 +290,7 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     geom_map_df.to_csv(os.path.join(SESSION_FOLDER_CSV, "geom.csv"), index=False, header=False)
     print("Geom file generated")
     infodict = {"sample_freq": sample_freq}
+    shutil.copy(matlabTXT,SESSION_FOLDER_CSV)
     # savemat(os.path.join(SESSION_FOLDER_CSV, "info.mat"), infodict)
     with open(os.path.join(SESSION_FOLDER_CSV, "info.json"), "w") as fjson:
         json.dump(infodict, fjson)
