@@ -344,7 +344,7 @@ def plot_single_cluster_2x16(i_clus_plot, template_waveforms, fig_size_scale, pr
             # label="Coordinate (%d,%d)" % (x, y),\
             # color=cmap(peak_amplitude_ranks[i_clus_plot]) \
             )
-        ax.text(0,0, "%d"%(PARAMS['NATIVE_ORDERS'][i_ch]))
+        # ax.text(0,0, "%d"%(PARAMS['NATIVE_ORDERS'][i_ch]))
         ax.set_ylim(-1*y_scale, y_scale)
         if plot_col>0:
             ax.set_yticks([])
