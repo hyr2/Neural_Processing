@@ -1,0 +1,11 @@
+function [outputArg1,outputArg2] = stim_locked_clusters(inputArg1,inputArg2)
+%STIM_LOCKED_CLUSTERS Summary of this function goes here
+%   Detailed explanation goes here
+
+filename_mat = 'valid_normalized_spike_rates_by_channels_shankA.mat';
+A = load(filename_mat);
+mean_norm = A.mean_normalized_firing_rate_during_stim;
+
+
+end
+

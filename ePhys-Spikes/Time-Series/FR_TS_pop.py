@@ -13,6 +13,8 @@ import os
 from natsort import natsorted
 import pandas as pd
 
+# Used to process one single animal, all sessions
+# Make sure the codes: population_analysis.py is run as well as hanlin_buz_ce.m
 
 def sort_cell_type(input_arr):
     # Function counts the number of wide, narrow and pyramidal cells from the matlab output
@@ -28,19 +30,23 @@ def sort_cell_type(input_arr):
     return output_arr
     
 
-source_dir = '/home/hyr2-office/Documents/Data/NVC/RH-3/processed_data_rh3/'
-rmv_bsl = input('Baselines to remove (specify as index: e.g: 0, 2)?\n')             # specify what baseline datasets need to be removed from the analysis
+source_dir = '/home/hyr2-office/Documents/Data/NVC/BC8/'
+rmv_bsl = input('Baselines to remove (specify as index: e.g: 0, 2)? Select -1 for no baselines.\n')             # specify what baseline datasets need to be removed from the analysis
 source_dir_list = natsorted(os.listdir(source_dir))
 # Preparing variables
 rmv_bsl = rmv_bsl.split(',')
 rmv_bsl = np.asarray(rmv_bsl, dtype = np.int8)
-source_dir_list = np.delete(source_dir_list,rmv_bsl)
-source_dir_list = source_dir_list.tolist()
 
+if not np.any(rmv_bsl == -1):
+    source_dir_list = np.delete(source_dir_list,rmv_bsl)
+    source_dir_list = source_dir_list.tolist()
 
 # source_dir_list = natsorted(os.listdir(source_dir))
 
-x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 28']
+# x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 28']  # RH3 (reject baselines 0 and 2)
+# x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 28','Day 42'] # BC7 (reject baseline 0)
+# x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 12 ','Day 19','Day 26','Day 33','Day 47'] # BC6
+x_ticks_labels = ['bl-1','Day 2','Day 7','Day 14 ','Day 21','Day 42']
 
 pop_stats = {}
 pop_stats_cell = {}
@@ -55,7 +61,9 @@ for name in source_dir_list:
             iter += 1
         
 act_nclus = np.zeros([len(pop_stats),4])
+act_FR = np.zeros([len(pop_stats),4])
 inhib_nclus = np.zeros([len(pop_stats),4])
+inh_FR = np.zeros([len(pop_stats),4])
 act_nclus_total = np.zeros([len(pop_stats),])
 inhib_nclus_total = np.zeros([len(pop_stats),])
 celltype_excit = np.zeros([len(pop_stats),3])
@@ -65,10 +73,20 @@ for iter in range(len(pop_stats)):
     act_nclus[iter,0] = np.squeeze(pop_stats[iter]['act_nclus_by_shank'])[0]     # Shank A
     act_nclus[iter,1] = np.squeeze(pop_stats[iter]['act_nclus_by_shank'])[1]     # Shank B 
     act_nclus[iter,2] = np.squeeze(pop_stats[iter]['act_nclus_by_shank'])[2]     # Shank C
+    act_nclus[iter,3] = np.squeeze(pop_stats[iter]['act_nclus_by_shank'])[3]     # Shank D
+    act_FR[iter,0] = np.squeeze(pop_stats[iter]['avg_FR_act_by_shank'])[0]
+    act_FR[iter,1] = np.squeeze(pop_stats[iter]['avg_FR_act_by_shank'])[1]
+    act_FR[iter,2] = np.squeeze(pop_stats[iter]['avg_FR_act_by_shank'])[2]
+    act_FR[iter,3] = np.squeeze(pop_stats[iter]['avg_FR_act_by_shank'])[3]
     
     inhib_nclus[iter,0] = np.squeeze(pop_stats[iter]['inh_nclus_by_shank'])[0]     # Shank A
     inhib_nclus[iter,1] = np.squeeze(pop_stats[iter]['inh_nclus_by_shank'])[1]     # Shank B 
     inhib_nclus[iter,2] = np.squeeze(pop_stats[iter]['inh_nclus_by_shank'])[2]     # Shank C
+    inhib_nclus[iter,3] = np.squeeze(pop_stats[iter]['inh_nclus_by_shank'])[3]     # Shank C
+    inh_FR[iter,0] = np.squeeze(pop_stats[iter]['avg_FR_inh_by_shank'])[0]
+    inh_FR[iter,1] = np.squeeze(pop_stats[iter]['avg_FR_inh_by_shank'])[1]
+    inh_FR[iter,2] = np.squeeze(pop_stats[iter]['avg_FR_inh_by_shank'])[2]
+    inh_FR[iter,3] = np.squeeze(pop_stats[iter]['avg_FR_inh_by_shank'])[3]
     
     # cell type extraction from dictionaries
     act_nclus_total[iter] = np.sum(act_nclus[iter,:])
@@ -83,6 +101,21 @@ for iter in range(len(pop_stats)):
 
 # total neurons by cell type
 celltype_total = celltype_excit + celltype_inhib
+total_activity_act = act_FR * act_nclus
+work_amount_act = act_FR / act_nclus
+# Saving mouse summary for averaging 
+full_mouse_ephys = {}
+full_mouse_ephys['act_nclus_total'] = act_nclus_total
+full_mouse_ephys['inhib_nclus_total'] = inhib_nclus_total
+full_mouse_ephys['celltype_excit'] = celltype_excit
+full_mouse_ephys['celltype_inhib'] = celltype_inhib
+full_mouse_ephys['act_nclus'] = act_nclus
+full_mouse_ephys['inhib_nclus'] = inhib_nclus
+full_mouse_ephys['x_ticks_labels'] = x_ticks_labels
+full_mouse_ephys['celltype_total'] = celltype_total
+full_mouse_ephys['total_activity_act'] = total_activity_act
+full_mouse_ephys['FR_act'] = act_FR
+sio.savemat(os.path.join(source_dir,'full_mouse_ephys.mat'), full_mouse_ephys)
 
 # Add subplot and layout of figure
 filename_save = os.path.join(source_dir,'Population_analysis_cell_activation.png')
@@ -98,12 +131,14 @@ a[0,0].set_title("Excitatory Neurons")
 a[0,0].plot(x_ticks_labels,act_nclus[:,0],'r', lw=1.5)
 a[0,0].plot(x_ticks_labels,act_nclus[:,1],'g', lw=1.5)
 a[0,0].plot(x_ticks_labels,act_nclus[:,2],'b', lw=1.5)
-a[0,0].legend(['ShankA','ShankB','ShankC'])
+a[0,0].plot(x_ticks_labels,act_nclus[:,3],'y', lw=1.5)
+a[0,0].legend(['ShankA','ShankB','ShankC', 'ShankD'])
 a[1,0].set_title("Inhibitory Neurons")
 a[1,0].plot(x_ticks_labels,inhib_nclus[:,0],'r', lw=1.5)
 a[1,0].plot(x_ticks_labels,inhib_nclus[:,1],'g', lw=1.5)
 a[1,0].plot(x_ticks_labels,inhib_nclus[:,2],'b', lw=1.5)
-a[1,0].legend(['ShankA','ShankB','ShankC'])
+a[1,0].plot(x_ticks_labels,inhib_nclus[:,3],'y', lw=1.5)
+a[1,0].legend(['ShankA','ShankB','ShankC', 'ShankD'])
 a[1,1].set_title("All neurons")
 a[1,1].plot(x_ticks_labels,act_nclus_total,'r', lw=1.5)
 a[1,1].plot(x_ticks_labels,inhib_nclus_total,'b', lw=1.5)
@@ -124,6 +159,30 @@ a[0,1].plot(x_ticks_labels,celltype_total[:,1],'k', lw=1.5)
 a[0,1].plot(x_ticks_labels,celltype_total[:,2],'y', lw=1.5)
 a[0,1].legend(['Pyramidal','Narrow','Wide'])
 f.set_size_inches((20, 6), forward=False)
+plt.savefig(filename_save,format = 'png')
+plt.close(f)
+
+filename_save = os.path.join(source_dir,'FR_analysis_cell_activation.png')
+f, a = plt.subplots(1,2)
+a[0].set_ylabel('Avg FR x # units')
+a[1].set_ylabel('Avg FR')
+a[0].set_xlabel('Days')
+a[1].set_xlabel('Days')
+len_str = 'FR analysis'
+f.suptitle(len_str)
+a[0].set_title("Avg FR by shank of activated neurons")
+a[0].plot(x_ticks_labels,total_activity_act[:,0],'r', lw=1.5)
+a[0].plot(x_ticks_labels,total_activity_act[:,1],'g', lw=1.5)
+a[0].plot(x_ticks_labels,total_activity_act[:,2],'b', lw=1.5)
+a[0].plot(x_ticks_labels,total_activity_act[:,3],'y', lw=1.5)
+a[0].legend(['ShankA','ShankB','ShankC', 'ShankD'])
+a[1].set_title("Avg FR by shank of activated neurons")
+a[1].plot(x_ticks_labels,work_amount_act[:,0],'r', lw=1.5)
+a[1].plot(x_ticks_labels,work_amount_act[:,1],'g', lw=1.5)
+a[1].plot(x_ticks_labels,work_amount_act[:,2],'b', lw=1.5)
+a[1].plot(x_ticks_labels,work_amount_act[:,3],'y', lw=1.5)
+a[1].legend(['ShankA','ShankB','ShankC', 'ShankD'])
+f.set_size_inches((12, 6), forward=False)
 plt.savefig(filename_save,format = 'png')
 plt.close(f)
 

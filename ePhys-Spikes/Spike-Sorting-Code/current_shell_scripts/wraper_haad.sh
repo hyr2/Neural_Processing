@@ -1,5 +1,18 @@
+<<<<<<< HEAD
 input_dirs=(\
 "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/spikesort_out221206/11-11-2021" \
+=======
+input_dirs=(
+# "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-06" \
+# "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-07" \
+# "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-09" \
+# "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-12" \
+# "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-17" \
+# "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-24" \
+"/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-31" \
+"/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2022-01-07" \
+"/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2022-01-21"
+>>>>>>> 9d60bda41e833e57471e23b03e3a3b8d10e97351
   )
 # ouput_dirs=(\
 # "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Jaanita/2021-12-17" \
