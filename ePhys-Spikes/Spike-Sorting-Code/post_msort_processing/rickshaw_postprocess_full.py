@@ -20,7 +20,7 @@ for iter, filename in enumerate(source_dir_list):
     print(iter, ' ',filename)
     Raw_dir = os.path.join(input_dir, filename)
     if os.path.isdir(Raw_dir):
-        # func_discard_noise_and_viz(Raw_dir)
+        func_discard_noise_and_viz(Raw_dir)
         func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
         # delete converted_data.mda and filt.mda
         # os.remove(os.path.join(Raw_dir,'converted_data.mda'))
