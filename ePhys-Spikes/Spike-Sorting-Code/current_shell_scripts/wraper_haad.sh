@@ -1,8 +1,5 @@
 input_dirs=(\
-"/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/RH3/10-3/ePhys/data_221003_111727" \
-"/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/RH3/10-4/ePhys/data_221004_100418" \
-"/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/RH3/10-4-b/ePhys/data_221004_145257" \
-"/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/RH3/10-7/ePhys/data_221007_123731"
+"/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/spikesort_out221206/11-11-2021" \
   )
 # ouput_dirs=(\
 # "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Jaanita/2021-12-17" \
@@ -11,8 +8,8 @@ input_dirs=(\
 filename_json="/pre_MS.json"
 num_features_var=8
 max_num_clips_for_pca_var=1000
-cat mountainSort128_stroke_hyr2.sh > logs/mountainSort128_BC7.log
-export ML_TEMPORARY_DIRECTORY=/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/ml_temp
+# cat mountainSort128_stroke_hyr2.sh > logs/mountainSort128_20221106.log
+export ML_TEMPORARY_DIRECTORY=/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/ml_temp
 ovr_start_stamp=$SECONDS
 for i in "${!input_dirs[@]}"; do
   input_dir="${input_dirs[i]}"

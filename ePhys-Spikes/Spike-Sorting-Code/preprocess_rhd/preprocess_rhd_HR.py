@@ -1,5 +1,5 @@
 # This script is used to create geom.csv file for the channel mapping. In addition, it is also used to generate the trial_times.mat
-
+print("Preprocess_rhd_HR.py")
 #%%
 import os, gc, warnings, json, sys, glob
 from copy import deepcopy
@@ -20,7 +20,7 @@ from matplotlib import pyplot as plt
 # BC6, B-BC8 is rigid
 # BC7, BC8 is flex
 # B-BC5 is 2x16 flex
-CHANNEL_MAP_FPATH = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/chan_map_1x32_128ch_rigid.mat" # rigid
+CHANNEL_MAP_FPATH = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/Neural_Processing/Channel_Maps/chan_map_1x32_128ch_rigid.mat" # rigid
 # CHANNEL_MAP_FPATH = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/Fei2x16old/Mirro_Oversampling_hippo_map.mat" # flex 
 # CHANNEL_MAP_FPATH = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/oversampling_palvo_flex_intanAdapterMap.mat"
 ELECTRODE_2X16 = False
@@ -40,9 +40,9 @@ else:
 #/media/luanlab/DATA/SpikeSorting/RawData/2021-09-04B-aged/2022-01-01/2022-01-01_moving
 
 # given a session
-Raw_dir  = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/data/HR/11-2'
+Raw_dir  = '/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/data/BC6/12-07-2021'
 SESSION_REL_PATH = Raw_dir.split('/')[-1]
-output_dir  = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/RH3/'
+output_dir  = '/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/spikesort_out/'
 # Raw_dir = os.path.join(Raw_dir, SESSION_REL_PATH)
 SESSION_FOLDER_CSV = os.path.join(output_dir, SESSION_REL_PATH)
 SESSION_FOLDER_MDA = SESSION_FOLDER_CSV
@@ -168,7 +168,7 @@ for i_file, filename in enumerate(filenames):
     #     del(data_dict)
     #     gc.collect()
 
-# print("Saving mda...")
+print("MDA Saved")
 # ##save to mda
 # writemda16i(ephys_data_whole, os.path.join(SESSION_FOLDER_MDA, "converted_data.mda"))
 # print("MDA file saved to %s" % (os.path.join(SESSION_FOLDER_MDA, "converted_data.mda")))
@@ -211,11 +211,11 @@ timestamp_seq_times = arr_Time[timestamp_seq]           # in seconds
 timestamp_trials_times = arr_Time[timestamp_trials]     # in seconds
 
 #----------------------------- Plotting ---------------------------------------
-plt.figure()
-plt.plot(arr_Time,arr_ADC)
-plt.plot(timestamp_seq_times,arr_ADC[timestamp_frame[x]]+1,'ro')
-plt.plot(timestamp_trials_times,arr_ADC[timestamp_frame[xx]]+1,'go')
-plt.show()
+# plt.figure()
+# plt.plot(arr_Time,arr_ADC)
+# plt.plot(timestamp_seq_times,arr_ADC[timestamp_frame[x]]+1,'ro')
+# plt.plot(timestamp_trials_times,arr_ADC[timestamp_frame[xx]]+1,'go')
+# plt.show()
 
 # Exporting Timestamps of the trial start times:
 tt_export = timestamp_frame[xx]

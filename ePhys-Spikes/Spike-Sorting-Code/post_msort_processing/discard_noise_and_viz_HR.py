@@ -16,6 +16,7 @@ FILE PATH: /media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/processingCodes/p
 """
 #%% import stuff 
 import json
+import sys
 import os
 from time import time
 from copy import deepcopy
@@ -37,7 +38,7 @@ import scipy.signal as signal
 from utils.read_mda import readmda
 
 # Files and inputs 
-SESSION_FOLDER = "/home/hyr2-office/Documents/Data/NVC/RH-3/processed_data_rh3/tmp/"
+SESSION_FOLDER = sys.argv[1]
 RASTER_PLOT_AMPLITUDE = False
 NO_READING_FILTMDA = False # set to False on first run of each session
 # -------------------------settings

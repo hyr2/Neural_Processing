@@ -32,7 +32,8 @@ ml-run-process ms4alg.sort \
 		detect_sign:0 \
 		adjacency_radius:100 \
 		detect_threshold:4.5 \
-		clip_size:100 \
+		clip_size:54 \
+		detect_interval:27 \
 		num_features:$num_features_var \
 		max_num_clips_for_pca:$max_num_clips_for_pca_var \
 		
@@ -44,7 +45,7 @@ ml-run-process ephys.compute_cluster_metrics \
 		metrics_out:$ouput_dir/cluster_metrics.json \
 	--parameters \
 		samplerate:$samplerate \
-		clip_size:100 \
+		clip_size:54 \
 		refrac_msec:2 \
 
 # Compute templates from just filtered data (preferred since we get amplitudes in uV)
@@ -54,7 +55,7 @@ ml-run-process ephys.compute_templates \
 	--outputs \
 		templates_out:$ouput_dir/templates.mda \
 	--parameters \
-		clip_size:100
+		clip_size:54
 
 # Some more cluster metrics
 ml-run-process ms3.isolation_metrics \
