@@ -6,7 +6,7 @@ num_features_var=$5
 max_num_clips_for_pca_var=$6
 
 
-export ML_TEMPORARY_DIRECTORY=/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/ml_temp
+export ML_TEMPORARY_DIRECTORY=/home/hyr2-office/Documents/Data/NVC/ml-temp
 
 # Run bandpass filter stage of Mountainsort
 ml-run-process ephys.bandpass_filter \

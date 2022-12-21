@@ -18,12 +18,12 @@ from natsort import natsorted
 # Each session folder must have all the .rhd files and the whisker_stim.txt file
 
 # Folder location inputs
-input_dir = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/data/HR/BC8'
-output_dir = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/BC8'
-CHANNEL_MAP_FPATH = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/128chMap_flex.mat"
+input_dir = '/home/hyr2-office/Documents/Data/NVC/RH-7/'
+output_dir = '/home/hyr2-office/Documents/Data/NVC/RH-7/'
+CHANNEL_MAP_FPATH = "/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_2x16_flex_rk18.mat"
 
 # Mountain Sort inputs
-ELECTRODE_2X16 = False
+ELECTRODE_2X16 = True
 num_features_var = "8"
 max_num_clips_for_pca_var = "1000"
 

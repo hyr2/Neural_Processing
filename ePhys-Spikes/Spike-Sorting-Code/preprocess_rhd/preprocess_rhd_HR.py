@@ -290,7 +290,10 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     geom_map_df.to_csv(os.path.join(SESSION_FOLDER_CSV, "geom.csv"), index=False, header=False)
     print("Geom file generated")
     infodict = {"sample_freq": sample_freq}
-    shutil.copy(matlabTXT,SESSION_FOLDER_CSV)
+    try:
+        shutil.copy(matlabTXT,SESSION_FOLDER_CSV)
+    except shutil.SameFileError:
+        pass
     # savemat(os.path.join(SESSION_FOLDER_CSV, "info.mat"), infodict)
     with open(os.path.join(SESSION_FOLDER_CSV, "info.json"), "w") as fjson:
         json.dump(infodict, fjson)
