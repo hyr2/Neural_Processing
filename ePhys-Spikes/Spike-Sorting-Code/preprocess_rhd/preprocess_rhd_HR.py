@@ -1,5 +1,8 @@
 # This script is used to create geom.csv file for the channel mapping. In addition, it is also used to generate the trial_times.mat
 
+# Some notes:
+    # 1. Only for 128 channel recordings. Some functions inherently assume this
+
 #%%
 import os, gc, warnings, json, sys, glob, shutil
 from copy import deepcopy
@@ -34,6 +37,14 @@ def check_header_consistency(hA, hB):
         if a!=b:
             return False
     return True
+
+def intersection_lists(input_dict):
+    # input_dict is a dictionary of lists of native channel orders for each .rhd file in one session. If there are five .rhd files in the session, then the len(input_dict) will be 5.
+    # num_files = len(input_dict)
+    intersection_list_native_ch_order = list(range(0,256))  # only for 128 channels of the intan
+    for i in input_dict:
+        intersection_list_native_ch_order = list(set(input_dict[i]) & set(intersection_list_native_ch_order))
+    return intersection_list_native_ch_order,len(intersection_list_native_ch_order)
 
 def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
 
@@ -90,8 +101,17 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         n_ch, n_samples_this_file =get_n_samples_in_data(os.path.join(Raw_dir, filename))
         n_samples += n_samples_this_file
         n_samples_cumsum_by_file.append(n_samples) #count of total V points
-        
     
+    # Fix implemented: user rejected a channel during the recording/experiment
+    dict_ch_nativeorder_allsessions = {}
+    for i_file,filename in enumerate(filenames):
+        with open(os.path.join(Raw_dir, filename), "rb") as fh:
+            head_dict = read_header(fh)
+        chs_info_local = deepcopy(head_dict['amplifier_channels'])
+        chs_native_order_local = [e['native_order'] for e in chs_info_local]
+        dict_ch_nativeorder_allsessions[i_file] = chs_native_order_local   
+        
+    TrueNativeChOrder,n_ch = intersection_lists(dict_ch_nativeorder_allsessions)
     writer = DiskWriteMda(os.path.join(SESSION_FOLDER_MDA, "converted_data.mda"), (n_ch, n_samples), dt="int16")
     
     chs_impedance = None
@@ -153,17 +173,21 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
             if sample_freq != head_dict['sample_rate']:
                 warnings.warn("WARNING in preprocess_rhd: sampling frequency inconsistent within one session\n")
         
+        chs_native_order = [e['native_order'] for e in chs_info]
+        reject_ch_indx = np.where(chs_native_order == np.setdiff1d(chs_native_order,TrueNativeChOrder))[0]
         # print("Applying notch")
         print("Data are read") # no need to notch since we only care about 250~5000Hz
         ephys_data = data_dict['amplifier_data']
         # ephys_data = notch_filter(ephys_data, sample_freq, notch_freq, Q=20)
         ephys_data = ephys_data.astype(np.int16)
+        ephys_data = np.delete(ephys_data,reject_ch_indx,axis = 0)
         print("Appending chunk to disk")
         entry_offset = n_samples_cumsum_by_file[i_file] * n_ch
         writer.writeChunk(ephys_data, i1=0, i2=entry_offset)
         del(ephys_data)
         del(data_dict)
         del(df)
+        del(reject_ch_indx)
         gc.collect()
         # print("Concatenating")
         # if ephys_data_whole is None:
@@ -260,9 +284,9 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
             raise ValueError("Channel map is of shape %s, expected (32,4)" % (chmap_mat.shape))
     
         # find correct locations for valid chanels
-        geom_map = -1*np.ones((len(chs_native_order), 2), dtype= int)
+        geom_map = -1*np.ones((len(TrueNativeChOrder), 2), dtype= int)
     
-        for i, native_order in enumerate(chs_native_order):
+        for i, native_order in enumerate(TrueNativeChOrder):
             loc = np.where(chmap_mat==native_order)
             geom_map[i,0] = loc[1][0]*GW_BETWEEN_SHANK
             geom_map[i,1] = loc[0][0]*GH
@@ -276,8 +300,8 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         print(chmap_mat.shape)
         if chmap_mat.shape!=(16,8):
             raise ValueError("Channel map is of shape %s, expected (16,8)" % (chmap_mat.shape))
-        geom_map = -1*np.ones((len(chs_native_order), 2), dtype=np.int)
-        for i, native_order in enumerate(chs_native_order):
+        geom_map = -1*np.ones((len(TrueNativeChOrder), 2), dtype=np.int)
+        for i, native_order in enumerate(TrueNativeChOrder):
             loc = np.where(chmap_mat==native_order)
             geom_map[i,0] = (loc[1][0]//2)*GW_BETWEEN_SHANK + (loc[1][0]%2)*GW_WITHIN_SHANK
             geom_map[i,1] = loc[0][0]*GH
@@ -297,6 +321,6 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     # savemat(os.path.join(SESSION_FOLDER_CSV, "info.mat"), infodict)
     with open(os.path.join(SESSION_FOLDER_CSV, "info.json"), "w") as fjson:
         json.dump(infodict, fjson)
-    np.save(os.path.join(SESSION_FOLDER_CSV, "native_ch_order.npy"), chs_native_order)
+    np.save(os.path.join(SESSION_FOLDER_CSV, "native_ch_order.npy"), TrueNativeChOrder)
     print("Done!")
 
