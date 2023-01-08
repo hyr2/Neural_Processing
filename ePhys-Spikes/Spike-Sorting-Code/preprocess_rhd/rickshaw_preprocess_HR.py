@@ -32,18 +32,18 @@ for iter, filename in enumerate(source_dir_list):
     print(iter, ' ', filename )
     Raw_dir = os.path.join(input_dir, filename)
     output_dir_MS = os.path.join(output_dir, filename)
+    if os.path.isdir(Raw_dir):
+      # Running preprocessing step
+      func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH)
 
-    # Running preprocessing step
-    func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH)
-
-    # Preparing for MountainSort script
-    # Reading from .json file
-    file_pre_ms = os.path.join(output_dir_MS,'pre_MS.json')
-    with open(file_pre_ms, 'r') as f:
-      data_pre_ms = json.load(f)
-    F_SAMPLE = str(data_pre_ms['SampleRate'])
-    # geom.csv 
-    geom_filepath = os.path.join(output_dir_MS,'geom.csv')
-    
-    # Calling MountainSort Bash script
-    subprocess.call(['bash','./mountainSort128_stroke_hyr2.sh',output_dir_MS,output_dir_MS,F_SAMPLE,geom_filepath,num_features_var,max_num_clips_for_pca_var])
+      # Preparing for MountainSort script
+      # Reading from .json file
+      file_pre_ms = os.path.join(output_dir_MS,'pre_MS.json')
+      with open(file_pre_ms, 'r') as f:
+        data_pre_ms = json.load(f)
+      F_SAMPLE = str(data_pre_ms['SampleRate'])
+      # geom.csv 
+      geom_filepath = os.path.join(output_dir_MS,'geom.csv')
+      
+      # Calling MountainSort Bash script
+      subprocess.call(['bash','./mountainSort128_stroke_hyr2.sh',output_dir_MS,output_dir_MS,F_SAMPLE,geom_filepath,num_features_var,max_num_clips_for_pca_var])
