@@ -19,18 +19,21 @@ import pandas as pd
 def sort_cell_type(input_arr):
     # Function counts the number of wide, narrow and pyramidal cells from the matlab output
     output_arr = np.zeros([3,],dtype = np.int16)
-    for iter in range(input_arr.shape[0]):
-        str_celltype = input_arr[iter][0]
-        if str_celltype == 'Pyramidal Cell':
-            output_arr[0] += 1 
-        elif str_celltype == 'Narrow Interneuron':
-            output_arr[1] += 1 
-        elif str_celltype == 'Wide Interneuron':
-            output_arr[2] += 1 
-    return output_arr
+    if not input_arr.shape:
+        return output_arr
+    else:
+        for iter in range(input_arr.shape[0]):
+            str_celltype = input_arr[iter][0]
+            if str_celltype == 'Pyramidal Cell':
+                output_arr[0] += 1 
+            elif str_celltype == 'Narrow Interneuron':
+                output_arr[1] += 1 
+            elif str_celltype == 'Wide Interneuron':
+                output_arr[2] += 1 
+        return output_arr
     
 
-source_dir = '/home/hyr2-office/Documents/Data/NVC/BC8/'
+source_dir = '/home/hyr2-office/Documents/Data/NVC/RH-7_completed/'
 rmv_bsl = input('Baselines to remove (specify as index: e.g: 0, 2)? Select -1 for no baselines.\n')             # specify what baseline datasets need to be removed from the analysis
 source_dir_list = natsorted(os.listdir(source_dir))
 # Preparing variables
@@ -46,7 +49,10 @@ if not np.any(rmv_bsl == -1):
 # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 28']  # RH3 (reject baselines 0 and 2)
 # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 28','Day 42'] # BC7 (reject baseline 0)
 # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 12 ','Day 19','Day 26','Day 33','Day 47'] # BC6
-x_ticks_labels = ['bl-1','Day 2','Day 7','Day 14 ','Day 21','Day 42']
+# x_ticks_labels = ['bl-1','Day 2','Day 7','Day 14 ','Day 21','Day 42'] # BC8 
+# x_ticks_labels = ['bl-1','Day 2','Day 7','Day 14 ','Day 21','Day 42'] # B-BC5
+# x_ticks_labels = ['bl-1','bl-2','bl-3','Day 2','Day 7','Day 14 ','Day 24','Day 28','Day 35','Day 42','Day 49','Day 56'] # R-H7 (main)
+x_ticks_labels = ['bl-1','bl-2','bl-3','Day 2','Day 7','Day 14 ','Day 28','Day 42','Day 49'] # R-H7 (main)
 
 pop_stats = {}
 pop_stats_cell = {}

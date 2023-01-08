@@ -12,15 +12,15 @@ import os
 from natsort import natsorted
 # Automate batch processing of the pre processing step
 
-input_dir = '/home/hyr2-office/Documents/Data/NVC/BC8/'
-CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_1x32_128ch_flex_new.mat'
+input_dir = '/home/hyr2-office/Documents/Data/NVC/RH-7_completed/'
+CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_2x16_flex_rk18.mat'
 source_dir_list = natsorted(os.listdir(input_dir))
 
 for iter, filename in enumerate(source_dir_list):
     print(iter, ' ',filename)
     Raw_dir = os.path.join(input_dir, filename)
     if os.path.isdir(Raw_dir):
-        # func_discard_noise_and_viz(Raw_dir)
+        func_discard_noise_and_viz(Raw_dir)
         func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
         # delete converted_data.mda and filt.mda
         # os.remove(os.path.join(Raw_dir,'converted_data.mda'))

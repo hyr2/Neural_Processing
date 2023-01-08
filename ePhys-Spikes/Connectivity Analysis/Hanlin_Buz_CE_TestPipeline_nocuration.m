@@ -7,11 +7,11 @@ addpath(genpath(folder));
 % *****(1) read connectivity sauce code
 % *****(2) read trials_times.mat to obtain spikes during stim only
 % *****(3) read trials_times.mat to obtain spikes during baseline only
-Fs=20e3;
+Fs=30e3;        % read from .json file
 GW_BETWEENSHANK = 300;
 GH = 25;
 datestr = '10-2';
-datafolder = '/home/hyr2-office/Documents/Data/NVC/BC6/11-04-2021/';
+datafolder = '/home/hyr2-office/Documents/Data/NVC/RH-7_completed/12-16-22/';
 plotfolder = fullfile(datafolder,'Processed','cell_type');
 % plotfolder = '/home/hyr2-office/Documents/Data/NVC/RH-3/processed_data_rh3/tmp/Processed/Connectivity/';
 mkdir(plotfolder);
@@ -82,7 +82,8 @@ if curation
     end
     for i=1:n_clus
         if curation_mask(i)==1
-            filtWaveform{spike_labels_mapping(i)} = templates(pri_ch_lut(i), [25:75], i);
+%           filtWaveform{spike_labels_mapping(i)} = templates(pri_ch_lut(i), [25:75], i);
+            filtWaveform{spike_labels_mapping(i)} = templates(pri_ch_lut(i), [2:52], i);    % for 25 KHZ
             timeWaveform{spike_labels_mapping(i)} = [-25:25]/Fs*1000;
             % spike_times_by_clus{i} = spike_times_by_clus{i}';
         end
