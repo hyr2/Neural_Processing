@@ -10,6 +10,9 @@ from preprocess_rhd_HR import *
 import os, subprocess, json
 from natsort import natsorted
 
+# This script is used to perform preprocessing before the spike sorting. Additionally it also performs spike sorting by calling
+# the mountainsort bash script. It requires mountainlab (conda environment) to be installed.
+
 # input_dir
 #         |
 #         |__11-02/
