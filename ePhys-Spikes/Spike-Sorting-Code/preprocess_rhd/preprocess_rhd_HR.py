@@ -1,5 +1,5 @@
 # This script is used to create geom.csv file for the channel mapping. In addition, it is also used to generate the trial_times.mat
-print("Preprocess_rhd_HR.py")
+
 #%%
 import os, gc, warnings, json, sys, glob, shutil
 from copy import deepcopy
@@ -21,60 +21,11 @@ plt.rcParams['agg.path.chunksize'] = 10000
 # BC6, B-BC8 is rigid
 # BC7, BC8 is flex
 # B-BC5 is 2x16 flex
-<<<<<<< HEAD
-CHANNEL_MAP_FPATH = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/Neural_Processing/Channel_Maps/chan_map_1x32_128ch_rigid.mat" # rigid
-=======
 # CHANNEL_MAP_FPATH = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/chan_map_1x32_128ch_rigid.mat" # rigid
->>>>>>> 9d60bda41e833e57471e23b03e3a3b8d10e97351
 # CHANNEL_MAP_FPATH = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/Fei2x16old/Mirro_Oversampling_hippo_map.mat" # flex 
 # CHANNEL_MAP_FPATH = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/oversampling_palvo_flex_intanAdapterMap.mat"
 # ELECTRODE_2X16 = False
 
-<<<<<<< HEAD
-# channel spacing
-# 32x1 per shank setting
-if not ELECTRODE_2X16:
-    GW_BETWEEN_SHANK = 300 # micron
-    GH = 25 # micron
-else:
-    # 16x2 per shank setting, MirroHippo Fei Old Device ChMap
-    GW_BETWEEN_SHANK = 250
-    GW_WITHIN_SHANK = 30
-    GH = 30
-
-
-#/media/luanlab/DATA/SpikeSorting/RawData/2021-09-04B-aged/2022-01-01/2022-01-01_moving
-
-# given a session
-Raw_dir  = '/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/data/BC6/12-07-2021'
-SESSION_REL_PATH = Raw_dir.split('/')[-1]
-output_dir  = '/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/spikesort_out/'
-# Raw_dir = os.path.join(Raw_dir, SESSION_REL_PATH)
-SESSION_FOLDER_CSV = os.path.join(output_dir, SESSION_REL_PATH)
-SESSION_FOLDER_MDA = SESSION_FOLDER_CSV
-
-filename_trials_export = os.path.join(SESSION_FOLDER_CSV,'trials_times.mat')
-source_dir_list = natsorted(os.listdir(Raw_dir))
-matlabTXT = source_dir_list[source_dir_list.index('whisker_stim.txt')]
-matlabTXT = os.path.join(Raw_dir,matlabTXT)
-del source_dir_list
-
-# Read .txt file
-stim_start_time, stim_num, seq_period, len_trials, num_trials, FramePerSeq, total_seq, len_trials_arr = read_stimtxt(matlabTXT)
-
-filenames = os.listdir(Raw_dir)
-filenames = list(filter(lambda x: x.endswith(".rhd"), filenames))
-filenames = natsorted(filenames)
-
-print(filenames)
-
-if not os.path.exists(SESSION_FOLDER_MDA):
-    os.makedirs(SESSION_FOLDER_MDA)
-
-if not os.path.exists(SESSION_FOLDER_CSV):
-    os.makedirs(SESSION_FOLDER_CSV)
-=======
->>>>>>> 9d60bda41e833e57471e23b03e3a3b8d10e97351
 #%%
 def check_header_consistency(hA, hB):
     if len(hA)!=len(hB): 
@@ -280,14 +231,14 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     timestamp_trials_times = arr_Time[timestamp_trials]     # in seconds
     
     #----------------------------- Plotting -----------------------------(suppressed)
-    plt.figure()
-    plt.plot(arr_Time,arr_ADC)
-    plt.plot(timestamp_seq_times,arr_ADC[timestamp_frame[x]]+1,'ro')
-    plt.plot(timestamp_trials_times,arr_ADC[timestamp_frame[xx]]+1,'go')
-    # plt.show()
-    fig = plt.gcf()
-    fig.set_size_inches((16, 9), forward=False)
-    fig.savefig(filename_trials_digIn, dpi=200, format = 'png')
+    # plt.figure()
+    # plt.plot(arr_Time,arr_ADC)
+    # plt.plot(timestamp_seq_times,arr_ADC[timestamp_frame[x]]+1,'ro')
+    # plt.plot(timestamp_trials_times,arr_ADC[timestamp_frame[xx]]+1,'go')
+    # # plt.show()
+    # fig = plt.gcf()
+    # fig.set_size_inches((16, 9), forward=False)
+    # fig.savefig(filename_trials_digIn, dpi=200, format = 'png')
     
     # Exporting Timestamps of the trial start times:
     tt_export = timestamp_frame[xx]
@@ -331,133 +282,6 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
             geom_map[i,0] = (loc[1][0]//2)*GW_BETWEEN_SHANK + (loc[1][0]%2)*GW_WITHIN_SHANK
             geom_map[i,1] = loc[0][0]*GH
     
-<<<<<<< HEAD
-    # print("Applying notch")
-    print("Data are read") # no need to notch since we only care about 250~5000Hz
-    ephys_data = data_dict['amplifier_data']
-    # ephys_data = notch_filter(ephys_data, sample_freq, notch_freq, Q=20)
-    ephys_data = ephys_data.astype(np.int16)
-    print("Appending chunk to disk")
-    entry_offset = n_samples_cumsum_by_file[i_file] * n_ch
-    writer.writeChunk(ephys_data, i1=0, i2=entry_offset)
-    del(ephys_data)
-    del(data_dict)
-    del(df)
-    gc.collect()
-    # print("Concatenating")
-    # if ephys_data_whole is None:
-    #     ephys_data_whole = ephys_data
-    # else:
-    #     ephys_data_whole = np.concatenate([ephys_data_whole, ephys_data], axis=1)
-    #     del(ephys_data)
-    #     del(data_dict)
-    #     gc.collect()
-
-print("MDA Saved")
-# ##save to mda
-# writemda16i(ephys_data_whole, os.path.join(SESSION_FOLDER_MDA, "converted_data.mda"))
-# print("MDA file saved to %s" % (os.path.join(SESSION_FOLDER_MDA, "converted_data.mda")))
-
-# Saving trial_times.mat
-arr_Time = pd.Series(df_final.Time)          # Time in seconds
-arr_Time = arr_Time.to_numpy(dtype = np.single)
-arr_ADC = pd.Series(df_final.ADC)            # ADC input (CMOS trigger)
-arr_ADC = arr_ADC.to_numpy(dtype = np.single)
-arr_ADC[arr_ADC >= 1] = 5                # Ceiling the ADC data (ideal signal)
-arr_ADC[arr_ADC < 1] = 0                # Flooring the ADC data (ideal signal)
-# Finding peaks
-arr_ADC_diff = np.diff(arr_ADC)
-arr_ADC_diff[arr_ADC_diff<0] = 0
-arr_Time_diff = np.delete(arr_Time,[-1])
-timestamp_frame = ( arr_ADC_diff - np.roll(arr_ADC_diff,1) > 0.5) & (arr_ADC_diff - np.roll(arr_ADC_diff,-1) > 0.5) # for digital
-# Here I compute the indices of the timestamps 
-timestamp_frame = timestamp_frame.nonzero()[0]                                        # Timestamp indices of the frames (FOIL Camera)
-# sequences
-temp_vec = np.diff(timestamp_frame)
-x = np.argwhere(temp_vec > sample_freq*0.03)                                                   # Detect sequences
-x = x.astype(int)
-x = np.reshape(x,(len(x),))
-x+=1
-x = np.insert(x,0,0)                                                                  # So that we dont miss the first seq
-timestamp_seq = timestamp_frame[x]
-# trials
-xx = np.argwhere(temp_vec > sample_freq*1)                                                      # Detect trials
-xx = xx.astype(int)
-xx = np.reshape(xx,(len(xx),))
-xx+=1
-xx = np.insert(xx,0,0)    
-
-# xx = np.delete(xx,-1)   # extra
-
-timestamp_trials = timestamp_frame[xx]
-
-# Actual timestamps of the sequences and trials
-timestamp_seq_times = arr_Time[timestamp_seq]           # in seconds
-timestamp_trials_times = arr_Time[timestamp_trials]     # in seconds
-
-#----------------------------- Plotting ---------------------------------------
-# plt.figure()
-# plt.plot(arr_Time,arr_ADC)
-# plt.plot(timestamp_seq_times,arr_ADC[timestamp_frame[x]]+1,'ro')
-# plt.plot(timestamp_trials_times,arr_ADC[timestamp_frame[xx]]+1,'go')
-# plt.show()
-
-# Exporting Timestamps of the trial start times:
-tt_export = timestamp_frame[xx]
-export_timestamps_trials = {'empty':[0],'t_trial_start':tt_export}
-savemat(filename_trials_export,export_timestamps_trials)
-
-# generate geom.csv
-
-# read .mat for channel map (make sure channel index starts from 0)
-if not ELECTRODE_2X16:
-    chmap_mat = loadmat(CHANNEL_MAP_FPATH)['Ch_Map_new']
-    # print(list(chmap_mat.keys()))
-    if np.min(chmap_mat)==1:
-        print("Subtracted one from channel map to make sure channel index starts from 0 (Original map file NOT changed)")
-        chmap_mat -= 1
-
-    print(chmap_mat.shape)
-    if chmap_mat.shape!=(32,4):
-        raise ValueError("Channel map is of shape %s, expected (32,4)" % (chmap_mat.shape))
-
-    # find correct locations for valid chanels
-    geom_map = -1*np.ones((len(chs_native_order), 2), dtype= int)
-
-    for i, native_order in enumerate(chs_native_order):
-        loc = np.where(chmap_mat==native_order)
-        geom_map[i,0] = loc[1][0]*GW_BETWEEN_SHANK
-        geom_map[i,1] = loc[0][0]*GH
-else:
-    # chmap_mat = loadmat(CHANNEL_MAP_FPATH)["Maps"].squeeze().tolist()
-    # chmap_mat = np.concatenate(chmap_mat, axis=1) # should be (16, 8)
-    chmap_mat = loadmat(CHANNEL_MAP_FPATH)['Ch_Map_new']
-    if np.min(chmap_mat)==1:
-        print("Subtracted one from channel map to make sure channel index starts from 0 (Original map file NOT changed)")
-        chmap_mat -= 1
-    print(chmap_mat.shape)
-    if chmap_mat.shape!=(16,8):
-        raise ValueError("Channel map is of shape %s, expected (16,8)" % (chmap_mat.shape))
-    geom_map = -1*np.ones((len(chs_native_order), 2), dtype=np.int)
-    for i, native_order in enumerate(chs_native_order):
-        loc = np.where(chmap_mat==native_order)
-        geom_map[i,0] = (loc[1][0]//2)*GW_BETWEEN_SHANK + (loc[1][0]%2)*GW_WITHIN_SHANK
-        geom_map[i,1] = loc[0][0]*GH
-
-#%%
-
-
-# generate .csv
-geom_map_df = pd.DataFrame(data=geom_map)
-geom_map_df.to_csv(os.path.join(SESSION_FOLDER_CSV, "geom.csv"), index=False, header=False)
-print("Geom file generated")
-infodict = {"sample_freq": sample_freq}
-# savemat(os.path.join(SESSION_FOLDER_CSV, "info.mat"), infodict)
-with open(os.path.join(SESSION_FOLDER_CSV, "info.json"), "w") as fjson:
-    json.dump(infodict, fjson)
-np.save(os.path.join(SESSION_FOLDER_CSV, "native_ch_order.npy"), chs_native_order)
-print("Done!")
-=======
     #%%
     
     
@@ -472,5 +296,3 @@ print("Done!")
         json.dump(infodict, fjson)
     np.save(os.path.join(SESSION_FOLDER_CSV, "native_ch_order.npy"), chs_native_order)
     print("Done!")
->>>>>>> 9d60bda41e833e57471e23b03e3a3b8d10e97351
-

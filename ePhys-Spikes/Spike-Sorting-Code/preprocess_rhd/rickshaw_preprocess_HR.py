@@ -18,12 +18,12 @@ from natsort import natsorted
 # Each session folder must have all the .rhd files and the whisker_stim.txt file
 
 # Folder location inputs
-input_dir = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/data/HR/BC8'
-output_dir = '/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/BC8'
-CHANNEL_MAP_FPATH = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/128chMap_flex.mat"
+input_dir = '/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/data/B-BC5'
+output_dir = '/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/spikesort_out/B-BC5'
+CHANNEL_MAP_FPATH = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/Neural_Processing/Channel_Maps/Mirro_Oversampling_hippo_map.mat"
 
 # Mountain Sort inputs
-ELECTRODE_2X16 = False
+ELECTRODE_2X16 = True
 num_features_var = "8"
 max_num_clips_for_pca_var = "1000"
 
@@ -34,7 +34,7 @@ for iter, filename in enumerate(source_dir_list):
     output_dir_MS = os.path.join(output_dir, filename)
 
     # Running preprocessing step
-    func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH)
+    # func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH)
 
     # Preparing for MountainSort script
     # Reading from .json file
