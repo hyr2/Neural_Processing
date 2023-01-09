@@ -8,10 +8,11 @@ addpath(genpath(folder));
 % *****(2) read trials_times.mat to obtain spikes during stim only
 % *****(3) read trials_times.mat to obtain spikes during baseline only
 Fs=30e3;        % read from .json file
+datafolder = '/home/hyr2-office/Documents/Data/NVC/RH-7_completed/12-16-22/';
+
 GW_BETWEENSHANK = 300;
 GH = 25;
 datestr = '10-2';
-datafolder = '/home/hyr2-office/Documents/Data/NVC/RH-7_completed/12-16-22/';
 plotfolder = fullfile(datafolder,'Processed','cell_type');
 % plotfolder = '/home/hyr2-office/Documents/Data/NVC/RH-3/processed_data_rh3/tmp/Processed/Connectivity/';
 mkdir(plotfolder);

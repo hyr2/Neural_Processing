@@ -33,7 +33,7 @@ def sort_cell_type(input_arr):
         return output_arr
     
 
-source_dir = '/home/hyr2-office/Documents/Data/NVC/RH-7_completed/'
+source_dir = '/home/hyr2-office/Documents/Data/NVC/RH-7/'
 rmv_bsl = input('Baselines to remove (specify as index: e.g: 0, 2)? Select -1 for no baselines.\n')             # specify what baseline datasets need to be removed from the analysis
 source_dir_list = natsorted(os.listdir(source_dir))
 # Preparing variables
@@ -51,8 +51,9 @@ if not np.any(rmv_bsl == -1):
 # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 12 ','Day 19','Day 26','Day 33','Day 47'] # BC6
 # x_ticks_labels = ['bl-1','Day 2','Day 7','Day 14 ','Day 21','Day 42'] # BC8 
 # x_ticks_labels = ['bl-1','Day 2','Day 7','Day 14 ','Day 21','Day 42'] # B-BC5
-# x_ticks_labels = ['bl-1','bl-2','bl-3','Day 2','Day 7','Day 14 ','Day 24','Day 28','Day 35','Day 42','Day 49','Day 56'] # R-H7 (main)
-x_ticks_labels = ['bl-1','bl-2','bl-3','Day 2','Day 7','Day 14 ','Day 28','Day 42','Day 49'] # R-H7 (main)
+x_ticks_labels = ['bl-1','bl-2','bl-3','Day 2','Day 7','Day 14 ','Day 24','Day 28','Day 35','Day 42','Day 49','Day 56'] # R-H7 (main)
+linear_xaxis = np.array([-3,-2,-1,2,7,14,24,28,35,42,49,56]) # 24 special for rh7
+x_ticks_labels = linear_xaxis
 
 pop_stats = {}
 pop_stats_cell = {}
