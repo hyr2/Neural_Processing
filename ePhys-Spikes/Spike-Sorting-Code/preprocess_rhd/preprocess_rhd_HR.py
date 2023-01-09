@@ -151,6 +151,8 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         
         arr_ADC = data_dict['board_dig_in_data']                       # Digital Trigger input 
         Time = data_dict['t_amplifier']                        		# Timing info from INTAN
+        if arr_ADC.shape[0] != 1:                                  # For data with multiple digital inputs (dig input channel 1 is the speckle trigger)
+            arr_ADC = arr_ADC[0,:]
         arr_ADC = np.reshape(arr_ADC,(arr_ADC.size,))
         df = {'Time':Time,'ADC':arr_ADC}
         df = pd.DataFrame(df,dtype = np.single)
