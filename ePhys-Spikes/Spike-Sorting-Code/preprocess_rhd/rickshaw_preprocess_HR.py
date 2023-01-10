@@ -12,6 +12,7 @@ from natsort import natsorted
 
 # This script is used to perform preprocessing before the spike sorting. Additionally it also performs spike sorting by calling
 # the mountainsort bash script. It requires mountainlab (conda environment) to be installed.
+# In addition the working directory should where this script exists (i.e. `preprocess_rhd/`).
 
 # input_dir
 #         |
@@ -20,15 +21,18 @@ from natsort import natsorted
 #         |__11-04/
 # Each session folder must have all the .rhd files and the whisker_stim.txt file
 
-# Folder location inputs
-input_dir = '/home/hyr2-office/Documents/Data/NVC/RH-7/'
-output_dir = '/home/hyr2-office/Documents/Data/NVC/RH-7/'
-CHANNEL_MAP_FPATH = "/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_2x16_flex_rk18.mat"
+# read parameters
+with open("./params.json", "r") as f:
+    params = json.load(f)
 
+# Folder location inputs
+input_dir = params['raw_dir']
+output_dir = params['spikesort_dir']
+CHANNEL_MAP_FPATH = params['CHANNEL_MAP_FPATH']
 # Mountain Sort inputs
-ELECTRODE_2X16 = True
-num_features_var = "8"
-max_num_clips_for_pca_var = "1000"
+ELECTRODE_2X16 = params['ELECTRODE_2X16']
+num_features_var = params['msort_num_features']
+max_num_clips_for_pca_var = params["msort_max_num_clips_for_pca"]
 
 source_dir_list = natsorted(os.listdir(input_dir))
 for iter, filename in enumerate(source_dir_list):

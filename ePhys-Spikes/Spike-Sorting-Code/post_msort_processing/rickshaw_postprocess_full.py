@@ -7,22 +7,27 @@ Created on Sun Nov  6 20:30:52 2022
 
 # This script is used to perform post processing following spike sorting. It performs automatic curation of the clusters 
 # (putative neurons) as well as population analysis of stimulus locked clusters (ie the firing rates). 
+# Make sure the working directory is where this script resides.
 
 import numpy as np
 from discard_noise_and_viz_HR import *
 from population_analysis import *
-import os
+import os, json
 from natsort import natsorted
 import matlab.engine
 # Automate batch processing of the pre processing step
 
-input_dir = '/home/hyr2-office/Documents/Data/NVC/RH-7/'
-CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_2x16_flex_rk18.mat'
+# read parameters
+with open("./params.json", "r") as f:
+    params = json.load(f)
+
+input_dir = params['spikesort_dir']
+CHANNEL_MAP_FPATH = params['CHANNEL_MAP_FPATH']
 source_dir_list = natsorted(os.listdir(input_dir))
 
 # Start matlab engine and change directory to code file
 eng = matlab.engine.start_matlab()
-eng.cd(r'/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/ePhys-Spikes/Connectivity Analysis/', nargout=0)
+eng.cd(r'../Connectivity Analysis/', nargout=0)
 
 # Iterate over all sessions
 for iter, filename in enumerate(source_dir_list):
