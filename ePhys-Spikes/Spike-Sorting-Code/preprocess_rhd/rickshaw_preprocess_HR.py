@@ -21,9 +21,9 @@ from natsort import natsorted
 # Each session folder must have all the .rhd files and the whisker_stim.txt file
 
 # Folder location inputs
-input_dir = '/home/hyr2-office/Documents/Data/NVC/RH-7/'
-output_dir = '/home/hyr2-office/Documents/Data/NVC/RH-7/'
-CHANNEL_MAP_FPATH = "/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_2x16_flex_rk18.mat"
+input_dir = '/home/hyr2-office/Documents/Data/NVC/temp_folder/'
+output_dir = '/home/hyr2-office/Documents/Data/NVC/temp_folder/'
+CHANNEL_MAP_FPATH = "/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_2x16_flex_new_Thomas.mat"
 
 # Mountain Sort inputs
 ELECTRODE_2X16 = True

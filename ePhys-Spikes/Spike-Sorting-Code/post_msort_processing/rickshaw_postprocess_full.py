@@ -16,8 +16,8 @@ from natsort import natsorted
 import matlab.engine
 # Automate batch processing of the pre processing step
 
-input_dir = '/home/hyr2-office/Documents/Data/NVC/RH-7/'
-CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_2x16_flex_rk18.mat'
+input_dir = '/home/hyr2-office/Documents/Data/NVC/temp_folder/'
+CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_2x16_flex_new_Thomas.mat'
 source_dir_list = natsorted(os.listdir(input_dir))
 
 # Start matlab engine and change directory to code file
@@ -36,9 +36,9 @@ for iter, filename in enumerate(source_dir_list):
         F_SAMPLE = np.float(data_pre_ms['SampleRate'])
 
         # Curation
-        # func_discard_noise_and_viz(Raw_dir)
+        func_discard_noise_and_viz(Raw_dir)
         # Population analysis
-        # func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
+        func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
 
         # Calling matlab scripts from python
         eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,nargout=0)
