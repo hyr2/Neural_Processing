@@ -10,7 +10,7 @@ Created on Sun Nov  6 20:30:52 2022
 # Make sure the working directory is where this script resides.
 
 import numpy as np
-from discard_noise_and_viz_HR import *
+from discard_noise_and_viz import *
 from population_analysis import *
 import os, json
 from natsort import natsorted
