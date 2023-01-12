@@ -1,3 +1,13 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Sep  7 15:14:00 2022
+
+@author: luanlab
+
+FILE PATH: /media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/processingCodes/post_msort_processing
+"""
+
 """ 
     Automatically discard noise clusters conservatively (by amplitude, spatial spread, ISI violation ratio) and viz
     Save CSV files for record
@@ -21,64 +31,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import pandas as pd
 import scipy.signal as signal
-
-# from scipy.special import softmax
-
 from utils.read_mda import readmda
-
-# -------------------------settings
-F_SAMPLE = 25e3 # check rhd file or the info.mat from preprocessing rhd file
-# F_SAMPLE = 20e3 # BC6 first few experiments
-RASTER_PLOT_AMPLITUDE = False
-FIGDIRNAME = "figs_allclus_waveforms"
-CHANNELMAP2X16 = False # this affects how the plots are generated
-SESSION_FOLDER = "/home/hyr2/Documents/Data/BC7/temp-MS-parameter-TEST/12-09-2021-param2/"
-session_newsavefolder = SESSION_FOLDER
-# WINDOW_LEN_IN_SEC = 15 # 30e-3
-# SMOOTHING_SIZE = 5
-# WINDOW_IN_SAMPLES = int(WINDOW_LEN_IN_SEC*F_SAMPLE)
-NO_READING_FILTMDA = False # set to False on first run of each session
-N_PROCESSES = 4 # multiprocessing option
-TRANSIENT_AMPLITUDE_VALID_DURATION = 1e-3 # seconds (duration of data before and after each spike that we consider when deciding the transient amplitude)
-TAVD_NSAMPLE = int(np.ceil(TRANSIENT_AMPLITUDE_VALID_DURATION*F_SAMPLE))
-matplotlib.rcParams['font.size'] = 22
-native_orders = np.load(os.path.join(SESSION_FOLDER, "native_ch_order.npy"))
-
-# layout setting
-if CHANNELMAP2X16:
-    GH = 30
-    GW_WITHINSHANK = 30
-    GW_BETWEENSHANK = 250
-else:
-    GH = 25
-    GW_BETWEENSHANK = 300
-
-
-if not os.path.exists(session_newsavefolder):
-    os.makedirs(session_newsavefolder)
-
-COMMON_AVG_REREFERENCE = True
-ADJACENCY_RADIUS_SQUARED = 140**2 # um^2, [consistent with mountainsort shell script](not anymore)
-SNR_THRESH = 1.5
-AMP_THRESH = 48 # 35 for Anesthetized # 50 for awake
-ISI_THRESH = 0.005 # Threshold to distinguish b/w multi-unit and single unit
-ISI_THRESH_ABS = 100   # Second Threshold to distinguish b/w multi-unit and single unit 
-FIRING_RATE_THRESH = 0.08 # 0.5
-P2P_PROPORTION_THRESH = 0.3
-PARAMS = {}
-PARAMS['F_SAMPLE'] = F_SAMPLE
-PARAMS['ADJACENCY_RADIUS_SQUARED'] = ADJACENCY_RADIUS_SQUARED
-PARAMS['SNR_THRESH'] = SNR_THRESH
-PARAMS['AMP_THRESH'] = AMP_THRESH
-PARAMS['FIRING_RATE_THRESH'] = FIRING_RATE_THRESH
-PARAMS['P2P_PROPORTION_THRESH'] = P2P_PROPORTION_THRESH
-# PARAMS['FIRING_RATE_WINDOW_LEN_IN_SEC'] = WINDOW_LEN_IN_SEC
-# PARAMS['FIRING_RATE_SMOOTHING_SIZE'] = SMOOTHING_SIZE
-PARAMS['TRANSIENT_AMPLITUDE_VALID_DURATION'] = TRANSIENT_AMPLITUDE_VALID_DURATION
-PARAMS['NATIVE_ORDERS'] = native_orders.tolist()
-PARAMS['COMMON_AVG_REREFERENCE'] = COMMON_AVG_REREFERENCE
-with open(os.path.join(session_newsavefolder, "params_log.json"), 'w') as f:
-    json.dump(PARAMS, f)
 
 # -------------------------------
 
@@ -93,12 +46,338 @@ with open(os.path.join(session_newsavefolder, "params_log.json"), 'w') as f:
 #     firing_rate_series = signal.convolve(tmp_hist, smoother, mode='same')
 #     return firing_rate_series
 
-def postprocess_one_session(session_folder_load, session_folder_save):
+
+def decoding_algo_curation(val):
+    decoded_str= ""
+    final_str= ""
+    
+    decoded_str = "{0:08b}".format(val)
+    
+    if decoded_str[-1] == '1':
+        # violation peak SNR
+        final_str = final_str + "Peak SNR, "
+    if decoded_str[-2] == '1':
+        # violation peak amplitude
+        final_str = final_str + "Peak amplitude, "
+    if decoded_str[-3] == '1':
+        # violation FR 
+        final_str = final_str + "Peak FR, "
+    if decoded_str[-4] == '1':
+        # violation spatial spread
+        final_str = final_str + "Spatial localization, "
+    if decoded_str[-5] == '1':
+        # violation bursting children
+        final_str = final_str + "Bursting Child, "
+    if decoded_str[-6] == '1':
+        # Violation ISI (multiunit activity)
+        final_str = final_str + "ISI (multi-unit)"
+    
+    return final_str
+
+def plot_single_cluster_1x32(i_clus_plot, template_waveforms, fig_size_scale, pri_ch_lut, geom, clus_coordinates, smap, 
+    GW_BETWEENSHANK, GH, cluster_accept_mask, waveform_len, F_SAMPLE, proper_spike_times_by_clus, spk_amp_series, 
+    final_stamp_time, waveforms_all,spk_amp_hists, spk_amp_mins, spk_amp_maxs, spk_amp_means, spk_amp_stds, firing_rates,
+    spike_count_by_clus, isolation_score, noise_overlap_score, peak_snr, refrac_violation_ratio, violation_log, 
+    multi_unit_mask, peak_amplitude_ranks, cmap, n_clus, n_ch, n_bins, isi_hists, isi_bin_edges, isi_vis_max, spk_amp_hist_bin_edges, clus_labels, figpath):
+    # if cluster_accept_mask[i_clus_plot]==False:
+    #     print("Clus %d is not accepted, skipping")
+    #     return
+    import matplotlib
+    matplotlib.font_manager._get_font.cache_clear()
+    y_scale = np.max(np.abs(template_waveforms[:, :, i_clus_plot]))
+    fig2 = plt.figure(figsize=(48*fig_size_scale,32*fig_size_scale))
+    prim_ch = pri_ch_lut[i_clus_plot] # look up primary channel
+    gs_ovr = gridspec.GridSpec(32, 48, figure=fig2)
+    
+    # plot channel & cluster location viz
+    ax_loc_viz = fig2.add_subplot(gs_ovr[:, :8])
+    # all channels
+    ax_loc_viz.scatter(geom[:,0], geom[:,1], s=24, color='blue')
+    # highlight primary channel
+    ax_loc_viz.scatter( \
+        [geom[prim_ch,0]], [geom[prim_ch,1]], \
+        marker='s', s=24, color='orange' \
+        )
+    # location of current cluster
+    ax_loc_viz.scatter(\
+        [clus_coordinates[i_clus_plot,0]], [clus_coordinates[i_clus_plot,1]], \
+        marker="x", s=smap[int(peak_amplitude_ranks[i_clus_plot])], color='orange', \
+        ) 
+    # all clusters
+    ax_loc_viz.scatter(\
+        clus_coordinates[cluster_accept_mask, 0], clus_coordinates[cluster_accept_mask, 1], \
+        marker='.', c=peak_amplitude_ranks[cluster_accept_mask], \
+        cmap=cmap, vmin=0, vmax=n_clus, \
+        s=smap[peak_amplitude_ranks[cluster_accept_mask]], alpha=.5\
+        )
+    ax_loc_viz.set_aspect("equal")
+    ax_loc_viz.set_xlim(-20, 3*GW_BETWEENSHANK+20)
+    ax_loc_viz.set_ylim(-20, 31*GH+20)
+    ax_loc_viz.set_xlabel("x-coordinate (um)")
+    ax_loc_viz.set_ylabel("y-coordinate (um)")
+    ax_loc_viz.invert_yaxis()
+    
+    # plot template waveforms
+    # gs_waveforms = gridspec.GridSpecFromSubplotSpec(16, 2, subplot_spec=gs_ovr[:, 4:8]) # syntactically correct?
+    for i_ch in range(n_ch):
+        x, y = geom[i_ch,:]
+        plot_row, plot_col = int(y/GH), (int(x/GW_BETWEENSHANK))
+        ax = fig2.add_subplot(gs_ovr[plot_row, 10+plot_col*3:13+plot_col*3])# plt.subplot(16,2,plot_row*2+plot_col+1)
+        ax.plot(\
+            np.arange(waveform_len)/F_SAMPLE*1000, \
+            template_waveforms[i_ch, :, i_clus_plot], \
+            # label="Coordinate (%d,%d)" % (x, y),\
+            # color=cmap(peak_amplitude_ranks[i_clus_plot]) \
+            )
+        ax.set_ylim(-1*y_scale, y_scale)
+        if plot_col>0:
+            ax.set_yticks([])
+        if plot_row<31:
+            ax.set_xticks([])
+        else:
+            ax.set_xlabel("Time (ms)")
+
+        # ax.legend(fontsize=13)
+        # ax.set_title("Coordinate (%d,%d)" % (x, y), fontsize=10)
+    
+    # plot ISI histogram
+    ax_isihist = fig2.add_subplot(gs_ovr[:4, 24:])
+    ax_isihist.bar(0.5+np.arange(n_bins), isi_hists[i_clus_plot,:], width=1.)
+    ax_isihist.set_xticks(isi_bin_edges[::10])
+    ax_isihist.set_xticklabels(isi_bin_edges[::10])
+    ax_isihist.set_xlabel("ISI (ms)")
+    ax_isihist.set_ylabel("Count")
+    ax_isihist.set_xlim(0, isi_vis_max)
+    ax_isihist.set_title("ISI histogram")
+    
+    # plot Amplitude series
+    ax_ampstamp = fig2.add_subplot(gs_ovr[5:9, 24:])
+    ax_ampstamp.scatter(proper_spike_times_by_clus[i_clus_plot]/F_SAMPLE, spk_amp_series[i_clus_plot], s=1)
+    ax_ampstamp.set_xlim(0, final_stamp_time)
+    ax_ampstamp.set_xlabel("Time (sec)")
+    ax_ampstamp.set_ylabel("Transient amplitude (uV)")
+    
+    # waveforms at primary channel for most events
+    if waveforms_all[i_clus_plot].shape[0] > 300:
+        ids_spikes_to_plot = np.linspace(0, waveforms_all[i_clus_plot].shape[0]-1, 300).astype(int)
+    else:
+        ids_spikes_to_plot = np.arange(waveforms_all[i_clus_plot].shape[0])
+    ax_template = fig2.add_subplot(gs_ovr[10:14, 24:])
+    ax_template.plot(\
+        np.arange(waveform_len)/F_SAMPLE*1000, \
+        waveforms_all[i_clus_plot][ids_spikes_to_plot, :].T, \
+        color='g', alpha=0.3\
+        )
+    ax_template.plot(np.arange(waveform_len)/F_SAMPLE*1000, \
+        template_waveforms[prim_ch, :, i_clus_plot], \
+        color='k'
+        )
+
+    # spike amplitude histogram
+    ax_amphist = fig2.add_subplot(gs_ovr[15:19, 24:])
+    peak_amp_hist = spk_amp_hists[i_clus_plot]
+    amphist_bin_edges = spk_amp_hist_bin_edges[i_clus_plot]
+    nbins_amphist = amphist_bin_edges.shape[0]-1
+    amp_min = spk_amp_mins[i_clus_plot]
+    amp_max = spk_amp_maxs[i_clus_plot]
+    amp_mean = spk_amp_means[i_clus_plot]
+    amp_std = spk_amp_stds[i_clus_plot]
+    amphist_binwidth = amphist_bin_edges[1]-amphist_bin_edges[0]
+    barplot_x_coordinates = (amphist_bin_edges[:-1] + amphist_bin_edges[1:])/2
+    ax_amphist.bar(np.arange(nbins_amphist)+0.5, peak_amp_hist, width=1)
+    ax_amphist.set_xticks(np.arange(nbins_amphist)[::2]+0.5)
+    ax_amphist.set_xticklabels(barplot_x_coordinates.astype(int)[::2], fontsize=7)
+    # ax.xaxis.set_minor_locator(matplotlib.ticker.MultipleLocator(1))
+    ax_amphist.tick_params(axis='both', which='major', labelsize=8)
+    ax_amphist.set_xlabel("Amplitude (uV)", fontsize=7)
+    ax_amphist.set_ylabel("Neuron count", fontsize=7)
+    text_str = "Mean=%.2fuV\nStd=%.2fuV\nMin=%.2fuV\nMax=%.2fuV\nBinwidth=%.2fuV" % ( \
+        amp_mean, amp_std, amp_min, amp_max, amphist_binwidth)
+    ax_amphist.text(ax_amphist.get_xlim()[1]*0.7, ax_amphist.get_ylim()[1]*0.7, text_str, fontsize=28)
+
+    # print annotations
+    ax_text = fig2.add_subplot(gs_ovr[20:, 24:])
+    str_annot  = "Cluster label: %d\n" % (clus_labels[i_clus_plot])
+    str_annot += "Average firing rate: %.2f (Total spike count: %d)\n" % (firing_rates[i_clus_plot], spike_count_by_clus[i_clus_plot])
+    str_annot += "Isolation score: %.4f\n" % (isolation_score[i_clus_plot])
+    str_annot += "Noise overlap score: %.4f\n" % (noise_overlap_score[i_clus_plot])
+    str_annot += "Peak SNR: %.2f\n" % (peak_snr[i_clus_plot])
+    str_annot += "Refractory 2ms violation ratio: %.4f\n" % (refrac_violation_ratio[i_clus_plot])
+    screening_status = "passed" if cluster_accept_mask[i_clus_plot] else ("multi-unit" if multi_unit_mask[i_clus_plot] else "failed")
+    str_annot += "Automatic screening: %s\n" % (screening_status)
+    if screening_status=="failed":
+        str_annot += "Reason for Failure: %s\n" % (decoding_algo_curation(violation_log[i_clus_plot]))
+    ax_text.text(0.5, 0.5, str_annot, va="center", ha="center", fontsize=28)
+
+    # plt.suptitle("Cluster %d, kept=%d" % (i_clus_plot+1, clus_keep_mask[i_clus_plot]), fontsize=25)
+    # plt.tight_layout()
+    plt.subplots_adjust(wspace=0.05, hspace=0.05)
+    if cluster_accept_mask[i_clus_plot]:
+        plt.savefig(os.path.join(figpath, "waveform_clus%d.png"%(clus_labels[i_clus_plot])))
+    elif multi_unit_mask[i_clus_plot]:
+        plt.savefig(os.path.join(figpath, "z_multiunit_waveform_clus%d.png"%(clus_labels[i_clus_plot])))
+    else:
+        plt.savefig(os.path.join(figpath, "z_failed_waveform_clus%d.png"%(clus_labels[i_clus_plot])))
+    plt.close()
+    print(i_clus_plot+1)
+
+def plot_single_cluster_2x16(i_clus_plot, template_waveforms, fig_size_scale, pri_ch_lut, geom, clus_coordinates, smap, 
+    GW_BETWEENSHANK, GH, cluster_accept_mask, waveform_len, F_SAMPLE, proper_spike_times_by_clus, spk_amp_series, 
+    final_stamp_time, waveforms_all,spk_amp_hists, spk_amp_mins, spk_amp_maxs, spk_amp_means, spk_amp_stds, firing_rates,
+    spike_count_by_clus, isolation_score, noise_overlap_score, peak_snr, refrac_violation_ratio, violation_log, 
+    multi_unit_mask, peak_amplitude_ranks, cmap, n_clus, n_ch, n_bins, isi_hists, isi_bin_edges, isi_vis_max, spk_amp_hist_bin_edges, clus_labels, figpath):
+    # if cluster_accept_mask[i_clus_plot]==False:
+    #     print("Clus %d is not accepted, skipping")
+    #     return
+    import matplotlib
+    matplotlib.font_manager._get_font.cache_clear()
+    y_scale = np.max(np.abs(template_waveforms[:, :, i_clus_plot]))
+    fig2 = plt.figure(figsize=(48*fig_size_scale,32*fig_size_scale))
+    prim_ch = pri_ch_lut[i_clus_plot] # look up primary channel
+    gs_ovr = gridspec.GridSpec(32, 48, figure=fig2)
+    
+    # plot channel & cluster location viz
+    ax_loc_viz = fig2.add_subplot(gs_ovr[:, :16])
+    # all channels
+    ax_loc_viz.scatter(geom[:,0], geom[:,1], s=24, color='blue')
+    # highlight primary channel
+    ax_loc_viz.scatter( \
+        [geom[prim_ch,0]], [geom[prim_ch,1]], \
+        marker='s', s=24, color='orange' \
+        )
+    # location of current cluster
+    ax_loc_viz.scatter(\
+        [clus_coordinates[i_clus_plot,0]], [clus_coordinates[i_clus_plot,1]], \
+        marker="x", s=smap[int(peak_amplitude_ranks[i_clus_plot])], color='orange', \
+        ) 
+    # all clusters
+    ax_loc_viz.scatter(\
+        clus_coordinates[cluster_accept_mask, 0], clus_coordinates[cluster_accept_mask, 1], \
+        marker='.', c=peak_amplitude_ranks[cluster_accept_mask], \
+        cmap=cmap, vmin=0, vmax=n_clus, \
+        s=smap[peak_amplitude_ranks[cluster_accept_mask]], alpha=.5\
+        )
+    ax_loc_viz.set_aspect("equal")
+    ax_loc_viz.set_xlim(-20, 3*GW_BETWEENSHANK+GH+20)
+    ax_loc_viz.set_ylim(-20, 15*GH+20)
+    ax_loc_viz.set_xlabel("x-coordinate (um)")
+    ax_loc_viz.set_ylabel("y-coordinate (um)")
+    ax_loc_viz.invert_yaxis()
+    # plot template waveforms
+    # gs_waveforms = gridspec.GridSpecFromSubplotSpec(16, 2, subplot_spec=gs_ovr[:, 4:8]) # syntactically correct?
+    for i_ch in range(n_ch):
+        x, y = int(geom[i_ch,0]), int(geom[i_ch,1])
+        plot_row, plot_col = (15-y//GH), ((x//GW_BETWEENSHANK)*2 + int((x%GW_BETWEENSHANK)>0))
+        # print(i_ch, 
+        # print(x,y,plot_row,plot_col)
+        ax = fig2.add_subplot(gs_ovr[plot_row*2:plot_row*2+2, 17+plot_col*2:19+plot_col*2])# plt.subplot(16,2,plot_row*2+plot_col+1)
+        ax.plot(\
+            np.arange(waveform_len)/F_SAMPLE*1000, \
+            template_waveforms[i_ch, :, i_clus_plot], \
+            # label="Coordinate (%d,%d)" % (x, y),\
+            # color=cmap(peak_amplitude_ranks[i_clus_plot]) \
+            )
+        # ax.text(0,0, "%d"%(PARAMS['NATIVE_ORDERS'][i_ch]))
+        ax.set_ylim(-1*y_scale, y_scale)
+        if plot_col>0:
+            ax.set_yticks([])
+        if plot_row<31:
+            ax.set_xticks([])
+        else:
+            ax.set_xlabel("Time (ms)")
+
+        # ax.legend(fontsize=13)
+        # ax.set_title("Coordinate (%d,%d)" % (x, y), fontsize=10)
+    
+    # plot ISI histogram
+    ax_isihist = fig2.add_subplot(gs_ovr[:4, 34:])
+    ax_isihist.bar(0.5+np.arange(n_bins), isi_hists[i_clus_plot,:], width=1.)
+    ax_isihist.set_xticks(isi_bin_edges[::10])
+    ax_isihist.set_xticklabels(isi_bin_edges[::10])
+    ax_isihist.set_xlabel("ISI (ms)")
+    ax_isihist.set_ylabel("Count")
+    ax_isihist.set_xlim(0, isi_vis_max)
+    ax_isihist.set_title("ISI histogram")
+    
+    # plot Amplitude series
+    ax_ampstamp = fig2.add_subplot(gs_ovr[5:9, 34:])
+    ax_ampstamp.scatter(proper_spike_times_by_clus[i_clus_plot]/F_SAMPLE, spk_amp_series[i_clus_plot], s=1)
+    ax_ampstamp.set_xlim(0, final_stamp_time)
+    ax_ampstamp.set_xlabel("Time (sec)")
+    ax_ampstamp.set_ylabel("Transient amplitude (uV)")
+    
+    # waveforms at primary channel for most events
+    if waveforms_all[i_clus_plot].shape[0] > 300:
+        ids_spikes_to_plot = np.linspace(0, waveforms_all[i_clus_plot].shape[0]-1, 300).astype(int)
+    else:
+        ids_spikes_to_plot = np.arange(waveforms_all[i_clus_plot].shape[0])
+    ax_template = fig2.add_subplot(gs_ovr[10:14, 34:])
+    ax_template.plot(\
+        np.arange(waveform_len)/F_SAMPLE*1000, \
+        waveforms_all[i_clus_plot][ids_spikes_to_plot, :].T, \
+        color='g', alpha=0.3\
+        )
+    ax_template.plot(np.arange(waveform_len)/F_SAMPLE*1000, \
+        template_waveforms[prim_ch, :, i_clus_plot], \
+        color='k'
+        )
+    
+    # spike amplitude histogram
+    ax_amphist = fig2.add_subplot(gs_ovr[15:19, 34:])
+    peak_amp_hist = spk_amp_hists[i_clus_plot]
+    amphist_bin_edges = spk_amp_hist_bin_edges[i_clus_plot]
+    nbins_amphist = amphist_bin_edges.shape[0]-1
+    amp_min = spk_amp_mins[i_clus_plot]
+    amp_max = spk_amp_maxs[i_clus_plot]
+    amp_mean = spk_amp_means[i_clus_plot]
+    amp_std = spk_amp_stds[i_clus_plot]
+    amphist_binwidth = amphist_bin_edges[1]-amphist_bin_edges[0]
+    barplot_x_coordinates = (amphist_bin_edges[:-1] + amphist_bin_edges[1:])/2
+    ax_amphist.bar(np.arange(nbins_amphist)+0.5, peak_amp_hist, width=1)
+    ax_amphist.set_xticks(np.arange(nbins_amphist)[::2]+0.5)
+    ax_amphist.set_xticklabels(barplot_x_coordinates.astype(int)[::2], fontsize=7)
+    # ax.xaxis.set_minor_locator(matplotlib.ticker.MultipleLocator(1))
+    ax_amphist.tick_params(axis='both', which='major', labelsize=8)
+    ax_amphist.set_xlabel("Amplitude (uV)", fontsize=7)
+    ax_amphist.set_ylabel("Neuron count", fontsize=7)
+    text_str = "Mean=%.2fuV\nStd=%.2fuV\nMin=%.2fuV\nMax=%.2fuV\nBinwidth=%.2fuV" % ( \
+        amp_mean, amp_std, amp_min, amp_max, amphist_binwidth)
+    ax_amphist.text(ax_amphist.get_xlim()[1]*0.7, ax_amphist.get_ylim()[1]*0.7, text_str, fontsize=28)
+
+    # print annotations
+    ax_text = fig2.add_subplot(gs_ovr[20:, 34:])
+    str_annot  = "Cluster label: %d\n" % (clus_labels[i_clus_plot])
+    str_annot += "Average firing rate: %.2f (Total spike count: %d)\n" % (firing_rates[i_clus_plot], spike_count_by_clus[i_clus_plot])
+    str_annot += "Isolation score: %.4f\n" % (isolation_score[i_clus_plot])
+    str_annot += "Noise overlap score: %.4f\n" % (noise_overlap_score[i_clus_plot])
+    str_annot += "Peak SNR: %.2f\n" % (peak_snr[i_clus_plot])
+    str_annot += "Refractory 2ms violation ratio: %.4f\n" % (refrac_violation_ratio[i_clus_plot])
+    screening_status = "passed" if cluster_accept_mask[i_clus_plot] else ("multi-unit" if multi_unit_mask[i_clus_plot] else "failed")
+    str_annot += "Automatic screening: %s\n" % (screening_status)
+    if screening_status=="failed":
+        str_annot += "Reason for Failure: %s\n" % (decoding_algo_curation(violation_log[i_clus_plot]))
+
+    ax_text.text(0.5, 0.5, str_annot, va="center", ha="center", fontsize=28)
+
+    # plt.suptitle("Cluster %d, kept=%d" % (i_clus_plot+1, clus_keep_mask[i_clus_plot]), fontsize=25)
+    # plt.tight_layout()
+    plt.subplots_adjust(wspace=0.05, hspace=0.05)
+    if cluster_accept_mask[i_clus_plot]:
+        plt.savefig(os.path.join(figpath, "waveform_clus%d.png"%(clus_labels[i_clus_plot])))
+    elif multi_unit_mask[i_clus_plot]:
+        plt.savefig(os.path.join(figpath, "z_multiunit_waveform_clus%d.png"%(clus_labels[i_clus_plot])))
+    else:
+        plt.savefig(os.path.join(figpath, "z_failed_waveform_clus%d.png"%(clus_labels[i_clus_plot])))
+    plt.close()
+    print(i_clus_plot+1)
+
+
+def postprocess_one_session(SESSION_FOLDER, session_newsavefolder, PARAMS, COMMON_AVG_REREFERENCE, CHANNELMAP2X16, GH, GW_BETWEENSHANK, FIGDIRNAME, TAVD_NSAMPLE, N_PROCESSES, F_SAMPLE, NO_READING_FILTMDA):
     
     """ main function for post processing and visualization"""
-    
+    session_folder_load = session_newsavefolder
     MAP_PATH = os.path.join(session_folder_load, "geom.csv")
-    figpath = os.path.join(session_folder_save, FIGDIRNAME)
+    figpath = os.path.join(session_folder_load, FIGDIRNAME)
     if not os.path.exists(figpath):
         os.makedirs(figpath)
     with open(os.path.join(session_folder_load, "combine_metrics_new.json"), 'r') as f:
@@ -160,28 +439,33 @@ def postprocess_one_session(session_folder_load, session_folder_save):
     isi_bin_edges = np.linspace(0, isi_vis_max, n_bins+1) # in millisec; 1ms per bin
     isi_hists = np.zeros((n_clus, isi_bin_edges.shape[0]-1))
     refrac_violation_ratio = np.full((n_clus,), -1.0)
-    abs_violations_ISI = np.zeros([n_clus,])
     for i_clus in range(n_clus):
         isi = np.diff(spike_times_by_clus[i_clus]) / F_SAMPLE * 1000 # ISI series in millisec
         isi_hist_this, _ = np.histogram(isi, bins=isi_bin_edges)
         isi_hists[i_clus, :] =isi_hist_this
-        abs_violations_ISI[i_clus] = (isi_hist_this[0]+isi_hist_this[1])        # compute counts of violations
-        refrac_violation_ratio[i_clus] = abs_violations_ISI[i_clus] / isi.shape[0]  # compute percentage of violations
+        refrac_violation_ratio[i_clus] = (isi_hist_this[0]+isi_hist_this[1]) / isi.shape[0]
 
 
     #### reject clusters by average amplitude, ISI violation ratio, and spatial spread(from template amplitude at each channel)
     cluster_accept_mask = np.ones((n_clus,), dtype=bool)
+    violation_log = np.zeros(cluster_accept_mask.shape, dtype=np.int8)
     # reject by peak snr
-    snr_thresh = SNR_THRESH
-    cluster_accept_mask[peak_snr<snr_thresh] = False
+    snr_thresh = PARAMS['SNR_THRESH']
+    s = np.array(peak_snr<snr_thresh,dtype = bool)
+    cluster_accept_mask[s] = False
+    violation_log[s] = 1
     print("%d/%d clusters kept after peak SNR screening"%(np.sum(cluster_accept_mask), n_clus))
     # reject by spike amplitude
-    amp_thresh = AMP_THRESH # in uV
-    cluster_accept_mask[peak_amplitudes < amp_thresh] = False
+    amp_thresh = PARAMS['AMP_THRESH'] # in uV
+    s = np.array(peak_amplitudes < amp_thresh,dtype = bool)
+    cluster_accept_mask[s] = False
+    violation_log[s] = violation_log[s] + 2
     print("%d/%d clusters kept after amplitude screening"%(np.sum(cluster_accept_mask), n_clus))
     # reject by firing rate
-    firing_rate_thresh = FIRING_RATE_THRESH
-    cluster_accept_mask[firing_rates < firing_rate_thresh] = False
+    firing_rate_thresh = PARAMS['FIRING_RATE_THRESH']
+    s = np.array(firing_rates < firing_rate_thresh, dtype = bool)
+    cluster_accept_mask[s] = False
+    violation_log[s] = violation_log[s] + 4
     print("%d/%d clusters kept after firing-rate screening"%(np.sum(cluster_accept_mask), n_clus))
     # reject by spatial spread of less than the designated ADJACENT_RADIUS_SQUARED
     geom = pd.read_csv(MAP_PATH, header=None).values
@@ -191,21 +475,24 @@ def postprocess_one_session(session_folder_load, session_folder_save):
         prim_x, prim_y = geom[prim_ch, :]
         p2p_by_channel = template_p2ps[:, i_clus]
         p2p_prim = np.max(p2p_by_channel)
-        p2p_near = p2p_by_channel>p2p_prim*P2P_PROPORTION_THRESH
-        if np.any((geom[p2p_near,0]-prim_x)**2 + (geom[p2p_near,1]-prim_y)**2 >= ADJACENCY_RADIUS_SQUARED):
+        p2p_near = p2p_by_channel > p2p_prim*PARAMS['P2P_PROPORTION_THRESH']
+        if np.any((geom[p2p_near,0]-prim_x)**2 + (geom[p2p_near,1]-prim_y)**2 >= PARAMS['ADJACENCY_RADIUS_SQUARED']):
             cluster_accept_mask[i_clus] = False
+            violation_log[i_clus] += 8
     print("%d/%d clusters kept after spatial-spread screening"%(np.sum(cluster_accept_mask), n_clus))
     # reject bursting children
     for i_clus in range(n_clus):
         if abs(np.argmax(np.abs(template_waveforms[pri_ch_lut[i_clus], :, i_clus])) - waveform_len//2) >= 5:
             # peak is too far away from center, reject
             cluster_accept_mask[i_clus] = False
+            violation_log[i_clus] += 16
     print("%d/%d clusters kept after rejecting bursting children"%(np.sum(cluster_accept_mask), n_clus))
     # reject by 2ms-ISI violation ratio of 1%
-    multi_unit_mask = np.logical_and(cluster_accept_mask, np.logical_or(refrac_violation_ratio > ISI_THRESH,abs_violations_ISI > ISI_THRESH_ABS))
+    multi_unit_mask = np.logical_and(cluster_accept_mask, refrac_violation_ratio > PARAMS['ISI_VIOLATION_RATIO'])
     cluster_accept_mask[multi_unit_mask] = False # cluster_accept_mask indicates single unit clusters
+    violation_log[multi_unit_mask] += 32
     print("%d/%d clusters kept after ISI screening"%(np.sum(cluster_accept_mask), n_clus))
-    np.savez(os.path.join(session_folder_save, "cluster_rejection_mask.npz"),\
+    np.savez(os.path.join(session_folder_load, "cluster_rejection_mask.npz"),\
         single_unit_mask=cluster_accept_mask,
         multi_unit_mask=multi_unit_mask
         )
@@ -219,13 +506,12 @@ def postprocess_one_session(session_folder_load, session_folder_save):
         #     continue
         prim_ch = pri_ch_lut[i_clus]
         prim_x, prim_y = geom[prim_ch, :]
-        non_neighbor_mask = ((geom[:,0]-prim_x)**2 + (geom[:,1]-prim_y)**2 >= ADJACENCY_RADIUS_SQUARED)
+        non_neighbor_mask = ((geom[:,0]-prim_x)**2 + (geom[:,1]-prim_y)**2 >= PARAMS['ADJACENCY_RADIUS_SQUARED'])
         weights = template_p2ps[:, i_clus]
         weights[non_neighbor_mask] = 0
         weights = weights / np.sum(weights)
         clus_coordinates[i_clus, :] = np.sum(weights[:,None] * geom, axis=0)
-    pd.DataFrame(data=clus_coordinates).to_csv(os.path.join(session_folder_save, "clus_locations.csv"), index=False, header=False)
-
+    pd.DataFrame(data=clus_coordinates).to_csv(os.path.join(session_folder_load, "clus_locations.csv"), index=False, header=False)
     # get spike waveforms and amplitudes with time
     print("Reading spikes")
     ts_readspikes = time()
@@ -293,7 +579,9 @@ def postprocess_one_session(session_folder_load, session_folder_save):
     spk_amp_stds = []
     n_bins_amphist_sameclus = 50
     ts_amphist = time()
+    print("nclus: %d" %(n_clus))
     for i_clus in range(n_clus):
+        print("%d, %d" %(i_clus, n_clus))
         peak_amp_hist, amphist_bin_edges = np.histogram(spk_amp_series[i_clus], bins=n_bins_amphist_sameclus)
         spk_amp_hists.append(peak_amp_hist)
         spk_amp_hist_bin_edges.append(amphist_bin_edges)
@@ -303,9 +591,6 @@ def postprocess_one_session(session_folder_load, session_folder_save):
         spk_amp_stds.append(np.std(spk_amp_series[i_clus]))
     print("Amplitude statistics computation time", time()-ts_amphist)
         
-
-    
-    
     #%% viz
     ################################## VISUALIZATION
 
@@ -350,7 +635,7 @@ def postprocess_one_session(session_folder_load, session_folder_save):
         )
     ax_loc.set_aspect("equal")
     if CHANNELMAP2X16:
-        ax_loc.set_xlim(-20, 3*GW_BETWEENSHANK+GW_WITHINSHANK+20)
+        ax_loc.set_xlim(-20, 3*GW_BETWEENSHANK+GH+20)
         ax_loc.set_ylim(-20, 15*GH+20)
     else:
         ax_loc.set_xlim(-20, 3*GW_BETWEENSHANK+20)
@@ -419,296 +704,26 @@ def postprocess_one_session(session_folder_load, session_folder_save):
     # exit(0)
     ts = time()
     fig_size_scale = 1
-    def plot_single_cluster_1x32(i_clus_plot):
-        # if cluster_accept_mask[i_clus_plot]==False:
-        #     print("Clus %d is not accepted, skipping")
-        #     return
-        import matplotlib
-        matplotlib.font_manager._get_font.cache_clear()
-        y_scale = np.max(np.abs(template_waveforms[:, :, i_clus_plot]))
-        fig2 = plt.figure(figsize=(48*fig_size_scale,32*fig_size_scale))
-        prim_ch = pri_ch_lut[i_clus_plot] # look up primary channel
-        gs_ovr = gridspec.GridSpec(32, 48, figure=fig2)
-        
-        # plot channel & cluster location viz
-        ax_loc_viz = fig2.add_subplot(gs_ovr[:, :8])
-        # all channels
-        ax_loc_viz.scatter(geom[:,0], geom[:,1], s=24, color='blue')
-        # highlight primary channel
-        ax_loc_viz.scatter( \
-            [geom[prim_ch,0]], [geom[prim_ch,1]], \
-            marker='s', s=24, color='orange' \
-            )
-        # location of current cluster
-        ax_loc_viz.scatter(\
-            [clus_coordinates[i_clus_plot,0]], [clus_coordinates[i_clus_plot,1]], \
-            marker="x", s=smap[int(peak_amplitude_ranks[i_clus_plot])], color='orange', \
-            ) 
-        # all clusters
-        ax_loc_viz.scatter(\
-            clus_coordinates[cluster_accept_mask, 0], clus_coordinates[cluster_accept_mask, 1], \
-            marker='.', c=peak_amplitude_ranks[cluster_accept_mask], \
-            cmap=cmap, vmin=0, vmax=n_clus, \
-            s=smap[peak_amplitude_ranks[cluster_accept_mask]], alpha=.5\
-            )
-        ax_loc_viz.set_aspect("equal")
-        ax_loc_viz.set_xlim(-20, 3*GW_BETWEENSHANK+20)
-        ax_loc_viz.set_ylim(-20, 31*GH+20)
-        ax_loc_viz.set_xlabel("x-coordinate (um)")
-        ax_loc_viz.set_ylabel("y-coordinate (um)")
-        ax_loc_viz.invert_yaxis()
-        
-        # plot template waveforms
-        # gs_waveforms = gridspec.GridSpecFromSubplotSpec(16, 2, subplot_spec=gs_ovr[:, 4:8]) # syntactically correct?
-        for i_ch in range(n_ch):
-            x, y = geom[i_ch,:]
-            plot_row, plot_col = (31-int(y/GH)), (int(x/GW_BETWEENSHANK))
-            ax = fig2.add_subplot(gs_ovr[plot_row, 10+plot_col*3:13+plot_col*3])# plt.subplot(16,2,plot_row*2+plot_col+1)
-            ax.plot(\
-                np.arange(waveform_len)/F_SAMPLE*1000, \
-                template_waveforms[i_ch, :, i_clus_plot], \
-                # label="Coordinate (%d,%d)" % (x, y),\
-                # color=cmap(peak_amplitude_ranks[i_clus_plot]) \
-                )
-            ax.set_ylim(-1*y_scale, y_scale)
-            if plot_col>0:
-                ax.set_yticks([])
-            if plot_row<31:
-                ax.set_xticks([])
-            else:
-                ax.set_xlabel("Time (ms)")
-
-            # ax.legend(fontsize=13)
-            # ax.set_title("Coordinate (%d,%d)" % (x, y), fontsize=10)
-        
-        # plot ISI histogram
-        ax_isihist = fig2.add_subplot(gs_ovr[:4, 24:])
-        ax_isihist.bar(0.5+np.arange(n_bins), isi_hists[i_clus_plot,:], width=1.)
-        ax_isihist.set_xticks(isi_bin_edges[::10])
-        ax_isihist.set_xticklabels(isi_bin_edges[::10])
-        ax_isihist.set_xlabel("ISI (ms)")
-        ax_isihist.set_ylabel("Count")
-        ax_isihist.set_xlim(0, isi_vis_max)
-        ax_isihist.set_title("ISI histogram")
-        
-        # plot Amplitude series
-        ax_ampstamp = fig2.add_subplot(gs_ovr[5:9, 24:])
-        ax_ampstamp.scatter(proper_spike_times_by_clus[i_clus_plot]/F_SAMPLE, spk_amp_series[i_clus_plot], s=1)
-        ax_ampstamp.set_xlim(0, final_stamp_time)
-        ax_ampstamp.set_xlabel("Time (sec)")
-        ax_ampstamp.set_ylabel("Transient amplitude (uV)")
-        
-        # waveforms at primary channel for most events
-        if waveforms_all[i_clus_plot].shape[0] > 300:
-            ids_spikes_to_plot = np.linspace(0, waveforms_all[i_clus_plot].shape[0]-1, 300).astype(int)
-        else:
-            ids_spikes_to_plot = np.arange(waveforms_all[i_clus_plot].shape[0])
-        ax_template = fig2.add_subplot(gs_ovr[10:14, 24:])
-        ax_template.plot(\
-            np.arange(waveform_len)/F_SAMPLE*1000, \
-            waveforms_all[i_clus_plot][ids_spikes_to_plot, :].T, \
-            color='g', alpha=0.3\
-            )
-        ax_template.plot(np.arange(waveform_len)/F_SAMPLE*1000, \
-            template_waveforms[prim_ch, :, i_clus_plot], \
-            color='k'
-            )
-
-        # spike amplitude histogram
-        ax_amphist = fig2.add_subplot(gs_ovr[15:19, 24:])
-        peak_amp_hist = spk_amp_hists[i_clus_plot]
-        amphist_bin_edges = spk_amp_hist_bin_edges[i_clus_plot]
-        nbins_amphist = amphist_bin_edges.shape[0]-1
-        amp_min = spk_amp_mins[i_clus_plot]
-        amp_max = spk_amp_maxs[i_clus_plot]
-        amp_mean = spk_amp_means[i_clus_plot]
-        amp_std = spk_amp_stds[i_clus_plot]
-        amphist_binwidth = amphist_bin_edges[1]-amphist_bin_edges[0]
-        barplot_x_coordinates = (amphist_bin_edges[:-1] + amphist_bin_edges[1:])/2
-        ax_amphist.bar(np.arange(nbins_amphist)+0.5, peak_amp_hist, width=1)
-        ax_amphist.set_xticks(np.arange(nbins_amphist)[::2]+0.5)
-        ax_amphist.set_xticklabels(barplot_x_coordinates.astype(int)[::2], fontsize=7)
-        # ax.xaxis.set_minor_locator(matplotlib.ticker.MultipleLocator(1))
-        ax_amphist.tick_params(axis='both', which='major', labelsize=8)
-        ax_amphist.set_xlabel("Amplitude (uV)", fontsize=7)
-        ax_amphist.set_ylabel("Neuron count", fontsize=7)
-        text_str = "Mean=%.2fuV\nStd=%.2fuV\nMin=%.2fuV\nMax=%.2fuV\nBinwidth=%.2fuV" % ( \
-            amp_mean, amp_std, amp_min, amp_max, amphist_binwidth)
-        ax_amphist.text(ax_amphist.get_xlim()[1]*0.7, ax_amphist.get_ylim()[1]*0.7, text_str, fontsize=28)
-
-        # print annotations
-        ax_text = fig2.add_subplot(gs_ovr[20:, 24:])
-        str_annot  = "Cluster label: %d\n" % (clus_labels[i_clus_plot])
-        str_annot += "Average firing rate: %.2f (Total spike count: %d)\n" % (firing_rates[i_clus_plot], spike_count_by_clus[i_clus_plot])
-        str_annot += "Isolation score: %.4f\n" % (isolation_score[i_clus_plot])
-        str_annot += "Noise overlap score: %.4f\n" % (noise_overlap_score[i_clus_plot])
-        str_annot += "Peak SNR: %.2f\n" % (peak_snr[i_clus_plot])
-        str_annot += "Refractory 2ms violation ratio: %.4f\n" % (refrac_violation_ratio[i_clus_plot])
-        str_annot += "Automatic screening: %s\n" % ("passed" if cluster_accept_mask[i_clus_plot] else ("multi-unit" if multi_unit_mask[i_clus_plot] else "failed"))
-        ax_text.text(0.5, 0.5, str_annot, va="center", ha="center", fontsize=28)
-
-        # plt.suptitle("Cluster %d, kept=%d" % (i_clus_plot+1, clus_keep_mask[i_clus_plot]), fontsize=25)
-        # plt.tight_layout()
-        plt.subplots_adjust(wspace=0.05, hspace=0.05)
-        if cluster_accept_mask[i_clus_plot]:
-            plt.savefig(os.path.join(figpath, "waveform_clus%d.png"%(clus_labels[i_clus_plot])))
-        elif multi_unit_mask[i_clus_plot]:
-            plt.savefig(os.path.join(figpath, "z_multiunit_waveform_clus%d.png"%(clus_labels[i_clus_plot])))
-        else:
-            plt.savefig(os.path.join(figpath, "z_failed_waveform_clus%d.png"%(clus_labels[i_clus_plot])))
-        plt.close()
-        print(i_clus_plot+1)
     
-    def plot_single_cluster_2x16(i_clus_plot):
-        # if cluster_accept_mask[i_clus_plot]==False:
-        #     print("Clus %d is not accepted, skipping")
-        #     return
-        import matplotlib
-        matplotlib.font_manager._get_font.cache_clear()
-        y_scale = np.max(np.abs(template_waveforms[:, :, i_clus_plot]))
-        fig2 = plt.figure(figsize=(48*fig_size_scale,32*fig_size_scale))
-        prim_ch = pri_ch_lut[i_clus_plot] # look up primary channel
-        gs_ovr = gridspec.GridSpec(32, 48, figure=fig2)
-        
-        # plot channel & cluster location viz
-        ax_loc_viz = fig2.add_subplot(gs_ovr[:, :16])
-        # all channels
-        ax_loc_viz.scatter(geom[:,0], geom[:,1], s=24, color='blue')
-        # highlight primary channel
-        ax_loc_viz.scatter( \
-            [geom[prim_ch,0]], [geom[prim_ch,1]], \
-            marker='s', s=24, color='orange' \
-            )
-        # location of current cluster
-        ax_loc_viz.scatter(\
-            [clus_coordinates[i_clus_plot,0]], [clus_coordinates[i_clus_plot,1]], \
-            marker="x", s=smap[int(peak_amplitude_ranks[i_clus_plot])], color='orange', \
-            ) 
-        # all clusters
-        ax_loc_viz.scatter(\
-            clus_coordinates[cluster_accept_mask, 0], clus_coordinates[cluster_accept_mask, 1], \
-            marker='.', c=peak_amplitude_ranks[cluster_accept_mask], \
-            cmap=cmap, vmin=0, vmax=n_clus, \
-            s=smap[peak_amplitude_ranks[cluster_accept_mask]], alpha=.5\
-            )
-        ax_loc_viz.set_aspect("equal")
-        ax_loc_viz.set_xlim(-20, 3*GW_BETWEENSHANK+GW_WITHINSHANK+20)
-        ax_loc_viz.set_ylim(-20, 15*GH+20)
-        ax_loc_viz.set_xlabel("x-coordinate (um)")
-        ax_loc_viz.set_ylabel("y-coordinate (um)")
-        ax_loc_viz.invert_yaxis()
-        # plot template waveforms
-        # gs_waveforms = gridspec.GridSpecFromSubplotSpec(16, 2, subplot_spec=gs_ovr[:, 4:8]) # syntactically correct?
-        for i_ch in range(n_ch):
-            x, y = int(geom[i_ch,0]), int(geom[i_ch,1])
-            plot_row, plot_col = (15-y//GH), ((x//GW_BETWEENSHANK)*2 + int((x%GW_BETWEENSHANK)>0))
-            # print(i_ch, 
-            # print(x,y,plot_row,plot_col)
-            ax = fig2.add_subplot(gs_ovr[plot_row*2:plot_row*2+2, 17+plot_col*2:19+plot_col*2])# plt.subplot(16,2,plot_row*2+plot_col+1)
-            ax.plot(\
-                np.arange(waveform_len)/F_SAMPLE*1000, \
-                template_waveforms[i_ch, :, i_clus_plot], \
-                # label="Coordinate (%d,%d)" % (x, y),\
-                # color=cmap(peak_amplitude_ranks[i_clus_plot]) \
-                )
-            ax.text(0,0, "%d"%(native_orders[i_ch]))
-            ax.set_ylim(-1*y_scale, y_scale)
-            if plot_col>0:
-                ax.set_yticks([])
-            if plot_row<31:
-                ax.set_xticks([])
-            else:
-                ax.set_xlabel("Time (ms)")
-
-            # ax.legend(fontsize=13)
-            # ax.set_title("Coordinate (%d,%d)" % (x, y), fontsize=10)
-        
-        # plot ISI histogram
-        ax_isihist = fig2.add_subplot(gs_ovr[:4, 34:])
-        ax_isihist.bar(0.5+np.arange(n_bins), isi_hists[i_clus_plot,:], width=1.)
-        ax_isihist.set_xticks(isi_bin_edges[::10])
-        ax_isihist.set_xticklabels(isi_bin_edges[::10])
-        ax_isihist.set_xlabel("ISI (ms)")
-        ax_isihist.set_ylabel("Count")
-        ax_isihist.set_xlim(0, isi_vis_max)
-        ax_isihist.set_title("ISI histogram")
-        
-        # plot Amplitude series
-        ax_ampstamp = fig2.add_subplot(gs_ovr[5:9, 34:])
-        ax_ampstamp.scatter(proper_spike_times_by_clus[i_clus_plot]/F_SAMPLE, spk_amp_series[i_clus_plot], s=1)
-        ax_ampstamp.set_xlim(0, final_stamp_time)
-        ax_ampstamp.set_xlabel("Time (sec)")
-        ax_ampstamp.set_ylabel("Transient amplitude (uV)")
-        
-        # waveforms at primary channel for most events
-        if waveforms_all[i_clus_plot].shape[0] > 300:
-            ids_spikes_to_plot = np.linspace(0, waveforms_all[i_clus_plot].shape[0]-1, 300).astype(int)
-        else:
-            ids_spikes_to_plot = np.arange(waveforms_all[i_clus_plot].shape[0])
-        ax_template = fig2.add_subplot(gs_ovr[10:14, 34:])
-        ax_template.plot(\
-            np.arange(waveform_len)/F_SAMPLE*1000, \
-            waveforms_all[i_clus_plot][ids_spikes_to_plot, :].T, \
-            color='g', alpha=0.3\
-            )
-        ax_template.plot(np.arange(waveform_len)/F_SAMPLE*1000, \
-            template_waveforms[prim_ch, :, i_clus_plot], \
-            color='k'
-            )
-        
-        # spike amplitude histogram
-        ax_amphist = fig2.add_subplot(gs_ovr[15:19, 34:])
-        peak_amp_hist = spk_amp_hists[i_clus_plot]
-        amphist_bin_edges = spk_amp_hist_bin_edges[i_clus_plot]
-        nbins_amphist = amphist_bin_edges.shape[0]-1
-        amp_min = spk_amp_mins[i_clus_plot]
-        amp_max = spk_amp_maxs[i_clus_plot]
-        amp_mean = spk_amp_means[i_clus_plot]
-        amp_std = spk_amp_stds[i_clus_plot]
-        amphist_binwidth = amphist_bin_edges[1]-amphist_bin_edges[0]
-        barplot_x_coordinates = (amphist_bin_edges[:-1] + amphist_bin_edges[1:])/2
-        ax_amphist.bar(np.arange(nbins_amphist)+0.5, peak_amp_hist, width=1)
-        ax_amphist.set_xticks(np.arange(nbins_amphist)[::2]+0.5)
-        ax_amphist.set_xticklabels(barplot_x_coordinates.astype(int)[::2], fontsize=7)
-        # ax.xaxis.set_minor_locator(matplotlib.ticker.MultipleLocator(1))
-        ax_amphist.tick_params(axis='both', which='major', labelsize=8)
-        ax_amphist.set_xlabel("Amplitude (uV)", fontsize=7)
-        ax_amphist.set_ylabel("Neuron count", fontsize=7)
-        text_str = "Mean=%.2fuV\nStd=%.2fuV\nMin=%.2fuV\nMax=%.2fuV\nBinwidth=%.2fuV" % ( \
-            amp_mean, amp_std, amp_min, amp_max, amphist_binwidth)
-        ax_amphist.text(ax_amphist.get_xlim()[1]*0.7, ax_amphist.get_ylim()[1]*0.7, text_str, fontsize=28)
-
-        # print annotations
-        ax_text = fig2.add_subplot(gs_ovr[20:, 34:])
-        str_annot  = "Cluster label: %d\n" % (clus_labels[i_clus_plot])
-        str_annot += "Average firing rate: %.2f (Total spike count: %d)\n" % (firing_rates[i_clus_plot], spike_count_by_clus[i_clus_plot])
-        str_annot += "Isolation score: %.4f\n" % (isolation_score[i_clus_plot])
-        str_annot += "Noise overlap score: %.4f\n" % (noise_overlap_score[i_clus_plot])
-        str_annot += "Peak SNR: %.2f\n" % (peak_snr[i_clus_plot])
-        str_annot += "Refractory 2ms violation ratio: %.4f\n" % (refrac_violation_ratio[i_clus_plot])
-        str_annot += "Automatic screening: %s\n" % ("passed" if cluster_accept_mask[i_clus_plot] else ("multi-unit" if multi_unit_mask[i_clus_plot] else "failed"))
-        ax_text.text(0.5, 0.5, str_annot, va="center", ha="center", fontsize=28)
-
-        # plt.suptitle("Cluster %d, kept=%d" % (i_clus_plot+1, clus_keep_mask[i_clus_plot]), fontsize=25)
-        # plt.tight_layout()
-        plt.subplots_adjust(wspace=0.05, hspace=0.05)
-        if cluster_accept_mask[i_clus_plot]:
-            plt.savefig(os.path.join(figpath, "waveform_clus%d.png"%(clus_labels[i_clus_plot])))
-        elif multi_unit_mask[i_clus_plot]:
-            plt.savefig(os.path.join(figpath, "z_multiunit_waveform_clus%d.png"%(clus_labels[i_clus_plot])))
-        else:
-            plt.savefig(os.path.join(figpath, "z_failed_waveform_clus%d.png"%(clus_labels[i_clus_plot])))
-        plt.close()
-        print(i_clus_plot+1)
+    
+    
     
     def single_process_plot_func(i_clus_begin, i_clus_end):
         """plot [i_clus_begin, i_clus_end) in a for loop"""
         if CHANNELMAP2X16:
             for i_clus in range(i_clus_begin, i_clus_end):
-                plot_single_cluster_2x16(i_clus)
+                plot_single_cluster_2x16(i_clus, template_waveforms, fig_size_scale, pri_ch_lut, geom, clus_coordinates, smap, \
+                    GW_BETWEENSHANK, GH, cluster_accept_mask, waveform_len, F_SAMPLE, proper_spike_times_by_clus, spk_amp_series, \
+                    final_stamp_time, waveforms_all,spk_amp_hists, spk_amp_mins, spk_amp_maxs, spk_amp_means, spk_amp_stds, firing_rates, \
+                    spike_count_by_clus, isolation_score, noise_overlap_score, peak_snr, refrac_violation_ratio, violation_log, \
+                    multi_unit_mask, peak_amplitude_ranks, cmap, n_clus, n_ch, n_bins, isi_hists, isi_bin_edges, isi_vis_max, spk_amp_hist_bin_edges, clus_labels, figpath)
         else:
             for i_clus in range(i_clus_begin, i_clus_end):
-                plot_single_cluster_1x32(i_clus)
+                plot_single_cluster_1x32(i_clus, template_waveforms, fig_size_scale, pri_ch_lut, geom, clus_coordinates, smap, \
+                    GW_BETWEENSHANK, GH, cluster_accept_mask, waveform_len, F_SAMPLE, proper_spike_times_by_clus, spk_amp_series, \
+                    final_stamp_time, waveforms_all,spk_amp_hists, spk_amp_mins, spk_amp_maxs, spk_amp_means, spk_amp_stds, firing_rates,\
+                    spike_count_by_clus, isolation_score, noise_overlap_score, peak_snr, refrac_violation_ratio, violation_log, \
+                    multi_unit_mask, peak_amplitude_ranks, cmap, n_clus, n_ch, n_bins, isi_hists, isi_bin_edges, isi_vis_max, spk_amp_hist_bin_edges, clus_labels, figpath)
 
 
     
@@ -728,10 +743,80 @@ def postprocess_one_session(session_folder_load, session_folder_save):
     print("Plotting done in %f seconds" % (time()-ts))
 
 
+def func_discard_noise_and_viz(SESSION_FOLDER):
 
-if __name__ == '__main__':
+    # def func_discard_noise_and_viz(SESSION_FOLDER, ):
+
+    # Files and inputs 
+    # SESSION_FOLDER = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-06"
+    RASTER_PLOT_AMPLITUDE = False
+    
+    if os.path.isfile(os.path.join(SESSION_FOLDER,'filt.mda')):
+        NO_READING_FILTMDA = False # set to False on first run of each session
+    else:
+        NO_READING_FILTMDA = True
+    # -------------------------settings
+    # Extract sampling frequency
+    file_pre_ms = os.path.join(SESSION_FOLDER,'pre_MS.json')
+    with open(file_pre_ms, 'r') as f:
+      data_pre_ms = json.load(f)
+    F_SAMPLE = float(data_pre_ms['SampleRate'])
+    CHANNELMAP2X16 = bool(data_pre_ms['ELECTRODE_2X16'])      # this affects how the plots are generated
+
+    FIGDIRNAME = "figs_allclus_waveforms"
+    #CHANNELMAP2X16 = False 
+
+    # session_newsavefolder = os.path.join(SESSION_FOLDER, "Post-process")
+    session_newsavefolder = SESSION_FOLDER
+    # WINDOW_LEN_IN_SEC = 15 # 30e-3
+    # SMOOTHING_SIZE = 5
+    # WINDOW_IN_SAMPLES = int(WINDOW_LEN_IN_SEC*F_SAMPLE)
+
+    N_PROCESSES = 8 # multiprocessing option
+    TRANSIENT_AMPLITUDE_VALID_DURATION = 7e-4 # seconds (duration of data before and after each spike that we consider when deciding the transient amplitude)
+    TAVD_NSAMPLE = int(np.ceil(TRANSIENT_AMPLITUDE_VALID_DURATION*F_SAMPLE))
+    matplotlib.rcParams['font.size'] = 22
+    native_orders = np.load(os.path.join(SESSION_FOLDER, "native_ch_order.npy"))
+
+    # layout setting
+    if CHANNELMAP2X16:
+        GH = 30
+        GW_BETWEENSHANK = 250
+    else:
+        GH = 25
+        GW_BETWEENSHANK = 300
+
+
+    if not os.path.exists(session_newsavefolder):
+        os.makedirs(session_newsavefolder)
+
+    COMMON_AVG_REREFERENCE = True
+    ADJACENCY_RADIUS_SQUARED = 200**2 # um^2, [consistent with mountainsort shell script](not anymore)
+    SNR_THRESH = 1.5
+    AMP_THRESH = 50 # 35 for Anesthetized # 50 for awake
+    FIRING_RATE_THRESH = 0.05#0.05 # 0.5
+    P2P_PROPORTION_THRESH = 0.2         # For spatial screening (p2p threshold %) AKA isolation in space
+    ISI_VIOLATION_RATIO = 0.0303         # ratio of spikes violating the inter spike interval criterion
+    PARAMS = {}
+    PARAMS['F_SAMPLE'] = F_SAMPLE
+    PARAMS['ADJACENCY_RADIUS_SQUARED'] = ADJACENCY_RADIUS_SQUARED
+    PARAMS['SNR_THRESH'] = SNR_THRESH
+    PARAMS['AMP_THRESH'] = AMP_THRESH
+    PARAMS['FIRING_RATE_THRESH'] = FIRING_RATE_THRESH
+    PARAMS['P2P_PROPORTION_THRESH'] = P2P_PROPORTION_THRESH
+    PARAMS['ISI_VIOLATION_RATIO'] = ISI_VIOLATION_RATIO
+    # PARAMS['FIRING_RATE_WINDOW_LEN_IN_SEC'] = WINDOW_LEN_IN_SEC
+    # PARAMS['FIRING_RATE_SMOOTHING_SIZE'] = SMOOTHING_SIZE
+    PARAMS['TRANSIENT_AMPLITUDE_VALID_DURATION'] = TRANSIENT_AMPLITUDE_VALID_DURATION
+    PARAMS['NATIVE_ORDERS'] = native_orders.tolist()
+    PARAMS['COMMON_AVG_REREFERENCE'] = COMMON_AVG_REREFERENCE
+    # Parameters recorded in the params_log.json file
+    with open(os.path.join(session_newsavefolder, "params_log.json"), 'w') as f:
+        json.dump(PARAMS, f)
+
+
     print("FoldeNname:\n       ", SESSION_FOLDER)
-    postprocess_one_session(SESSION_FOLDER, session_newsavefolder)
+    postprocess_one_session(SESSION_FOLDER, session_newsavefolder, PARAMS, COMMON_AVG_REREFERENCE, CHANNELMAP2X16, GH, GW_BETWEENSHANK, FIGDIRNAME, TAVD_NSAMPLE, N_PROCESSES, F_SAMPLE, NO_READING_FILTMDA)
     # session_subfolders = list(os.listdir(animal_folder))
     # session_subfolders = list(filter(lambda x: ('.json' not in x) and ('.ignore' not in x) , session_subfolders) )
     # error_sessions = []
