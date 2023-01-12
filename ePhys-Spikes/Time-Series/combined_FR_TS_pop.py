@@ -30,18 +30,20 @@ plt.rc('font', size=16)          # controls default text sizes
 mouse_rh3 = '/home/hyr2-office/Documents/Data/NVC/RH-3/'
 mouse_bc7 = '/home/hyr2-office/Documents/Data/NVC/BC7/'
 mouse_bc6 = '/home/hyr2-office/Documents/Data/NVC/BC6/'
+mouse_rh7 = '/home/hyr2-office/Documents/Data/NVC/RH-7/'
 output_folder = '/home/hyr2-office/Documents/Data/NVC/'
 
 mouse_rh3 = os.path.join(mouse_rh3, 'full_mouse_ephys.mat')
 mouse_bc7 = os.path.join(mouse_bc7, 'full_mouse_ephys.mat')
 mouse_bc6 = os.path.join(mouse_bc6, 'full_mouse_ephys.mat')
-
+mouse_rh7 = os.path.join(mouse_rh7, 'full_mouse_ephys.mat')
 
 pop_stats = {}
 
 pop_stats[0] = sio.loadmat(mouse_rh3)
 pop_stats[1] = sio.loadmat(mouse_bc7)
 pop_stats[2] = sio.loadmat(mouse_bc6)
+pop_stats[3] = sio.loadmat(mouse_rh7)
 
 D_less150 = {}
 D_great150_less300 = {}
@@ -96,12 +98,16 @@ filename_save = os.path.join(output_folder,'activated_neurons.png')
 D_less300[0] = pop_stats[0]['act_nclus'][:,0]           
 D_less300[1] = pop_stats[0]['act_nclus'][:,1]
 D_less300[2] = pop_stats[1]['act_nclus'][:,0]
+D_less300[3] = pop_stats[3]['act_nclus'][:,1]
+D_less300[4] = pop_stats[3]['act_nclus'][:,2]
 D_great300[0] = pop_stats[1]['act_nclus'][:,2]
 D_great300[1] = pop_stats[2]['act_nclus'][:,2]
+D_great300[2] = pop_stats[3]['act_nclus'][:,0]
 outside_barrel[0] = pop_stats[1]['act_nclus'][:,1] 
 outside_barrel[1] = pop_stats[0]['act_nclus'][:,2]
 S2[0] = pop_stats[1]['act_nclus'][:,3] 
 S2[1] = pop_stats[2]['act_nclus'][:,3] 
+S2[2] = pop_stats[3]['act_nclus'][:,3]
 
 # Fixing data
 # D_less150[0] = np.append(D_less150[0],D_less150[0][-1])
@@ -113,7 +119,10 @@ D_great300[1][-2] = np.average([D_great300[1][-3],D_great300[1][-1]])
 outside_barrel[1] = np.append(outside_barrel[1],np.average([outside_barrel[1][-1],outside_barrel[1][-2]]))
 S2[1] = np.delete(S2[1],-2)
 S2[1][-2] = np.average([S2[1][-3],S2[1][-1]]) 
-
+D_less300[3] = D_less300[3][np.array([1,2,3,4,5,6,7,9])]
+D_less300[4] = D_less300[4][np.array([1,2,3,4,5,6,7,9])]
+D_great300[2] = D_great300[2][np.array([1,2,3,4,5,6,7,9])]
+S2[2] = S2[2][np.array([1,2,3,4,5,6,7,9])]
 # Add subplot and layout of figure
 x_ticks_labels = pop_stats[1]['x_ticks_labels']
 x_axis_time = np.array([-2,-1,2,7,14,21,28,42])

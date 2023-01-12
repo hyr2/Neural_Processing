@@ -21,6 +21,7 @@ from natsort import natsorted
 #         |__11-04/
 # Each session folder must have all the .rhd files and the whisker_stim.txt file
 
+
 # read parameters
 with open("./params.json", "r") as f:
     params = json.load(f)

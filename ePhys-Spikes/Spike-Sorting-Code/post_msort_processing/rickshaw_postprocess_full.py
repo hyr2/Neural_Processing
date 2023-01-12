@@ -17,12 +17,14 @@ from natsort import natsorted
 import matlab.engine
 # Automate batch processing of the pre processing step
 
+
 # read parameters
 with open("./params.json", "r") as f:
     params = json.load(f)
 
 input_dir = params['spikesort_dir']
 CHANNEL_MAP_FPATH = params['CHANNEL_MAP_FPATH']
+
 source_dir_list = natsorted(os.listdir(input_dir))
 
 # Start matlab engine and change directory to code file
@@ -41,9 +43,9 @@ for iter, filename in enumerate(source_dir_list):
         F_SAMPLE = np.float(data_pre_ms['SampleRate'])
 
         # Curation
-        # func_discard_noise_and_viz(Raw_dir)
+        func_discard_noise_and_viz(Raw_dir)
         # Population analysis
-        # func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
+        func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
 
         # Calling matlab scripts from python
         eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,nargout=0)
