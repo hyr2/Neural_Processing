@@ -6,7 +6,7 @@ Created on Sun Nov  6 20:30:52 2022
 @author: luanlab
 """
 # Automate batch processing of the pre processing step
-from preprocess_rhd_HR import *
+from preprocess_rhd import *
 import os, subprocess, json
 from natsort import natsorted
 
