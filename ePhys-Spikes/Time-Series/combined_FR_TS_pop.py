@@ -17,6 +17,7 @@ import os
 from natsort import natsorted
 import pandas as pd
 import seaborn as sns
+from copy import deepcopy
 
 # Plotting fonts
 sns.set_style('darkgrid') # darkgrid, white grid, dark, white and ticks
@@ -31,22 +32,44 @@ mouse_rh3 = '/home/hyr2-office/Documents/Data/NVC/RH-3/'
 mouse_bc7 = '/home/hyr2-office/Documents/Data/NVC/BC7/'
 mouse_bc6 = '/home/hyr2-office/Documents/Data/NVC/BC6/'
 mouse_rh7 = '/home/hyr2-office/Documents/Data/NVC/RH-7/'
+mouse_bbc5 = '/home/hyr2-office/Documents/Data/NVC/B-BC5/'
+mouse_bc8 = '/home/hyr2-office/Documents/Data/NVC/BC8/'
+mouse_rh8 = '/home/hyr2-office/Documents/Data/NVC/RH-8/'
+mouse_rh9 = '/home/hyr2-office/Documents/Data/NVC/RH-9/'
+
 output_folder = '/home/hyr2-office/Documents/Data/NVC/'
 
 mouse_rh3 = os.path.join(mouse_rh3, 'full_mouse_ephys.mat')
 mouse_bc7 = os.path.join(mouse_bc7, 'full_mouse_ephys.mat')
 mouse_bc6 = os.path.join(mouse_bc6, 'full_mouse_ephys.mat')
 mouse_rh7 = os.path.join(mouse_rh7, 'full_mouse_ephys.mat')
+mouse_bbc5  = os.path.join(mouse_bbc5 , 'full_mouse_ephys.mat')
+mouse_rh8 = os.path.join(mouse_rh8, 'full_mouse_ephys.mat')
+mouse_rh9 = os.path.join(mouse_rh9, 'full_mouse_ephys.mat')
 
-pop_stats = {}
+# Creating dictionaries
+dict_rh3 = sio.loadmat(mouse_rh3)
+dict_bc7 = sio.loadmat(mouse_bc7)
+dict_bc6 = sio.loadmat(mouse_bc6)
+dict_rh7 = sio.loadmat(mouse_rh7)
+dict_bbc5 = sio.loadmat(mouse_bbc5)
+# dict_rh8 = sio.loadmat(mouse_rh8)
+# dict_rh9 = sio.loadmat(mouse_rh9)
 
-pop_stats[0] = sio.loadmat(mouse_rh3)
-pop_stats[1] = sio.loadmat(mouse_bc7)
-pop_stats[2] = sio.loadmat(mouse_bc6)
-pop_stats[3] = sio.loadmat(mouse_rh7)
+dict_dict =  {'dict_rh3':deepcopy(dict_rh3), 'dict_bc7':deepcopy(dict_bc7), 'dict_bc6':deepcopy(dict_bc6), 'dict_rh7':deepcopy(dict_rh7), 'dict_bbc5':deepcopy(dict_bbc5)}  # deepcopy used to ensure new memory location is assigned
+dict_rh3.clear()
+dict_bc7.clear()
+dict_bc6.clear()
+dict_rh7.clear()
+dict_bbc5.clear()
 
-D_less150 = {}
-D_great150_less300 = {}
+# pop_stats = {}
+# pop_stats[0] = sio.loadmat(mouse_rh3)
+# pop_stats[1] = sio.loadmat(mouse_bc7)
+# pop_stats[2] = sio.loadmat(mouse_bc6)
+# pop_stats[3] = sio.loadmat(mouse_rh7)
+
+# Four categories (Dr.Lan signs off on these)
 D_less300 = {}
 D_great300 = {}
 outside_barrel = {}
@@ -95,21 +118,24 @@ filename_save = os.path.join(output_folder,'activated_neurons.png')
 # D_less150[0] = pop_stats[0]['act_nclus'][:,0]           
 # D_great150_less300[0] = pop_stats[0]['act_nclus'][:,1]
 # D_great150_less300[1] = pop_stats[1]['act_nclus'][:,0]
-D_less300[0] = pop_stats[0]['act_nclus'][:,0]           
-D_less300[1] = pop_stats[0]['act_nclus'][:,1]
-D_less300[2] = pop_stats[1]['act_nclus'][:,0]
-D_less300[3] = pop_stats[3]['act_nclus'][:,1]
-D_less300[4] = pop_stats[3]['act_nclus'][:,2]
-D_great300[0] = pop_stats[1]['act_nclus'][:,2]
-D_great300[1] = pop_stats[2]['act_nclus'][:,2]
-D_great300[2] = pop_stats[3]['act_nclus'][:,0]
-outside_barrel[0] = pop_stats[1]['act_nclus'][:,1] 
-outside_barrel[1] = pop_stats[0]['act_nclus'][:,2]
-S2[0] = pop_stats[1]['act_nclus'][:,3] 
-S2[1] = pop_stats[2]['act_nclus'][:,3] 
-S2[2] = pop_stats[3]['act_nclus'][:,3]
+D_less300[0] = dict_dict['dict_rh3']['act_nclus'][:,0]           
+D_less300[1] = dict_dict['dict_rh3']['act_nclus'][:,1]
+D_less300[2] = dict_dict['dict_bc7']['act_nclus'][:,0]
+D_less300[3] = dict_dict['dict_rh7']['act_nclus'][:,1]
+D_less300[4] = dict_dict['dict_rh7']['act_nclus'][:,2]
+D_less300[5] = dict_dict['dict_bbc5']['act_nclus'][:,3]         # shank D is 50 um 
+D_great300[0] = dict_dict['dict_bc7']['act_nclus'][:,2]
+D_great300[1] = dict_dict['dict_bc6']['act_nclus'][:,2]
+D_great300[2] = dict_dict['dict_rh7']['act_nclus'][:,0]
+D_great300[3] = dict_dict['dict_bbc5']['act_nclus'][:,2]        # shank C is 300
+outside_barrel[0] = dict_dict['dict_bc7']['act_nclus'][:,1] 
+outside_barrel[1] = dict_dict['dict_rh3']['act_nclus'][:,2]
+outside_barrel[2] = dict_dict['dict_bbc5']['act_nclus'][:,1]    # shank B is outside (clearly)
+S2[0] = dict_dict['dict_bc7']['act_nclus'][:,3] 
+S2[1] = dict_dict['dict_bc6']['act_nclus'][:,3] 
+S2[2] = dict_dict['dict_rh7']['act_nclus'][:,3]
 
-# Fixing data
+# Fixing data and interpolation (linear)
 # D_less150[0] = np.append(D_less150[0],D_less150[0][-1])
 # D_great150_less300[0] = np.append(D_great150_less300[0],D_great150_less300[0][-1])
 D_less300[0] = np.append(D_less300[0],D_less300[0][-1])
