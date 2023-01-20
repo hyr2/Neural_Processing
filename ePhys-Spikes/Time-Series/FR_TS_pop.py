@@ -33,7 +33,7 @@ def sort_cell_type(input_arr):
         return output_arr
     
 
-source_dir = '/home/hyr2-office/Documents/Data/NVC/RH-7/'
+source_dir = '/home/hyr2-office/Documents/Data/NVC/BC8/'
 rmv_bsl = input('Baselines to remove (specify as index: e.g: 0, 2)? Select -1 for no baselines.\n')             # specify what baseline datasets need to be removed from the analysis
 source_dir_list = natsorted(os.listdir(source_dir))
 # Preparing variables
@@ -46,13 +46,19 @@ if not np.any(rmv_bsl == -1):
 
 # source_dir_list = natsorted(os.listdir(source_dir))
 
-# x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 28']  # RH3 (reject baselines 0 and 2)
+# x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14','Day 21','Day 28','Day 56']  # RH3 (reject baselines 0 and 2)
+# linear_xaxis = np.array([-2,-1,2,7,14,21,28,56]) 
 # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 28','Day 42'] # BC7 (reject baseline 0)
-# x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 12 ','Day 19','Day 26','Day 33','Day 47'] # BC6
+# linear_xaxis = np.array([-2,-1,2,7,14,21,28,42]) 
+# x_ticks_labels = ['bl-1','bl-2','Day 2','Day 9','Day 14 ','Day 21','Day 28','Day 35','Day 49'] # BC6 (stroke not formed at all. Data should be rejected)
+# linear_xaxis = np.array([-2,-1,2,9,14,21,28,35,49]) 
+x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14','Day 21','Day 47'] # B-BC5
+linear_xaxis = np.array([-2,-1,2,7,14,21,47]) 
+# x_ticks_labels = ['bl-1','bl-2','bl-3','Day 2','Day 7','Day 14 ','Day 24','Day 28','Day 35','Day 42','Day 49','Day 56'] # R-H7 (main)
+# linear_xaxis = np.array([-3,-2,-1,2,7,14,24,28,35,42,49,56]) # 24 special for rh7
 # x_ticks_labels = ['bl-1','Day 2','Day 7','Day 14 ','Day 21','Day 42'] # BC8 
-# x_ticks_labels = ['bl-1','Day 2','Day 7','Day 14 ','Day 21','Day 42'] # B-BC5
-x_ticks_labels = ['bl-1','bl-2','bl-3','Day 2','Day 7','Day 14 ','Day 24','Day 28','Day 35','Day 42','Day 49','Day 56'] # R-H7 (main)
-linear_xaxis = np.array([-3,-2,-1,2,7,14,24,28,35,42,49,56]) # 24 special for rh7
+# linear_xaxis = np.array([-3,-2,-1,2,2,7,7,8,14,21,54]) 
+
 x_ticks_labels = linear_xaxis
 
 pop_stats = {}
@@ -139,7 +145,7 @@ a[0,0].plot(x_ticks_labels,act_nclus[:,0],'r', lw=1.5)
 a[0,0].plot(x_ticks_labels,act_nclus[:,1],'g', lw=1.5)
 a[0,0].plot(x_ticks_labels,act_nclus[:,2],'b', lw=1.5)
 a[0,0].plot(x_ticks_labels,act_nclus[:,3],'y', lw=1.5)
-a[0,0].legend(['ShankA','ShankB','ShankC', 'ShankD'])
+a[0,0].legend(['ShankA', 'ShankB','ShankC','ShankD'])
 a[1,0].set_title("Inhibitory Neurons")
 a[1,0].plot(x_ticks_labels,inhib_nclus[:,0],'r', lw=1.5)
 a[1,0].plot(x_ticks_labels,inhib_nclus[:,1],'g', lw=1.5)
@@ -151,9 +157,9 @@ a[1,1].plot(x_ticks_labels,act_nclus_total,'r', lw=1.5)
 a[1,1].plot(x_ticks_labels,inhib_nclus_total,'b', lw=1.5)
 a[1,1].legend(['Excitatory','Inhibitory'])
 a[0,2].set_title("Excitatory Neurons")
-a[0,2].plot(x_ticks_labels,celltype_excit[:,0],'g', lw=1.5)
-a[0,2].plot(x_ticks_labels,celltype_excit[:,1],'k', lw=1.5)
-a[0,2].plot(x_ticks_labels,celltype_excit[:,2],'y', lw=1.5)
+a[0,2].plot(x_ticks_labels,celltype_excit[:,0],'g+', lw=1.5)
+a[0,2].plot(x_ticks_labels,celltype_excit[:,1],'k+', lw=1.5)
+a[0,2].plot(x_ticks_labels,celltype_excit[:,2],'y+', lw=1.5)
 a[0,2].legend(['Pyramidal','Narrow','Wide'])
 a[1,2].set_title("Inhibitory Neurons")
 a[1,2].plot(x_ticks_labels,celltype_inhib[:,0],'g', lw=1.5)
