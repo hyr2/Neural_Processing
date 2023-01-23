@@ -4,9 +4,10 @@ samplerate=$3
 geom_file=$4
 num_features_var=$5
 max_num_clips_for_pca_var=$6
+ml_temp_dir=$7
 
 
-export ML_TEMPORARY_DIRECTORY=/home/hyr2-office/Documents/Data/NVC/ml-temp
+export ML_TEMPORARY_DIRECTORY=$ml_temp_dir
 
 # Run bandpass filter stage of Mountainsort
 ml-run-process ephys.bandpass_filter \
