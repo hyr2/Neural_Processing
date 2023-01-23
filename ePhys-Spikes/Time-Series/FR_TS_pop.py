@@ -33,7 +33,7 @@ def sort_cell_type(input_arr):
         return output_arr
     
 
-source_dir = '/home/hyr2-office/Documents/Data/NVC/BC8/'
+source_dir = '/home/hyr2-office/Documents/Data/NVC/B-BC5/'
 rmv_bsl = input('Baselines to remove (specify as index: e.g: 0, 2)? Select -1 for no baselines.\n')             # specify what baseline datasets need to be removed from the analysis
 source_dir_list = natsorted(os.listdir(source_dir))
 # Preparing variables
@@ -52,17 +52,20 @@ if not np.any(rmv_bsl == -1):
 # linear_xaxis = np.array([-2,-1,2,7,14,21,28,42]) 
 # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 9','Day 14 ','Day 21','Day 28','Day 35','Day 49'] # BC6 (stroke not formed at all. Data should be rejected)
 # linear_xaxis = np.array([-2,-1,2,9,14,21,28,35,49]) 
-x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14','Day 21','Day 47'] # B-BC5
-linear_xaxis = np.array([-2,-1,2,7,14,21,47]) 
+# x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14','Day 21','Day 47'] # B-BC5
+# linear_xaxis = np.array([-2,-1,2,7,14,21,47]) 
 # x_ticks_labels = ['bl-1','bl-2','bl-3','Day 2','Day 7','Day 14 ','Day 24','Day 28','Day 35','Day 42','Day 49','Day 56'] # R-H7 (main)
 # linear_xaxis = np.array([-3,-2,-1,2,7,14,24,28,35,42,49,56]) # 24 special for rh7
 # x_ticks_labels = ['bl-1','Day 2','Day 7','Day 14 ','Day 21','Day 42'] # BC8 
-# linear_xaxis = np.array([-3,-2,-1,2,2,7,7,8,14,21,54]) 
+# linear_xaxis = np.array([-3,-2,-1,2,2,7,8,14,21,54])            
+# x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 42'] # R-H8 
+linear_xaxis = np.array([-3,-2,-1,2,7,14,21,28,35,42])            
 
 x_ticks_labels = linear_xaxis
 
 pop_stats = {}
 pop_stats_cell = {}
+names_datasets = {}
 iter = 0
 # Loading all longitudinal data into dictionaries 
 for name in source_dir_list:
@@ -71,6 +74,7 @@ for name in source_dir_list:
         if os.path.isdir(folder_loc_mat):
             pop_stats[iter] = sio.loadmat(os.path.join(folder_loc_mat,'Processed/count_analysis/population_stat_responsive_only.mat'))
             pop_stats_cell[iter] = sio.loadmat(os.path.join(folder_loc_mat,'Processed/cell_type/pop_celltypes.mat'))
+            names_datasets[iter] = name
             iter += 1
         
 act_nclus = np.zeros([len(pop_stats),4])
@@ -118,6 +122,7 @@ total_activity_act = act_FR * act_nclus
 work_amount_act = act_FR / act_nclus
 # Saving mouse summary for averaging 
 full_mouse_ephys = {}
+full_mouse_ephys['List'] = names_datasets
 full_mouse_ephys['act_nclus_total'] = act_nclus_total
 full_mouse_ephys['inhib_nclus_total'] = inhib_nclus_total
 full_mouse_ephys['celltype_excit'] = celltype_excit
@@ -157,9 +162,9 @@ a[1,1].plot(x_ticks_labels,act_nclus_total,'r', lw=1.5)
 a[1,1].plot(x_ticks_labels,inhib_nclus_total,'b', lw=1.5)
 a[1,1].legend(['Excitatory','Inhibitory'])
 a[0,2].set_title("Excitatory Neurons")
-a[0,2].plot(x_ticks_labels,celltype_excit[:,0],'g+', lw=1.5)
-a[0,2].plot(x_ticks_labels,celltype_excit[:,1],'k+', lw=1.5)
-a[0,2].plot(x_ticks_labels,celltype_excit[:,2],'y+', lw=1.5)
+a[0,2].plot(x_ticks_labels,celltype_excit[:,0],'g', lw=1.5)
+a[0,2].plot(x_ticks_labels,celltype_excit[:,1],'k', lw=1.5)
+a[0,2].plot(x_ticks_labels,celltype_excit[:,2],'y', lw=1.5)
 a[0,2].legend(['Pyramidal','Narrow','Wide'])
 a[1,2].set_title("Inhibitory Neurons")
 a[1,2].plot(x_ticks_labels,celltype_inhib[:,0],'g', lw=1.5)
