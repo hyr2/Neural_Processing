@@ -33,6 +33,7 @@ CHANNEL_MAP_FPATH = params['CHANNEL_MAP_FPATH']
 ELECTRODE_2X16 = params['ELECTRODE_2X16']
 num_features_var = params['msort_num_features']
 max_num_clips_for_pca_var = params["msort_max_num_clips_for_pca"]
+ml_temp_dir = params["msort_temp_dir"]
 
 source_dir_list = natsorted(os.listdir(input_dir))
 for iter, filename in enumerate(source_dir_list):
@@ -53,4 +54,4 @@ for iter, filename in enumerate(source_dir_list):
       geom_filepath = os.path.join(output_dir_MS,'geom.csv')
       
       # Calling MountainSort Bash script
-      subprocess.call(['bash','./mountainSort128_stroke_hyr2.sh',output_dir_MS,output_dir_MS,F_SAMPLE,geom_filepath,num_features_var,max_num_clips_for_pca_var])
+      subprocess.call(['bash','./mountainSort128_stroke_hyr2.sh',output_dir_MS,output_dir_MS,F_SAMPLE,geom_filepath,num_features_var,max_num_clips_for_pca_var,ml_temp_dir])
