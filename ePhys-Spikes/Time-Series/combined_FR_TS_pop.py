@@ -68,6 +68,8 @@ dict_bc7.clear()
 dict_rh7.clear()
 dict_bbc5.clear()
 dict_bc8.clear()
+dict_rh8.clear()
+
 
 # pop_stats = {}
 # pop_stats[0] = sio.loadmat(mouse_rh3)
@@ -121,15 +123,40 @@ S2 = {}
 # plt.savefig(filename_save,format = 'png')
 # plt.close(f)
 
-# Fixing data and interpolation (linear)
+# Data fixing (BC7) # see onenote for reasoning 
+dict_dict['dict_bc7']['act_nclus'][-1,0] = np.rint((dict_dict['dict_bc7']['act_nclus'][-2,0] + dict_dict['dict_bc7']['act_nclus'][-3,0])/2)
+# Data fixing B-BC5 # see onenote for reasoning 
+dict_dict['dict_bbc5']['act_nclus'][0,3] = dict_dict['dict_bbc5']['act_nclus'][1,3]
+# Data fixing RH3 # See onenote for reasoning
+dict_dict['dict_rh3']['celltype_total'][-1,:] = np.rint((dict_dict['dict_rh3']['celltype_total'][-2,:] + dict_dict['dict_rh3']['celltype_total'][-3,:])/2)
+
+# Data fixing (interpolation should not occur in the baseline ie baseline shouldn't be linearly interpolated as to the day 2. Hence segments of the curves is important)
+dict_dict['dict_bc7']['act_nclus'] = np.insert(dict_dict['dict_bc7']['act_nclus'],[0],np.mean(dict_dict['dict_bc7']['act_nclus'][0:2,:],axis = 0),axis=0)
+# dict_dict['dict_rh7']['act_nclus'] = np.insert(dict_dict['dict_rh7']['act_nclus'],[0],np.mean(dict_dict['dict_rh7']['act_nclus'][0:2,:],axis = 0),axis=0) # b/c rh7 has 3 good baselines
+dict_dict['dict_rh3']['act_nclus'] = np.insert(dict_dict['dict_rh3']['act_nclus'],[0],np.mean(dict_dict['dict_rh3']['act_nclus'][0:2,:],axis = 0),axis=0)
+dict_dict['dict_bbc5']['act_nclus'] = np.insert(dict_dict['dict_bbc5']['act_nclus'],[0],np.mean(dict_dict['dict_bbc5']['act_nclus'][0:2,:],axis = 0),axis=0)
+dict_dict['dict_rh8']['act_nclus'] = np.insert(dict_dict['dict_rh8']['act_nclus'],[0],np.mean(dict_dict['dict_rh8']['act_nclus'][0:2,:],axis = 0),axis=0)
+dict_dict['dict_bc7']['celltype_total'] = np.insert(dict_dict['dict_bc7']['celltype_total'],[0],np.mean(dict_dict['dict_bc7']['celltype_total'][0:2,:],axis = 0),axis=0)
+# dict_dict['dict_rh7']['act_nclus'] = np.insert(dict_dict['dict_rh7']['act_nclus'],[0],np.mean(dict_dict['dict_rh7']['act_nclus'][0:2,:],axis = 0),axis=0) # b/c rh7 has 3 good baselines
+dict_dict['dict_rh3']['celltype_total'] = np.insert(dict_dict['dict_rh3']['celltype_total'],[0],np.mean(dict_dict['dict_rh3']['celltype_total'][0:2,:],axis = 0),axis=0)
+dict_dict['dict_bbc5']['celltype_total'] = np.insert(dict_dict['dict_bbc5']['celltype_total'],[0],np.mean(dict_dict['dict_bbc5']['celltype_total'][0:2,:],axis = 0),axis=0)
+dict_dict['dict_rh8']['celltype_total'] = np.insert(dict_dict['dict_rh8']['celltype_total'],[0],np.mean(dict_dict['dict_rh8']['celltype_total'][0:2,:],axis = 0),axis=0)
+
+# Data interpolation (linear)
 dict_dict['dict_bc7']['act_nclus'] = interp_session_loss(dict_dict['dict_bc7']['act_nclus'],np.reshape(dict_dict['dict_bc7']['x_ticks_labels'],[-1]),day_axis_ideal)
 dict_dict['dict_rh7']['act_nclus'] = interp_session_loss(dict_dict['dict_rh7']['act_nclus'],np.reshape(dict_dict['dict_rh7']['x_ticks_labels'],[-1]),day_axis_ideal)
 dict_dict['dict_rh3']['act_nclus'] = interp_session_loss(dict_dict['dict_rh3']['act_nclus'],np.reshape(dict_dict['dict_rh3']['x_ticks_labels'],[-1]),day_axis_ideal)
 dict_dict['dict_bbc5']['act_nclus'] = interp_session_loss(dict_dict['dict_bbc5']['act_nclus'],np.reshape(dict_dict['dict_bbc5']['x_ticks_labels'],[-1]),day_axis_ideal)
 dict_dict['dict_rh8']['act_nclus'] = interp_session_loss(dict_dict['dict_rh8']['act_nclus'],np.reshape(dict_dict['dict_rh8']['x_ticks_labels'],[-1]),day_axis_ideal)
+dict_dict['dict_bc7']['celltype_total'] = interp_session_loss(dict_dict['dict_bc7']['celltype_total'],np.reshape(dict_dict['dict_bc7']['x_ticks_labels'],[-1]),day_axis_ideal)
+dict_dict['dict_rh7']['celltype_total'] = interp_session_loss(dict_dict['dict_rh7']['celltype_total'],np.reshape(dict_dict['dict_rh7']['x_ticks_labels'],[-1]),day_axis_ideal)
+dict_dict['dict_rh3']['celltype_total'] = interp_session_loss(dict_dict['dict_rh3']['celltype_total'],np.reshape(dict_dict['dict_rh3']['x_ticks_labels'],[-1]),day_axis_ideal)
+dict_dict['dict_bbc5']['celltype_total'] = interp_session_loss(dict_dict['dict_bbc5']['celltype_total'],np.reshape(dict_dict['dict_bbc5']['x_ticks_labels'],[-1]),day_axis_ideal)
+dict_dict['dict_rh8']['celltype_total'] = interp_session_loss(dict_dict['dict_rh8']['celltype_total'],np.reshape(dict_dict['dict_rh8']['x_ticks_labels'],[-1]),day_axis_ideal)
 
-# Will add BC8 at the end. First add RH-8
-# activated neurons (FR goes up)
+
+# Need to add BC8
+## ACTIVATED NEURONS (FR goes up)
 filename_save = os.path.join(output_folder,'activated_neurons.png')
 # D_less300[0] = dict_dict['dict_rh3']['act_nclus'][:,0]          # shank A is inside the stroked barrel
 D_less300[0] = dict_dict['dict_rh3']['act_nclus'][:,1]
@@ -152,10 +179,6 @@ S2[1] = dict_dict['dict_rh7']['act_nclus'][:,3]                 # Shank D is in 
 S2[2] = dict_dict['dict_rh3']['act_nclus'][:,2]                 # Shank C is in S2      (qualifies for S2 as well)
 S2[3] = dict_dict['dict_rh8']['act_nclus'][:,2]                 # Shank C is either outside S2 or in S2 (hard to tell). Also this shank is 80% out
 S2[4] = dict_dict['dict_rh8']['act_nclus'][:,3]                 # Shank D is in S2 (clear from # of activated neurons)
-
-
-
-
 
 # D_less150[0] = np.append(D_less150[0],D_less150[0][-1])
 # D_great150_less300[0] = np.append(D_great150_less300[0],D_great150_less300[0][-1])
@@ -194,9 +217,15 @@ plt.show()
 plt.savefig(filename_save,format = 'png')
 plt.close(f)
 
-# # cell type
-# # only bc7 and rh3 included
-# filename_save = os.path.join(output_folder,'cell_type.png')
+# CELL TYPE ANALYSIS
+filename_save = os.path.join(output_folder,'cell_type.png')
+cell_total = {}
+cell_total[0] = dict_dict['dict_bc7']['celltype_total']
+cell_total[1] = dict_dict['dict_rh7']['celltype_total']
+cell_total[2] = dict_dict['dict_rh3']['celltype_total']
+cell_total[3] = dict_dict['dict_bbc5']['celltype_total']
+cell_total[4] = dict_dict['dict_rh8']['celltype_total']
+cell_total = np.sum(list(cell_total.values()),axis=0)
 # # celltype_arr_rh3 = pop_stats[0]['celltype_total']
 # # celltype_arr_rh3 = np.row_stack((celltype_arr_rh3,np.asarray([48,15,8])))
 # # celltype_arr_bc7 = pop_stats[1]['celltype_total']
@@ -204,18 +233,18 @@ plt.close(f)
 # # bsl_celltype = (celltype[0] + celltype[1])/2
 # # celltype = (celltype/bsl_celltype - 1)*100
 # # x_ticks_labels = pop_stats[1]['x_ticks_labels']
-# f, a = plt.subplots(1,1)
-# a.set_ylabel('Pop. Count')
-# len_str = 'Population Analysis'
-# f.suptitle(len_str)
-# a.set_title("Cell Types")
-# # a.plot(x_axis_time,celltype[:,0],'g^--', lw=2.0)
-# # a.plot(x_axis_time,celltype[:,1],'rs--', lw=2.0)
-# # a.plot(x_axis_time,celltype[:,2],'bo--', lw=2.0)
-# a.legend(['Pyramidal','Narrow','Wide'])
-# f.set_size_inches((10, 6), forward=False)
-# plt.savefig(filename_save,format = 'png')
-# plt.close(f)
+f, a = plt.subplots(1,1)
+a.set_ylabel('Pop. Count')
+len_str = 'Population Analysis'
+f.suptitle(len_str)
+a.set_title("Cell Types")
+a.plot(x_axis_time,cell_total[:,0],'g^--', lw=2.0)
+a.plot(x_axis_time,cell_total[:,1],'rs--', lw=2.0)
+a.plot(x_axis_time,cell_total[:,2],'bo--', lw=2.0)
+a.legend(['Pyramidal','Narrow','Wide'])
+f.set_size_inches((10, 6), forward=False)
+plt.savefig(filename_save,format = 'png')
+plt.close(f)
 
 
 

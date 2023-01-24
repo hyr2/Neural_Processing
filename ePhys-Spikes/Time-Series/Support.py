@@ -201,8 +201,11 @@ def interp_session_loss(data_in, day_local_axis, day_axis_ideal):
        INPUT day_local_axis : An array for the days the recordings took place
        INPUT day_axis_ideal: An array for the ideal days (used for interpolation)
     """
-    
-    f_data_out = interpolate.interp1d(day_local_axis,data_in,kind = 'linear',axis = 0, fill_value='extrapolate')
+    # day_local_axis changed to include all three baselines
+    if not any(np.isin(day_local_axis,-3)):
+        day_local_axis = np.insert(day_local_axis,0,-3)
+        
+    f_data_out = interpolate.interp1d(day_local_axis,data_in,kind = 'nearest',axis = 0, fill_value='extrapolate')
 
     return f_data_out(day_axis_ideal)
 
