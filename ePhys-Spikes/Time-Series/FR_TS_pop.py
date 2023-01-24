@@ -33,7 +33,7 @@ def sort_cell_type(input_arr):
         return output_arr
     
 
-source_dir = '/home/hyr2-office/Documents/Data/NVC/B-BC5/'
+source_dir = '/home/hyr2-office/Documents/Data/NVC/RH-8/'
 rmv_bsl = input('Baselines to remove (specify as index: e.g: 0, 2)? Select -1 for no baselines.\n')             # specify what baseline datasets need to be removed from the analysis
 source_dir_list = natsorted(os.listdir(source_dir))
 # Preparing variables
@@ -59,7 +59,7 @@ if not np.any(rmv_bsl == -1):
 # x_ticks_labels = ['bl-1','Day 2','Day 7','Day 14 ','Day 21','Day 42'] # BC8 
 # linear_xaxis = np.array([-3,-2,-1,2,2,7,8,14,21,54])            
 # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 42'] # R-H8 
-linear_xaxis = np.array([-3,-2,-1,2,7,14,21,28,35,42])            
+linear_xaxis = np.array([-2,-1,2,7,14,21,28,35,42])            
 
 x_ticks_labels = linear_xaxis
 
