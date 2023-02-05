@@ -5,7 +5,7 @@ Created on Wed Nov  9 13:38:04 2022
 
 @author: hyr2-office
 """
-
+# Need to add BC8
 # A poorly written code
 # Used to combine animals 
 # Must run FR_TS_pop.py for each animal before hand
@@ -78,6 +78,7 @@ dict_rh8.clear()
 # pop_stats[3] = sio.loadmat(mouse_rh7)
 
 day_axis_ideal = np.array([-3,-2,-1,2,7,14,21,28,35,42,49,56])
+x_axis_time = day_axis_ideal
 
 # Four categories (Dr.Lan signs off on these)
 D_less300 = {}
@@ -130,7 +131,12 @@ dict_dict['dict_bbc5']['act_nclus'][0,3] = dict_dict['dict_bbc5']['act_nclus'][1
 # Data fixing RH3 # See onenote for reasoning
 dict_dict['dict_rh3']['celltype_total'][-1,:] = np.rint((dict_dict['dict_rh3']['celltype_total'][-2,:] + dict_dict['dict_rh3']['celltype_total'][-3,:])/2)
 
-# Data fixing (interpolation should not occur in the baseline ie baseline shouldn't be linearly interpolated as to the day 2. Hence segments of the curves is important)
+# Data fixing baselines (interpolation should not occur in the baseline ie baseline shouldn't be linearly interpolated as to the day 2. Hence segments of the curves is important)
+dict_dict['dict_bc7']['nor_nclus_total'] = np.insert(dict_dict['dict_bc7']['nor_nclus_total'],[0],np.mean(dict_dict['dict_bc7']['nor_nclus_total'][0:2,:],axis = 0),axis=0)
+# dict_dict['dict_rh7']['act_nclus'] = np.insert(dict_dict['dict_rh7']['act_nclus'],[0],np.mean(dict_dict['dict_rh7']['act_nclus'][0:2,:],axis = 0),axis=0) # b/c rh7 has 3 good baselines
+dict_dict['dict_rh3']['nor_nclus_total'] = np.insert(dict_dict['dict_rh3']['nor_nclus_total'],[0],np.mean(dict_dict['dict_rh3']['nor_nclus_total'][0:2,:],axis = 0),axis=0)
+dict_dict['dict_bbc5']['nor_nclus_total'] = np.insert(dict_dict['dict_bbc5']['nor_nclus_total'],[0],np.mean(dict_dict['dict_bbc5']['nor_nclus_total'][0:2,:],axis = 0),axis=0)
+dict_dict['dict_rh8']['nor_nclus_total'] = np.insert(dict_dict['dict_rh8']['nor_nclus_total'],[0],np.mean(dict_dict['dict_rh8']['nor_nclus_total'][0:2,:],axis = 0),axis=0)
 dict_dict['dict_bc7']['act_nclus'] = np.insert(dict_dict['dict_bc7']['act_nclus'],[0],np.mean(dict_dict['dict_bc7']['act_nclus'][0:2,:],axis = 0),axis=0)
 # dict_dict['dict_rh7']['act_nclus'] = np.insert(dict_dict['dict_rh7']['act_nclus'],[0],np.mean(dict_dict['dict_rh7']['act_nclus'][0:2,:],axis = 0),axis=0) # b/c rh7 has 3 good baselines
 dict_dict['dict_rh3']['act_nclus'] = np.insert(dict_dict['dict_rh3']['act_nclus'],[0],np.mean(dict_dict['dict_rh3']['act_nclus'][0:2,:],axis = 0),axis=0)
@@ -143,6 +149,11 @@ dict_dict['dict_bbc5']['celltype_total'] = np.insert(dict_dict['dict_bbc5']['cel
 dict_dict['dict_rh8']['celltype_total'] = np.insert(dict_dict['dict_rh8']['celltype_total'],[0],np.mean(dict_dict['dict_rh8']['celltype_total'][0:2,:],axis = 0),axis=0)
 
 # Data interpolation (linear)
+dict_dict['dict_bc7']['nor_nclus_total'] = interp_session_loss(dict_dict['dict_bc7']['nor_nclus_total'],np.reshape(dict_dict['dict_bc7']['x_ticks_labels'],[-1]),day_axis_ideal)
+dict_dict['dict_rh7']['nor_nclus_total'] = interp_session_loss(dict_dict['dict_rh7']['nor_nclus_total'],np.reshape(dict_dict['dict_rh7']['x_ticks_labels'],[-1]),day_axis_ideal)
+dict_dict['dict_rh3']['nor_nclus_total'] = interp_session_loss(dict_dict['dict_rh3']['nor_nclus_total'],np.reshape(dict_dict['dict_rh3']['x_ticks_labels'],[-1]),day_axis_ideal)
+dict_dict['dict_bbc5']['nor_nclus_total'] = interp_session_loss(dict_dict['dict_bbc5']['nor_nclus_total'],np.reshape(dict_dict['dict_bbc5']['x_ticks_labels'],[-1]),day_axis_ideal)
+dict_dict['dict_rh8']['nor_nclus_total'] = interp_session_loss(dict_dict['dict_rh8']['nor_nclus_total'],np.reshape(dict_dict['dict_rh8']['x_ticks_labels'],[-1]),day_axis_ideal)
 dict_dict['dict_bc7']['act_nclus'] = interp_session_loss(dict_dict['dict_bc7']['act_nclus'],np.reshape(dict_dict['dict_bc7']['x_ticks_labels'],[-1]),day_axis_ideal)
 dict_dict['dict_rh7']['act_nclus'] = interp_session_loss(dict_dict['dict_rh7']['act_nclus'],np.reshape(dict_dict['dict_rh7']['x_ticks_labels'],[-1]),day_axis_ideal)
 dict_dict['dict_rh3']['act_nclus'] = interp_session_loss(dict_dict['dict_rh3']['act_nclus'],np.reshape(dict_dict['dict_rh3']['x_ticks_labels'],[-1]),day_axis_ideal)
@@ -154,8 +165,52 @@ dict_dict['dict_rh3']['celltype_total'] = interp_session_loss(dict_dict['dict_rh
 dict_dict['dict_bbc5']['celltype_total'] = interp_session_loss(dict_dict['dict_bbc5']['celltype_total'],np.reshape(dict_dict['dict_bbc5']['x_ticks_labels'],[-1]),day_axis_ideal)
 dict_dict['dict_rh8']['celltype_total'] = interp_session_loss(dict_dict['dict_rh8']['celltype_total'],np.reshape(dict_dict['dict_rh8']['x_ticks_labels'],[-1]),day_axis_ideal)
 
+## No response NEURONS (FR no change)
+filename_save = os.path.join(output_folder,'noresponse_neurons.png')
+# D_less300[0] = dict_dict['dict_rh3']['act_nclus'][:,0]              # shank A is inside the stroked barrel
+D_less300[0] = dict_dict['dict_rh3']['nor_nclus_total'][:,1]
+D_less300[1] = dict_dict['dict_bc7']['nor_nclus_total'][:,0]
+D_less300[2] = dict_dict['dict_rh7']['nor_nclus_total'][:,1]
+D_less300[3] = dict_dict['dict_rh7']['nor_nclus_total'][:,2]
+D_less300[4] = dict_dict['dict_rh8']['nor_nclus_total'][:,0]          # Shank A is 100 um away from the stroke site. Also its half out
+D_less300[5] = dict_dict['dict_rh8']['nor_nclus_total'][:,1]          # Shank B is 350-400um (Qualifies for this bucket)
+# D_less300[5] = dict_dict['dict_bbc5']['act_nclus'][:,3]             # shank D is 50 um  (ie too close to the stroked barrel cortex)
+D_less300[4] = dict_dict['dict_bbc5']['nor_nclus_total'][:,2]         # Shank C is 250 um 
+D_great300[0] = dict_dict['dict_bc7']['nor_nclus_total'][:,2]
+# D_great300[1] = dict_dict['dict_bc6']['act_nclus'][:,2]             # BC6 rejected
+D_great300[1] = dict_dict['dict_rh7']['nor_nclus_total'][:,0]
+outside_barrel[0] = dict_dict['dict_bc7']['nor_nclus_total'][:,1]     # Shank B is outside
+outside_barrel[1] = dict_dict['dict_rh3']['nor_nclus_total'][:,2]     # Shank C is outside    (qualifies for outside)
+outside_barrel[2] = dict_dict['dict_bbc5']['nor_nclus_total'][:,1]    # shank B is outside (clearly)
+S2[0] = dict_dict['dict_bc7']['nor_nclus_total'][:,3]                 # Shank D is in S2
+# S2[1] = dict_dict['dict_bc6']['act_nclus'][:,3]                     # Shank D of BC6 (BC6 is rejected)
+S2[1] = dict_dict['dict_rh7']['nor_nclus_total'][:,3]                 # Shank D is in S2
+S2[2] = dict_dict['dict_rh3']['nor_nclus_total'][:,2]                 # Shank C is in S2      (qualifies for S2 as well)
+S2[3] = dict_dict['dict_rh8']['nor_nclus_total'][:,2]                 # Shank C is either outside S2 or in S2 (hard to tell). Also this shank is 80% out
+S2[4] = dict_dict['dict_rh8']['nor_nclus_total'][:,3]                 # Shank D is in S2 (clear from # of activated neurons)
 
-# Need to add BC8
+f, a = plt.subplots(1,1)
+a.set_ylabel('Pop. Count')
+len_str = 'Population Analysis'
+f.suptitle(len_str)
+a.set_title("No Response Neurons")
+# a.plot(x_ticks_labels,D_less150[0],'r', lw=1.5)
+a.plot(x_axis_time,np.sum(list(D_less300.values()),axis=0),'gs--', lw=2.0)
+a.plot(x_axis_time,np.sum(list(D_great300.values()),axis=0),'bo--', lw=2.0)
+a.plot(x_axis_time,np.sum(list(S2.values()),axis=0),'y>--', lw=2.0)
+a.plot(x_axis_time,np.sum(list(outside_barrel.values()),axis=0),'kx--', lw=2.0)
+# a.legend(['<150um','150<D<300','D>300', 'S2', 'Outside BC'])
+a.legend(['D<300','D>300', 'S2', 'Outside BC'])
+f.set_size_inches((10, 6), forward=False)
+# labels = [item.get_text() for item in a.get_xticklabels()]
+# labels[0] = '-1'
+# a.set_xticklabeles(labels)
+plt.show()
+plt.savefig(filename_save,format = 'png')
+plt.close(f)
+
+
+
 ## ACTIVATED NEURONS (FR goes up)
 filename_save = os.path.join(output_folder,'activated_neurons.png')
 # D_less300[0] = dict_dict['dict_rh3']['act_nclus'][:,0]          # shank A is inside the stroked barrel
@@ -180,23 +235,6 @@ S2[2] = dict_dict['dict_rh3']['act_nclus'][:,2]                 # Shank C is in 
 S2[3] = dict_dict['dict_rh8']['act_nclus'][:,2]                 # Shank C is either outside S2 or in S2 (hard to tell). Also this shank is 80% out
 S2[4] = dict_dict['dict_rh8']['act_nclus'][:,3]                 # Shank D is in S2 (clear from # of activated neurons)
 
-# D_less150[0] = np.append(D_less150[0],D_less150[0][-1])
-# D_great150_less300[0] = np.append(D_great150_less300[0],D_great150_less300[0][-1])
-# D_less300[0] = np.append(D_less300[0],D_less300[0][-1])
-# D_less300[1] = np.append(D_less300[1],D_less300[1][-1])
-# D_great300[1] = np.delete(D_great300[1],-2)
-# D_great300[1][-2] = np.average([D_great300[1][-3],D_great300[1][-1]]) 
-# outside_barrel[1] = np.append(outside_barrel[1],np.average([outside_barrel[1][-1],outside_barrel[1][-2]]))
-# S2[1] = np.delete(S2[1],-2)
-# S2[1][-2] = np.average([S2[1][-3],S2[1][-1]]) 
-# D_less300[3] = D_less300[3][np.array([1,2,3,4,5,6,7,9])]
-# D_less300[4] = D_less300[4][np.array([1,2,3,4,5,6,7,9])]
-# D_great300[2] = D_great300[2][np.array([1,2,3,4,5,6,7,9])]
-# S2[2] = S2[2][np.array([1,2,3,4,5,6,7,9])]
-# Add subplot and layout of figure
-# x_ticks_labels = pop_stats[1]['x_ticks_labels']
-# x_axis_time = np.array([-2,-1,2,7,14,21,28,42])
-x_axis_time = day_axis_ideal
 f, a = plt.subplots(1,1)
 a.set_ylabel('Pop. Count')
 len_str = 'Population Analysis'

@@ -33,7 +33,7 @@ def sort_cell_type(input_arr):
         return output_arr
     
 
-source_dir = '/home/hyr2-office/Documents/Data/NVC/RH-8/'
+source_dir = '/home/hyr2-office/Documents/Data/NVC/BC7/'
 rmv_bsl = input('Baselines to remove (specify as index: e.g: 0, 2)? Select -1 for no baselines.\n')             # specify what baseline datasets need to be removed from the analysis
 source_dir_list = natsorted(os.listdir(source_dir))
 # Preparing variables
@@ -49,7 +49,7 @@ if not np.any(rmv_bsl == -1):
 # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14','Day 21','Day 28','Day 56']  # RH3 (reject baselines 0 and 2)
 # linear_xaxis = np.array([-2,-1,2,7,14,21,28,56]) 
 # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 28','Day 42'] # BC7 (reject baseline 0)
-# linear_xaxis = np.array([-2,-1,2,7,14,21,28,42]) 
+linear_xaxis = np.array([-2,-1,2,7,14,21,28,42]) 
 # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 9','Day 14 ','Day 21','Day 28','Day 35','Day 49'] # BC6 (stroke not formed at all. Data should be rejected)
 # linear_xaxis = np.array([-2,-1,2,9,14,21,28,35,49]) 
 # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14','Day 21','Day 47'] # B-BC5
@@ -59,7 +59,7 @@ if not np.any(rmv_bsl == -1):
 # x_ticks_labels = ['bl-1','Day 2','Day 7','Day 14 ','Day 21','Day 42'] # BC8 
 # linear_xaxis = np.array([-3,-2,-1,2,2,7,8,14,21,54])            
 # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 42'] # R-H8 
-linear_xaxis = np.array([-2,-1,2,7,14,21,28,35,42])            
+# linear_xaxis = np.array([-2,-1,2,7,14,21,28,35,42,49])            
 
 x_ticks_labels = linear_xaxis
 
@@ -81,12 +81,16 @@ act_nclus = np.zeros([len(pop_stats),4])
 act_FR = np.zeros([len(pop_stats),4])
 inhib_nclus = np.zeros([len(pop_stats),4])
 inh_FR = np.zeros([len(pop_stats),4])
+nor_nclus = np.zeros([len(pop_stats),4])
+N_chan_shank = np.zeros([len(pop_stats),4])
 act_nclus_total = np.zeros([len(pop_stats),])
 inhib_nclus_total = np.zeros([len(pop_stats),])
 celltype_excit = np.zeros([len(pop_stats),3])
 celltype_inhib = np.zeros([len(pop_stats),3])
 for iter in range(len(pop_stats)):
     # population extraction from dictionaries
+    
+    # FR goes up
     act_nclus[iter,0] = np.squeeze(pop_stats[iter]['act_nclus_by_shank'])[0]     # Shank A
     act_nclus[iter,1] = np.squeeze(pop_stats[iter]['act_nclus_by_shank'])[1]     # Shank B 
     act_nclus[iter,2] = np.squeeze(pop_stats[iter]['act_nclus_by_shank'])[2]     # Shank C
@@ -95,7 +99,7 @@ for iter in range(len(pop_stats)):
     act_FR[iter,1] = np.squeeze(pop_stats[iter]['avg_FR_act_by_shank'])[1]
     act_FR[iter,2] = np.squeeze(pop_stats[iter]['avg_FR_act_by_shank'])[2]
     act_FR[iter,3] = np.squeeze(pop_stats[iter]['avg_FR_act_by_shank'])[3]
-    
+    # FR goes down
     inhib_nclus[iter,0] = np.squeeze(pop_stats[iter]['inh_nclus_by_shank'])[0]     # Shank A
     inhib_nclus[iter,1] = np.squeeze(pop_stats[iter]['inh_nclus_by_shank'])[1]     # Shank B 
     inhib_nclus[iter,2] = np.squeeze(pop_stats[iter]['inh_nclus_by_shank'])[2]     # Shank C
@@ -104,6 +108,16 @@ for iter in range(len(pop_stats)):
     inh_FR[iter,1] = np.squeeze(pop_stats[iter]['avg_FR_inh_by_shank'])[1]
     inh_FR[iter,2] = np.squeeze(pop_stats[iter]['avg_FR_inh_by_shank'])[2]
     inh_FR[iter,3] = np.squeeze(pop_stats[iter]['avg_FR_inh_by_shank'])[3]
+    # No response clusters
+    nor_nclus[iter,0] = np.squeeze(pop_stats[iter]['nor_nclus_by_shank'])[0] 
+    nor_nclus[iter,1] = np.squeeze(pop_stats[iter]['nor_nclus_by_shank'])[1] 
+    nor_nclus[iter,2] = np.squeeze(pop_stats[iter]['nor_nclus_by_shank'])[2] 
+    nor_nclus[iter,3] = np.squeeze(pop_stats[iter]['nor_nclus_by_shank'])[3] 
+    # Number of channels per shank in each session
+    N_chan_shank[iter,0] = np.squeeze(pop_stats[iter]['numChan_perShank'])[0]
+    N_chan_shank[iter,1] = np.squeeze(pop_stats[iter]['numChan_perShank'])[1]
+    N_chan_shank[iter,2] = np.squeeze(pop_stats[iter]['numChan_perShank'])[2]
+    N_chan_shank[iter,3] = np.squeeze(pop_stats[iter]['numChan_perShank'])[3]
     
     # cell type extraction from dictionaries
     act_nclus_total[iter] = np.sum(act_nclus[iter,:])
@@ -125,6 +139,8 @@ full_mouse_ephys = {}
 full_mouse_ephys['List'] = names_datasets
 full_mouse_ephys['act_nclus_total'] = act_nclus_total
 full_mouse_ephys['inhib_nclus_total'] = inhib_nclus_total
+full_mouse_ephys['nor_nclus_total'] = nor_nclus
+full_mouse_ephys['N_chan_shank'] = N_chan_shank
 full_mouse_ephys['celltype_excit'] = celltype_excit
 full_mouse_ephys['celltype_inhib'] = celltype_inhib
 full_mouse_ephys['act_nclus'] = act_nclus

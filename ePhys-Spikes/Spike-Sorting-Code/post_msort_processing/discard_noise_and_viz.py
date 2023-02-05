@@ -267,7 +267,7 @@ def plot_single_cluster_2x16(i_clus_plot, template_waveforms, fig_size_scale, pr
     # gs_waveforms = gridspec.GridSpecFromSubplotSpec(16, 2, subplot_spec=gs_ovr[:, 4:8]) # syntactically correct?
     for i_ch in range(n_ch):
         x, y = int(geom[i_ch,0]), int(geom[i_ch,1])
-        plot_row, plot_col = (15-y//GH), ((x//GW_BETWEENSHANK)*2 + int((x%GW_BETWEENSHANK)>0))
+        plot_row, plot_col = (y//GH), ((x//GW_BETWEENSHANK)*2 + int((x%GW_BETWEENSHANK)>0))
         # print(i_ch, 
         # print(x,y,plot_row,plot_col)
         ax = fig2.add_subplot(gs_ovr[plot_row*2:plot_row*2+2, 17+plot_col*2:19+plot_col*2])# plt.subplot(16,2,plot_row*2+plot_col+1)
