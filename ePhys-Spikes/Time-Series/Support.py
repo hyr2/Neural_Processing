@@ -205,9 +205,9 @@ def interp_session_loss(data_in, day_local_axis, day_axis_ideal):
     if not any(np.isin(day_local_axis,-3)):
         day_local_axis = np.insert(day_local_axis,0,-3)
         
-    f_data_out = interpolate.interp1d(day_local_axis,data_in,kind = 'nearest',axis = 0, fill_value='extrapolate')
+    f_data_out = interpolate.interp1d(day_local_axis,data_in,kind = 'linear',axis = 0, fill_value='extrapolate')
 
-    return f_data_out(day_axis_ideal)
+    return np.rint(f_data_out(day_axis_ideal))
 
 
 def interp_chan_loss(data_in, shank_missed):
