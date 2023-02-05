@@ -9,7 +9,7 @@ import os
 from openpyxl import load_workbook
 import pandas as pd
 from scipy import signal, interpolate
-
+import seaborn as sns
 from matplotlib import pyplot as plt
 import numpy as np
 
@@ -188,28 +188,6 @@ def detect_peak_basic(arr, num, x):
     #         arr_max = arr[arr_max_indx]
     
 
-def interp_session_loss(data_in, day_local_axis, day_axis_ideal):
-    """
-    NTERP_SESSION_LOSS Interpolate data values of missing sessions in a
-    longitudinal stroke study
-       The function takes as its input a 2D array with rows as sessions and
-       columns as shanks. Missing sessions would therefore be signified
-       by a row of NaNs.
-       
-       INPUT data_in : 2D matrix containing time and shank information as rows
-       and columns, respectively. Each column is therefore a new shank.
-       INPUT day_local_axis : An array for the days the recordings took place
-       INPUT day_axis_ideal: An array for the ideal days (used for interpolation)
-    """
-    # day_local_axis changed to include all three baselines
-    if not any(np.isin(day_local_axis,-3)):
-        day_local_axis = np.insert(day_local_axis,0,-3)
-        
-    f_data_out = interpolate.interp1d(day_local_axis,data_in,kind = 'linear',axis = 0, fill_value='extrapolate')
-
-    return np.rint(f_data_out(day_axis_ideal))
-
-
 def interp_chan_loss(data_in, shank_missed):
     """
     NTERP_CHAN_LOSS Interpolate voltage values of missing channels in a
@@ -310,6 +288,34 @@ def read_stimtxt(matlabTXT):
     
     return stim_start_time, stim_num, seq_period, len_trials, num_trials, FramePerSeq, total_seq, len_trials_arr
 
+def plot_all_trials(input_arr,Fs,folder_path,clus_dict):
+    # INPUT input_arr is a 1D array with avg FR of a single cluster
+    # INPUT Fs is the sampling frequency representing the time axis
+    # INPUT folder_path is the output folder where the figures will be saved
+    # INPUT clus_dict contains the information on the cluster 
+    
+    t_axis = np.linspace(0,input_arr.shape[0]/Fs,input_arr.shape[0])
+    filename_save = os.path.join(folder_path,'FR_' + str(clus_dict['cluster_id']) + '.png')
+    # Plotting fonts
+    sns.set_style('darkgrid') # darkgrid, white grid, dark, white and ticks
+    plt.rc('axes', titlesize=8)     # fontsize of the axes title
+    plt.rc('axes', labelsize=10)    # fontsize of the x and y labels
+    plt.rc('xtick', labelsize=10)    # fontsize of the tick labels
+    plt.rc('ytick', labelsize=10)    # fontsize of the tick labels
+    plt.rc('legend', fontsize=10)    # legend fontsize
+    plt.rc('font', size=16)          # controls default text sizes
+    
+    f, a = plt.subplots(1,1)
+    a.set_ylabel('FR (Spikes/sec)')
+    len_str = 'Cluster ID:' + str(clus_dict['cluster_id']) + '| Shank:' + str(clus_dict['shank_num']) + '| Depth:' + str(clus_dict['prim_ch_coord'][1])
+    f.suptitle(len_str)
+    a.plot(t_axis,input_arr,'g', lw=2.0)
+    f.set_size_inches((5, 3), forward=False)
+    plt.savefig(filename_save,format = 'png')
+    plt.close(f)
+    
+    return None
+
 # Write to excel files Append mode perfected
 def append_df_to_excel(filename, df, sheet_name='Sheet1', startrow=None,
                        truncate_sheet=False, 
@@ -359,7 +365,7 @@ def append_df_to_excel(filename, df, sheet_name='Sheet1', startrow=None,
     if 'engine' in to_excel_kwargs:
         to_excel_kwargs.pop('engine')
 
-    writer = pd.ExcelWriter(filename, engine='openpyxl',mode='a',if_sheet_exists='overlay')
+    writer = pd.ExcelWriter(filename, engine='openpyxl',mode='a',if_sheet_exists = 'overlay' )
 
     # try to open an existing workbook
     writer.book = load_workbook(filename)
