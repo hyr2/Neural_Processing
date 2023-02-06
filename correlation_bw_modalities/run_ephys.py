@@ -10,18 +10,23 @@ import pandas as pd
 import utils_crossmod as crutils
 
 folderpath="/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/spikesort_out/processed_data_rh8/2022-12-03"
-x = []
-x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial1.mat")))
-x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial2.mat")))
-x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial3.mat")))
-x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial4.mat")))
-x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial5.mat")))
-x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial6.mat")))
-x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial7.mat")))
-trial_mask = pd.read_csv(os.path.join(folderpath, "trial_mask.csv"), header=None).to_numpy().squeeze().astype(bool)
-print(trial_mask.shape)
-data = np.stack([xx['ios_trials_local'][trial_mask, :, :] for xx in x], axis=0) # (nROIs, nTrials, time, n_modalities)
-data = np.transpose(data, axes=[0,3,1,2]) # (nROIs, nModalities, nTrials, nTime)
+
+def read_ios_signals(folderpath):
+    x = []
+    x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial1.mat")))
+    x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial2.mat")))
+    x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial3.mat")))
+    x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial4.mat")))
+    x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial5.mat")))
+    x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial6.mat")))
+    x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial7.mat")))
+    trial_mask = pd.read_csv(os.path.join(folderpath, "trial_mask.csv"), header=None).to_numpy().squeeze().astype(bool)
+    print(trial_mask.shape)
+    data = np.stack([xx['ios_trials_local'][trial_mask, :, :] for xx in x], axis=0) # (nROIs, nTrials, time, n_modalities)
+    data = np.transpose(data, axes=[0,3,1,2]) # (nROIs, nModalities, nTrials, nTime)
+    return data
+
+data = read_ios_signals(folderpath)
 print(data.shape)
 # for i in range(5):
 #     plt.subplot(5,1,i+1)
