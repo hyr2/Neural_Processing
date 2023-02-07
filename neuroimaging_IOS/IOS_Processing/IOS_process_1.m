@@ -21,10 +21,12 @@
 
 clear all;
 % input parameters:
-source_dir = '/home/hyr2/Documents/Data/R-H2/pre-bsl2/';
+source_dir = 'C:\Data\RH-8\12-5-22';
 wv_3 = '510';   % The 3rd wavelength was 510nm or 632nm
-cam_in = '1';   % Is this the Andor Camera? [1,0]
+cam_in = '0';   % Is this the Andor Camera? [1,0] 0: Hamamatsu Camera (installed on 2022-08)
 dry = 0;        % Dont do dry run. Dry run --> just overall intensity plot.nothing else
+c_limits = [-0.025, -0.007]; % for overlay range
+fps_local = 10; % fps for video
 
 % selpath = uigetdir('Select source directory containing scans');
 output_dir = fullfile(source_dir,'Processed');
@@ -52,9 +54,9 @@ files_raw = dir_sorted(fullfile(Raw_dir, '*.tif'));
 wv_3 = int16(str2num(wv_3));
 
 if wv_3 == 510
-    disp('Selected wavelengths are 480 nm, 580 nm and 510 nm');
+    disp('Selected wavelengths are 480 nm, 580 nm and 510 nm');     % In this sequence
 elseif wv_3 == 632
-    disp('Selected wavelengths are 480 nm, 580 nm and 632 nm');
+    disp('Selected wavelengths are 480 nm, 580 nm and 632 nm');     % In this sequence
 else
     error('incorrect wavelength selected! \n')
 end
@@ -74,7 +76,7 @@ n_scans = int16(length(files_raw));
 assert(N_scans == n_scans);
 
 % other settings for the code
-start_trails = 5;  % disregard the first several trails
+start_trails = 0;  % disregard the first several trails
 % calculate the start time
 start_t = start_time/1000; %second
 end_t = (start_time + duration_time*stim_num)/1000;
@@ -119,27 +121,40 @@ sigma_2d = 5;   % spatial filtering width of 2d gaussian
 order = 4;      % Order of the IIR filter
 pk_indx = [int16(start_stimulate+1.8/seq_period):stim_num + start_stimulate];   % peak time extraction
 bsl_indx = [order+1:start_stimulate-1];                                         % baseline time extraction
-bsl_indx = [12:14];
-pk_indx = [23:26];
-trials_reject = [];             % must be loaded from the file
-trials_reject = horzcat([1:start_trails],trials_reject);
+bsl_indx = [9:14];
+pk_indx = [23:27];
+% trials_reject = [1,2,26:50];             % must be loaded from the file (for bc9 12-10)
+trials_reject = [];  
+% trials_reject = horzcat([1:start_trails],trials_reject);
 
 % save parameters and ROI masks to mat_dir  ********************************
 eff_num_trials = num_trials - length(trials_reject);
+% standard container map for each ROI
+dict = containers.Map();
+dict('TrialN') = eff_num_trials;
+dict('location') = '';
+dict('Dreflectancewv1') = zeros(eff_num_trials,len_trials);
+dict('Dreflectancewv2') = zeros(eff_num_trials,len_trials);
+dict('Dreflectancewv3') = zeros(eff_num_trials,len_trials);
+dict('DHbR') = zeros(eff_num_trials,len_trials);
+dict('DHbO') = zeros(eff_num_trials,len_trials);
 save(fullfile(mat_dir,'ROI.mat'));
+F = SpeckleFigure(sample_img, [0,1], 'visible', true);
+F.showROIs(mask);
+F.savePNG(fullfile(output_dir_avg,'ROI_overlay.png'),220);
 global_t_stack = zeros(eff_num_trials,len_trials,number_wavelength);
-
 % Dry Run switch
 % dry = input('Quick run for trial summary? [0/1]\n');
 dry = logical(dry);
-
+single_trial_rois = [];
 %% Blue 480 nm
 output_video = fullfile(output_dir_avg,'480nm');
 if ~exist(output_video, 'dir')
    mkdir(output_video)
 end
 Data_all_blue = cell(eff_num_trials,len_trials);
-% TS_480 = zeros(eff_num_trials,len_trials,N_ROI);  % array for single trial data storage
+% single_trial_rois = zeros(N_ROI, eff_num_trials,len_trials);
+TS_480 = zeros(eff_num_trials,len_trials,N_ROI);  % array for single trial data storage
 % Loop over trials
 iter_trial_local = 0;
 for iter_trial = 1:num_trials
@@ -163,6 +178,9 @@ for iter_trial = 1:num_trials
         rawData(BW == false) = 0;           % applying craniotomy
         global_t_stack(iter_trial_local,iter_seq,1) = mean(rawData(:));
         Data_all_blue{iter_trial_local,iter_seq}=rawData;
+%         for ii_roi = 1:N_ROI
+%             TS_480(iter_trial,iter_seq,ii_roi) = mean(rawData(mask(:,:,ii_roi)));
+%         end
     end
 end
 
@@ -189,6 +207,7 @@ if ~dry
     % end
     % clear Data_all_blue
 
+    % DeltaR/R computation MAIN PLOTS
     % Low Pass filtering 
     fcutlow = 2;    % cutoff frequency
     Fs = 1/seq_period;        % Sampling frequency
@@ -198,6 +217,7 @@ if ~dry
                                 'butter');
     R_data_blue = filter_LowPass(Data_all_blue,lowpass_filter);
     Avg_blue = zeros(len_trials,X,Y);
+
     % Trial Averaging and I/I_0
     for iter_trial = 1:eff_num_trials
         bsl_blue_local = R_data_blue(iter_trial,bsl_indx,:,:);
@@ -207,17 +227,19 @@ if ~dry
         end
         % Storing individual trials data (but time series extracted due to
         % storage constraints):
-%         [TS_480_tmp,~] = Time_Series_extract_single(reshape(R_data_blue(iter_trial,:,:,:),[len_trials,X,Y]),mask,len_trials,X,Y);
-%         TS_480(iter_trial,:,:) = TS_480_tmp;
+        [TS_480_tmp,~] = Time_Series_extract_single(reshape(R_data_blue(iter_trial,:,:,:),[len_trials,X,Y]),mask,len_trials,X,Y);
+        TS_480(iter_trial,:,:) = TS_480_tmp;
     end
+    % Saving image files here
     for iter_seq = 1:len_trials             % taking average over trials
         Avg_blue(iter_seq,:,:) = reshape(mean(R_data_blue(:,iter_seq,:,:),1,'omitnan'),[X,Y]);
         [~] = cal_dr_r_indi_green(reshape(Avg_blue(iter_seq,:,:)-1,[X,Y]),output_video,'Blue-',num2str(iter_seq));
     end
     % clear R_data_blue
+    
     % Generate video
     Avg_blue = permute(Avg_blue,[2,3,1]);
-    Generate_video_stack(Avg_blue-1,20,seq_period,output_video,sample_img,'label','\DeltaR_n','sc_range',[amin,amax],'overlay_range',[-0.025 -0.01],'show_scalebar',false);
+%     Generate_video_stack(Avg_blue-1,fps_local,seq_period,output_video,sample_img,'label','\DeltaR_n','sc_range',[amin,amax],'overlay_range',[-0.025 -0.01],'show_scalebar',false);
     Avg_blue = permute(Avg_blue,[3,1,2]);
 
     % store .mat
@@ -230,13 +252,14 @@ if ~dry
 %     save(fullfile(single_trial_dir,'TS_480.mat'),'TS_480');
 end
 %% Amber 580 nm
-clearvars -except global_t_stack mat_dir dry;
+clearvars -except global_t_stack mat_dir dry TS_480;
 load(fullfile(mat_dir,'ROI.mat'));
 output_video = fullfile(output_dir_avg,'580nm');
 if ~exist(output_video, 'dir')
    mkdir(output_video)
 end
 Data_all_amber = cell(eff_num_trials,len_trials);
+TS_580 = zeros(eff_num_trials,len_trials,N_ROI);  % array for single trial data storage
 % Loop over trials
 iter_trial_local = 0;
 for iter_trial = 1:num_trials
@@ -268,6 +291,8 @@ if ~dry
     d2_spatial_avg_mat = spatial_gauss_filt(Data_all_amber(:,pk_indx),sigma_2d);
     d2_spatial_avg_bsl = spatial_gauss_filt(Data_all_amber(:,bsl_indx),sigma_2d);
     d2_spatial_avg_bsl = reshape(mean(d2_spatial_avg_bsl,2,'omitnan'),[eff_num_trials,X,Y]);
+    % Compute average frame
+    avg_frame_local = Data_all_amber{1,1};
     % compute deltaR/R
     for iter_trial = 1:eff_num_trials
         for iter_seq = 1:length(pk_indx)
@@ -301,14 +326,33 @@ if ~dry
         for iter_seq = 1:len_trials
             R_data_amber(iter_trial,iter_seq,:,:) = (reshape(R_data_amber(iter_trial,iter_seq,:,:),X,Y))./bsl_local;
         end    
+        % Storing individual trials data (but time series extracted due to
+        % storage constraints):
+        [TS_580_tmp,~] = Time_Series_extract_single(reshape(R_data_amber(iter_trial,:,:,:),[len_trials,X,Y]),mask,len_trials,X,Y);
+        TS_580(iter_trial,:,:) = TS_580_tmp;
     end
     for iter_seq = 1:len_trials             % taking average over trials
+        if iter_seq == 25
+            delRR = reshape(mean(R_data_amber(:,iter_seq,:,:),1,'omitnan'),[X,Y]);
+            delRR = delRR - 1;
+            delRR(delRR>0)=0;
+            F = SpeckleFigure(avg_frame_local, [10000,50000], 'visible', true);
+            F.showOverlay(zeros(size(delRR)),c_limits, zeros(size(delRR)),'use_divergent_cmap', false);
+            % Generate the overlay alpha mask excluding values outside overlay range
+            alpha = 0.5*ones(size(delRR)); % transparency
+            alpha(delRR < c_limits(1)) = false;
+            alpha(delRR > c_limits(2)) = false;
+            %alpha = alpha & BW;
+            % Update the figure
+            F.updateOverlay(delRR, alpha);
+            F.saveBMP(fullfile(output_dir_avg,'pk_overlay.bmp'),200);
+        end
         Avg_amber(iter_seq,:,:) = reshape(mean(R_data_amber(:,iter_seq,:,:),1,'omitnan'),[X,Y]);
         [~] = cal_dr_r_indi_amber(reshape(Avg_amber(iter_seq,:,:)-1,[X,Y]),output_video,'Amber-',num2str(iter_seq));
     end
     % Generate video
     Avg_amber = permute(Avg_amber,[2,3,1]);
-    Generate_video_stack(Avg_amber-1,20,seq_period,output_video,sample_img,'label','\DeltaR_n','sc_range',[amin,amax],'overlay_range',[-0.035 -0.01],'show_scalebar',false);
+%     Generate_video_stack(Avg_amber-1,fps_local,seq_period,output_video,avg_frame_local,BW,'label','\DeltaR_n','overlay_range',[-0.03 -0.015],'show_scalebar',false);
     Avg_amber = permute(Avg_amber,[3,1,2]);
     % store .mat
     mat_dir = fullfile(output_dir,'mat_files');
@@ -319,7 +363,7 @@ if ~dry
 end
 
 %% Green 510 nm or Red 632 nm
-clearvars -except global_t_stack mat_dir dry;
+clearvars -except global_t_stack mat_dir dry TS_480 TS_580;
 load(fullfile(mat_dir,'ROI.mat'));
 if wv_3 == 510
     output_video = fullfile(output_dir_avg,'510nm');
@@ -333,6 +377,7 @@ if ~exist(output_video, 'dir')
    mkdir(output_video)
 end
 Data_all_green = cell(eff_num_trials,len_trials);
+TS_wv3 = zeros(eff_num_trials,len_trials,N_ROI); % array for single trial data storage
 % Loop over trials
 iter_trial_local = 0;
 for iter_trial = 1:num_trials
@@ -397,7 +442,9 @@ if ~dry
         bsl_local = reshape(mean(bsl_local,2,'omitnan'),X,Y);
         for iter_seq = 1:len_trials
             R_data_green(iter_trial,iter_seq,:,:) = (reshape(R_data_green(iter_trial,iter_seq,:,:),X,Y))./bsl_local;
-        end    
+        end
+        [TS_wv3_tmp,~] = Time_Series_extract_single(reshape(R_data_green(iter_trial,:,:,:),[len_trials,X,Y]),mask,len_trials,X,Y);
+        TS_wv3(iter_trial,:,:) = TS_wv3_tmp;
     end
     for iter_seq = 1:len_trials             % taking average over trials
         Avg_wv3(iter_seq,:,:) = reshape(mean(R_data_green(:,iter_seq,:,:),1,'omitnan'),[X,Y]);
@@ -411,13 +458,13 @@ if ~dry
     end
     % Generate video
     Avg_wv3 = permute(Avg_wv3,[2,3,1]);
-    if wv_3 == 510
-        Generate_video_stack(Avg_wv3-1,20,seq_period,output_video,sample_img,'label','\DeltaR_n','sc_range',[amin,amax],'overlay_range',[-0.025 -0.01],'show_scalebar',false);
-    elseif wv_3 == 632
-        Generate_video_stack(Avg_wv3-1,20,seq_period,output_video,sample_img,'label','\DeltaR_n','sc_range',[amin,amax],'overlay_range',[0.004 0.01],'show_scalebar',false);
-    else
-        error('incorrect wavelength selected! \n');
-    end
+%     if wv_3 == 510
+%         Generate_video_stack(Avg_wv3-1,20,seq_period,output_video,sample_img,'label','\DeltaR_n','sc_range',[amin,amax],'overlay_range',[-0.025 -0.01],'show_scalebar',false);
+%     elseif wv_3 == 632
+%         Generate_video_stack(Avg_wv3-1,20,seq_period,output_video,sample_img,'label','\DeltaR_n','sc_range',[amin,amax],'overlay_range',[0.004 0.01],'show_scalebar',false);
+%     else
+%         error('incorrect wavelength selected! \n');
+%     end
     Avg_wv3 = permute(Avg_wv3,[3,1,2]);
     % store .mat
     mat_dir = fullfile(output_dir,'mat_files');
@@ -426,11 +473,71 @@ if ~dry
     end
     save(fullfile(mat_dir,'data_wv3.mat'),'Avg_wv3','gauss_filtered_wv3_pk');
 end
+%% Saving data (single trial ROIs)
+IOS_singleTrial = {};
+dict('location') = 'ShankA';
+dict('Dreflectancewv1') = TS_480(:,:,1)-1;
+dict('Dreflectancewv2') = TS_580(:,:,1)-1;
+dict('Dreflectancewv3') = TS_wv3(:,:,1)-1;
+IOS_singleTrial = [IOS_singleTrial ,{dict}];
+dict('location') = 'ShankB';
+dict('Dreflectancewv1') = TS_480(:,:,2)-1;
+dict('Dreflectancewv2') = TS_580(:,:,2)-1;
+dict('Dreflectancewv3') = TS_wv3(:,:,2)-1;
+IOS_singleTrial = [IOS_singleTrial ,{dict}];
+dict('location') = 'ShankC';
+dict('Dreflectancewv1') = TS_480(:,:,3)-1;
+dict('Dreflectancewv2') = TS_580(:,:,3)-1;
+dict('Dreflectancewv3') = TS_wv3(:,:,3)-1;
+IOS_singleTrial = [IOS_singleTrial ,{dict}];
+dict('location') = 'ShankD';
+dict('Dreflectancewv1') = TS_480(:,:,4)-1;
+dict('Dreflectancewv2') = TS_580(:,:,4)-1;
+dict('Dreflectancewv3') = TS_wv3(:,:,4)-1;
+IOS_singleTrial = [IOS_singleTrial ,{dict}];
+dict('location') = 'faraway';
+dict('Dreflectancewv1') = TS_480(:,:,5)-1;
+dict('Dreflectancewv2') = TS_580(:,:,5)-1;
+dict('Dreflectancewv3') = TS_wv3(:,:,5)-1;
+IOS_singleTrial = [IOS_singleTrial ,{dict}];
+dict('location') = 'artery';
+dict('Dreflectancewv1') = TS_480(:,:,6)-1;
+dict('Dreflectancewv2') = TS_580(:,:,6)-1;
+dict('Dreflectancewv3') = TS_wv3(:,:,6)-1;
+IOS_singleTrial = [IOS_singleTrial ,{dict}];
+dict('location') = 'vein';
+dict('Dreflectancewv1') = TS_480(:,:,7)-1;
+dict('Dreflectancewv2') = TS_580(:,:,7)-1;
+dict('Dreflectancewv3') = TS_wv3(:,:,7)-1;
+IOS_singleTrial = [IOS_singleTrial ,{dict}];
+
+ios_trials_local = zeros(num_trials,len_trials,5); 
+% Saving single trial
+for iter_roi = 1:N_ROI
+    str_local = ['IOS_singleTrial',num2str(iter_roi),'.mat'];
+    filename_save = fullfile(mat_dir,str_local);
+    ios_trials_local(:,:,1) = TS_480(:,:,iter_roi);   % 480 nm data
+    ios_trials_local(:,:,2) = TS_580(:,:,iter_roi);   % 580 nm data
+    ios_trials_local(:,:,3) = TS_wv3(:,:,iter_roi);   % Either 632 nm or 510 nm (depends on the date of data acquisition) 
+%     ios_trials_local(:,:,4) = [];     
+%     ios_trials_local(:,:,5) = [];
+    save(filename_save,"ios_trials_local");
+end
 
 %% Plot g(t) for all trials
+% save(fullfile(mat_dir,'IOS_singleTrial.mat'),'IOS_singleTrial');
+y = IOS_singleTrial{6}('Dreflectancewv2');
+fg = figure();
+imagesc(y);
+xline(14);
+xline(29);
+caxis([-0.08,0.02]);
+colorbar;
+fig_gs_plot_filename = fullfile(single_trial_dir,'alltrial_wv2_plot.png');
+saveas(fg,fig_gs_plot_filename,'png');
 fig_gs_plot = global_signal_plot(global_t_stack, len_trials, eff_num_trials);
 fig_gs_plot_filename = fullfile(output_dir,'gs_plot.fig');
 savefig(fig_gs_plot,fig_gs_plot_filename,'compact');
 fig_gs_plot_filename = fullfile(output_dir,'gs_plot.svg');
-saveas(fig_gs_plot,fig_gs_plot_filename,'svg')
+saveas(fig_gs_plot,fig_gs_plot_filename,'svg');
 close(fig_gs_plot);
