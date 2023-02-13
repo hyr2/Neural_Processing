@@ -19,14 +19,14 @@
 % |__Raw/
 % |__whisker_stim.txt
 
-clear all;
+% clear all;
 % input parameters:
-source_dir = 'C:\Data\RH-8\12-5-22';
+% source_dir = 'C:\Data\RH-8\12-1-22';
 wv_3 = '510';   % The 3rd wavelength was 510nm or 632nm
 cam_in = '0';   % Is this the Andor Camera? [1,0] 0: Hamamatsu Camera (installed on 2022-08)
 dry = 0;        % Dont do dry run. Dry run --> just overall intensity plot.nothing else
 c_limits = [-0.025, -0.007]; % for overlay range
-fps_local = 10; % fps for video
+fps_local = 5.555; % fps for video (the true FPS of the recorded data)
 
 % selpath = uigetdir('Select source directory containing scans');
 output_dir = fullfile(source_dir,'Processed');
@@ -87,32 +87,46 @@ baseline_end1 = start_stimulate-2; % baselines before the stimulation
 
 len_trials_all_Lambda = number_wavelength * len_trials;
 start_trial = [1:len_trials_all_Lambda:num_trials*len_trials_all_Lambda];
-
 % %% ROI Selection
-sample_img = imread(fullfile(Raw_dir,files_raw(2).name));
-sample_img = mat2gray(sample_img);
-if cam_in == 1
-    sample_img = image_transform_B(sample_img);
-else
-    sample_img = image_transform_A(sample_img);
+iter_local_local = 1;       
+vec_img = [2:3:29];
+for iter_local = vec_img    % averaging 580nm image for a good underlay image
+    thisImage = double(imread(fullfile(Raw_dir,files_raw(iter_local).name)));
+    if iter_local_local
+        sumImage = thisImage;
+    else
+        sumImage = sumImage + thisImage;
+    end
+    iter_local_local = iter_local_local + 1;
 end
-amax = max(sample_img(:));
-amin = min(sample_img(:));
-[X,Y] = size(sample_img);
+sumImage = sumImage / length(vec_img);
+sample_img = sumImage; sample_img_temp = sumImage;
+% sample_img = imread(fullfile(Raw_dir,files_raw(2).name));
+sumImage = mat2gray(sumImage);
+if cam_in == 1
+    sumImage = image_transform_B(sumImage);
+else
+    sumImage = image_transform_A(sumImage);
+end
+amax = max(sumImage(:));
+amin = min(sumImage(:));
+[X,Y] = size(sumImage);
 % If ROI argument is not provided, prompt user to define
-ROI_selector = input('Do you want to use a pre-defined ROI? [1,0] \n');
-ROI_selector = logical(ROI_selector);
+% ROI_selector = input('Do you want to use a pre-defined ROI? [1,0] \n');
+% ROI_selector = logical(ROI_selector);
+ROI_selector = 1;  % run using Zidong_IOS_Full.m    
 if ROI_selector
-    ROI_loc = input('Path to ROI.mat file\n','s');
+%     ROI_loc = input('Path to ROI.mat file\n','s');
+    ROI_loc = fullfile(source_dir,'Processed','mat_files');
     ROI_loc = fullfile(ROI_loc,'ROI.mat');
     load(ROI_loc,'mask','BW');
   if size(mask, 1) ~= X || size(mask, 2) ~= Y
-    error('ROI dimensions (%dx%d) do not match intrinsic data (%dx%d)', size(ROI,1), size(ROI, 2), X, Y);
+    error('ROI dimensions (%dx%d) do not match intrinsic data (%dx%d)', size(mask,1), size(mask, 2), X, Y);
   end
 else
-    mask = drawROIs(sample_img,[amin,amax]);
+    mask = drawROIs(sumImage,[amin,amax]);
     % Define a craniotomy
-    BW = defineCraniotomy(sample_img,[amin amax]);
+    BW = defineCraniotomy(sumImage,[amin amax]);
 end
 N_ROI = size(mask,3);
 
@@ -138,8 +152,20 @@ dict('Dreflectancewv2') = zeros(eff_num_trials,len_trials);
 dict('Dreflectancewv3') = zeros(eff_num_trials,len_trials);
 dict('DHbR') = zeros(eff_num_trials,len_trials);
 dict('DHbO') = zeros(eff_num_trials,len_trials);
+clearvars sample_img
 save(fullfile(mat_dir,'ROI.mat'));
-F = SpeckleFigure(sample_img, [0,1], 'visible', true);
+sample_img = sample_img_temp;
+% sample_img = sumImage;
+if cam_in == 1
+    sample_img = image_transform_B(sample_img);
+else
+    sample_img = image_transform_A(sample_img);
+end
+sample_img = double(sample_img .* BW);
+tmp_std = std(sample_img(:),'omitnan');
+amin = mean(sample_img(:),'omitnan') - tmp_std;
+amax = mean(sample_img(:),'omitnan') + 2.25*tmp_std;
+F = SpeckleFigure(sample_img, [amin,amax], 'visible', true);
 F.showROIs(mask);
 F.savePNG(fullfile(output_dir_avg,'ROI_overlay.png'),220);
 global_t_stack = zeros(eff_num_trials,len_trials,number_wavelength);
@@ -233,7 +259,9 @@ if ~dry
     % Saving image files here
     for iter_seq = 1:len_trials             % taking average over trials
         Avg_blue(iter_seq,:,:) = reshape(mean(R_data_blue(:,iter_seq,:,:),1,'omitnan'),[X,Y]);
-        [~] = cal_dr_r_indi_green(reshape(Avg_blue(iter_seq,:,:)-1,[X,Y]),output_video,'Blue-',num2str(iter_seq));
+%         [~] =
+%         cal_dr_r_indi_green(reshape(Avg_blue(iter_seq,:,:)-1,[X,Y]),output_video,'Blue-',num2str(iter_seq));
+%         % skip saving images
     end
     % clear R_data_blue
     
@@ -252,8 +280,21 @@ if ~dry
 %     save(fullfile(single_trial_dir,'TS_480.mat'),'TS_480');
 end
 %% Amber 580 nm
-clearvars -except global_t_stack mat_dir dry TS_480;
+% clearvars -except global_t_stack mat_dir dry TS_480 ;
+clearvars Avg_blue Data Data_all_blue BW bsl_blue_local gauss_filtered_blue_pk mask R_data_blue rawData TS_480_tmp
 load(fullfile(mat_dir,'ROI.mat'));
+sample_img = sample_img_temp;
+% sample_img = sumImage;
+if cam_in == 1
+    sample_img = image_transform_B(sample_img);
+else
+    sample_img = image_transform_A(sample_img);
+end
+sample_img = double(sample_img .* BW);
+tmp_std = std(sample_img(:),'omitnan');
+amin = mean(sample_img(:),'omitnan') - tmp_std;
+amax = mean(sample_img(:),'omitnan') + 2.25*tmp_std;
+
 output_video = fullfile(output_dir_avg,'580nm');
 if ~exist(output_video, 'dir')
    mkdir(output_video)
@@ -291,8 +332,6 @@ if ~dry
     d2_spatial_avg_mat = spatial_gauss_filt(Data_all_amber(:,pk_indx),sigma_2d);
     d2_spatial_avg_bsl = spatial_gauss_filt(Data_all_amber(:,bsl_indx),sigma_2d);
     d2_spatial_avg_bsl = reshape(mean(d2_spatial_avg_bsl,2,'omitnan'),[eff_num_trials,X,Y]);
-    % Compute average frame
-    avg_frame_local = Data_all_amber{1,1};
     % compute deltaR/R
     for iter_trial = 1:eff_num_trials
         for iter_seq = 1:length(pk_indx)
@@ -336,7 +375,7 @@ if ~dry
             delRR = reshape(mean(R_data_amber(:,iter_seq,:,:),1,'omitnan'),[X,Y]);
             delRR = delRR - 1;
             delRR(delRR>0)=0;
-            F = SpeckleFigure(avg_frame_local, [10000,50000], 'visible', true);
+            F = SpeckleFigure(sample_img, [amin,amax], 'visible', true);
             F.showOverlay(zeros(size(delRR)),c_limits, zeros(size(delRR)),'use_divergent_cmap', false);
             % Generate the overlay alpha mask excluding values outside overlay range
             alpha = 0.5*ones(size(delRR)); % transparency
@@ -346,13 +385,16 @@ if ~dry
             % Update the figure
             F.updateOverlay(delRR, alpha);
             F.saveBMP(fullfile(output_dir_avg,'pk_overlay.bmp'),200);
+            close all;
         end
         Avg_amber(iter_seq,:,:) = reshape(mean(R_data_amber(:,iter_seq,:,:),1,'omitnan'),[X,Y]);
-        [~] = cal_dr_r_indi_amber(reshape(Avg_amber(iter_seq,:,:)-1,[X,Y]),output_video,'Amber-',num2str(iter_seq));
+%         [~] =
+%         cal_dr_r_indi_amber(reshape(Avg_amber(iter_seq,:,:)-1,[X,Y]),output_video,'Amber-',num2str(iter_seq));
+%         % skip saving
     end
     % Generate video
     Avg_amber = permute(Avg_amber,[2,3,1]);
-%     Generate_video_stack(Avg_amber-1,fps_local,seq_period,output_video,avg_frame_local,BW,'label','\DeltaR_n','overlay_range',[-0.03 -0.015],'show_scalebar',false);
+    Generate_video_stack(Avg_amber-1,fps_local,seq_period,output_video,sample_img,BW,'label','\DeltaR_n','overlay_range',[-0.025,-0.009],'show_scalebar',false,'sc_range',[amin,amax],'show_timestamp',false);  % good overlay range for 580 nm and our current whisker stim (2.7 sec at 11.1 Hz)
     Avg_amber = permute(Avg_amber,[3,1,2]);
     % store .mat
     mat_dir = fullfile(output_dir,'mat_files');
@@ -363,7 +405,8 @@ if ~dry
 end
 
 %% Green 510 nm or Red 632 nm
-clearvars -except global_t_stack mat_dir dry TS_480 TS_580;
+% clearvars -except global_t_stack mat_dir dry TS_480 TS_580;
+clearvars Avg_amber Data Data_all_amber BW bsl_amber_local gauss_filtered_amber_pk mask R_data_amber rawData TS_580_tmp
 load(fullfile(mat_dir,'ROI.mat'));
 if wv_3 == 510
     output_video = fullfile(output_dir_avg,'510nm');
@@ -449,9 +492,9 @@ if ~dry
     for iter_seq = 1:len_trials             % taking average over trials
         Avg_wv3(iter_seq,:,:) = reshape(mean(R_data_green(:,iter_seq,:,:),1,'omitnan'),[X,Y]);
         if wv_3 == 510
-            [~] = cal_dr_r_indi_green(reshape(Avg_wv3(iter_seq,:,:)-1,[X,Y]),output_video,'Green-',num2str(iter_seq));
+%             [~] = cal_dr_r_indi_green(reshape(Avg_wv3(iter_seq,:,:)-1,[X,Y]),output_video,'Green-',num2str(iter_seq));
         elseif wv_3 == 632
-            [~] = cal_dr_r_indi_red(reshape(Avg_wv3(iter_seq,:,:)-1,[X,Y]),output_video,'Red-',num2str(iter_seq));
+%             [~] = cal_dr_r_indi_red(reshape(Avg_wv3(iter_seq,:,:)-1,[X,Y]),output_video,'Red-',num2str(iter_seq));
         else
             error('incorrect wavelength selected! \n');
         end
