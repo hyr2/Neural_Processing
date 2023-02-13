@@ -1,6 +1,8 @@
 function [mat_all_trial] = spatial_gauss_filt(Data_cell,sig)
 %SPATIAL_GAUSS_FILT Summary of this function goes here
-%   Detailed explanation goes here
+%   Data_cell is a 2D cell array. Each element of the cell array is a 2D
+%   image. The first dimension of the cell array is the trial dimension and
+%   the second dimension is the time dimension
 
 [num_trials, len_trials] = size(Data_cell);
 [X,Y] = size(Data_cell{1,1});
