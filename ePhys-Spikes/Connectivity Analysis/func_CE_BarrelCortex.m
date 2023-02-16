@@ -200,7 +200,8 @@ cell_metrics.acg_tau_rise = fit_params.acg_tau_rise;
 
 preferences.putativeCellType.troughToPeak_boundary=0.425;       % From CE website
 preferences.putativeCellType.acg_tau_rise_boundary=6;           % From CE website
-cell_metrics.putativeCellType =celltype_classification.standard(cell_metrics,preferences);
+cell_metrics.putativeCellType = celltype_classification.standard(cell_metrics,preferences);
+celltype = cell_metrics.putativeCellType;
 
 % Addition based on excitatory vs inhibitory (based on waveform shape which is same as CCG based)
 type_excit = (cell_metrics.troughToPeak > 0.55);    % Buzsaki lab (https://www.cell.com/neuron/pdfExtended/S0896-6273(18)31085-7)
@@ -229,7 +230,7 @@ troughtopeak_inhib = cell_metrics.troughToPeak(idx_inhib);
 % filename = fullfile(plotfolder,'cell_type_analysis.png');
 % print(filename,'-dpng','-r0');
 filename = fullfile(plotfolder,'pop_celltypes.mat');
-save(filename,'type_excit','type_inhib','troughToPeak','derivative_TroughtoPeak');
+save(filename,'type_excit','type_inhib','troughToPeak','derivative_TroughtoPeak','celltype');
 
 
 end
