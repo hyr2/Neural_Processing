@@ -55,11 +55,17 @@ for i=1:n_clus
     ts_by_clus{i} = [];
 end
 
-
+n_pri_ch_known = 0;
 % count spikes by unit : curation
 for i=1:length(spike_times_all)
     spk_lbl = spike_labels(i);
-    pri_ch_lut(spk_lbl) = ch_stamp(spk_lbl);
+    if pri_ch_lut(spk_lbl) == -1
+        pri_ch_lut(spk_lbl) = ch_stamp(i);
+        n_pri_ch_known = n_pri_ch_known + 1;
+            if n_pri_ch_known == n_clus
+                break;
+            end
+    end
     spike_times_by_clus{spk_lbl}(end+1) = spike_times_all(i)/Fs;
     ts_by_clus{spk_lbl}(end+1) = spike_times_all(i);
 end
@@ -92,9 +98,10 @@ if curation
     end
     for i=1:n_clus
         if curation_mask(i)==1
-%           filtWaveform{spike_labels_mapping(i)} = templates(pri_ch_lut(i), [25:75], i);
-            filtWaveform{spike_labels_mapping(i)} = templates(pri_ch_lut(i), [2:52], i);    % for 25 KHZ
-            timeWaveform{spike_labels_mapping(i)} = [-25:25]/Fs*1000;
+          filtWaveform{spike_labels_mapping(i)} = templates(pri_ch_lut(i), [10:90], i);
+%             filtWaveform{spike_labels_mapping(i)} = templates(pri_ch_lut(i), [2:52], i);    % for 25 KHZ
+            timeWaveform{spike_labels_mapping(i)} = [-40:40]/Fs*1000;
+%             figure;plot(timeWaveform{spike_labels_mapping(i)},filtWaveform{spike_labels_mapping(i)})
             % spike_times_by_clus{i} = spike_times_by_clus{i}';
         end
     end
@@ -181,7 +188,9 @@ end
 %% Copied from Cell type classification 
 waveform_metrics = calc_waveform_metrics(spikes,Fs,'showFigures',false);
 cell_metrics.troughToPeak = waveform_metrics.troughtoPeak;
-
+cell_metrics.derivative_TroughToPeak = waveform_metrics.derivative_TroughtoPeak;
+troughToPeak = cell_metrics.troughToPeak;
+derivative_TroughtoPeak = cell_metrics.derivative_TroughToPeak;
 
 spikes.numcells=numel(spikes.cluID);
 spikes.total=mono_res.n;
@@ -189,39 +198,38 @@ acg_metrics = calc_ACG_metrics(spikes,Fs,'showFigures',false);
 fit_params = fit_ACG(acg_metrics.acg_narrow,false);
 cell_metrics.acg_tau_rise = fit_params.acg_tau_rise;
 
-
-preferences.putativeCellType.troughToPeak_boundary=0.425;
-preferences.putativeCellType.acg_tau_rise_boundary=6;
+preferences.putativeCellType.troughToPeak_boundary=0.425;       % From CE website
+preferences.putativeCellType.acg_tau_rise_boundary=6;           % From CE website
 cell_metrics.putativeCellType =celltype_classification.standard(cell_metrics,preferences);
 
-% Addition based on excitatory vs inhibitory (not connections but based on
-% whisker stimulation)
-idx_act = (response_mask == 1);
-idx_inhib = (response_mask == -1);
+% Addition based on excitatory vs inhibitory (based on waveform shape which is same as CCG based)
+type_excit = (cell_metrics.troughToPeak > 0.55);    % Buzsaki lab (https://www.cell.com/neuron/pdfExtended/S0896-6273(18)31085-7)
+type_inhib = (cell_metrics.troughToPeak <= 0.55);
+
+idx_act = (type_excit == 1);     
+idx_inhib = (type_inhib == 1);  
 acg_tau_rise_excit = cell_metrics.acg_tau_rise(idx_act);
 acg_tau_rise_inhib = cell_metrics.acg_tau_rise(idx_inhib);
 troughtopeak_excit = cell_metrics.troughToPeak(idx_act);
 troughtopeak_inhib = cell_metrics.troughToPeak(idx_inhib);
-type_excit = cell_metrics.putativeCellType(idx_act);
-type_inhib = cell_metrics.putativeCellType(idx_inhib);
 
 % scatter plot for cell type
-scatter(troughtopeak_excit,acg_tau_rise_excit,28,'r','filled')
-hold on;
-scatter(troughtopeak_inhib,acg_tau_rise_inhib,28,'b','filled');
-xlabel('Trough to Pk (ms)');
-ylabel('\tau_{rise} (ms)');
-xline(0.425,"--",'Wide Interneuron','Color','y','LineWidth',2.5);
-vec_line_x = linspace(0.425,1,10);
-vec_line_y = 6*ones(1,10);
-plot(vec_line_x,vec_line_y,'--','Color','g','LineWidth',2.5);
-text(0.7,5.75,'Pyramidal neuron')
-text(0.15,14,'Narrow Interneuron');
-axis([0.1,1,-inf,inf]);
-filename = fullfile(plotfolder,'cell_type_analysis.png');
-print(filename,'-dpng','-r0');
+% scatter(troughtopeak_excit,acg_tau_rise_excit,28,'r','filled')
+% hold on;
+% scatter(troughtopeak_inhib,acg_tau_rise_inhib,28,'b','filled');
+% xlabel('Trough to Pk (ms)');
+% ylabel('\tau_{rise} (ms)');
+% xline(0.425,"--",'Wide Interneuron','Color','y','LineWidth',2.5);
+% vec_line_x = linspace(0.425,1,10);
+% vec_line_y = 6*ones(1,10);
+% plot(vec_line_x,vec_line_y,'--','Color','g','LineWidth',2.5);
+% text(0.7,5.75,'Pyramidal neuron')
+% text(0.15,14,'Narrow Interneuron');
+% axis([0.1,1,-inf,inf]);
+% filename = fullfile(plotfolder,'cell_type_analysis.png');
+% print(filename,'-dpng','-r0');
 filename = fullfile(plotfolder,'pop_celltypes.mat');
-save(filename,'type_excit','type_inhib');
+save(filename,'type_excit','type_inhib','troughToPeak','derivative_TroughtoPeak');
 
 
 end
