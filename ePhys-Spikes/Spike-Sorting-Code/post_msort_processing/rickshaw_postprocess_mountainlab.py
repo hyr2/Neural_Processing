@@ -49,8 +49,8 @@ for iter, filename in enumerate(source_dir_list):
         eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,nargout=0)
 
         # delete converted_data.mda and filt.mda and raw data files (.rhd) 
-        os.remove(os.path.join(Raw_dir,'converted_data.mda'))
-        os.remove(os.path.join(Raw_dir,'filt.mda'))
+        os.remove(os.path.join(Raw_dir,'converted_data.mda')) if os.path.isfile(os.path.join(Raw_dir,'converted_data.mda')) else None
+        os.remove(os.path.join(Raw_dir,'filt.mda')) if os.path.isfile(os.path.join(Raw_dir,'filt.mda')) else None
         test = os.listdir(Raw_dir)
         for item in test:
             if item.endswith(".rhd"):
