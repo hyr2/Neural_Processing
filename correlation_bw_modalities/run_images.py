@@ -15,35 +15,38 @@ from utils_cc import read_stimtxt, readmda
 
 
 
-def read_ios_signals(folderpath):
+def read_ios_signals(session_spk_dir, session_ios_dir):
     x = []
-    x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial1.mat")))
-    x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial2.mat")))
-    x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial3.mat")))
-    x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial4.mat")))
-    x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial5.mat")))
-    x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial6.mat")))
-    x.append(loadmat(os.path.join(folderpath, "imaging_signals", "IOS_singleTrial7.mat")))
-    trial_mask = pd.read_csv(os.path.join(folderpath, "trial_mask.csv"), header=None).to_numpy().squeeze().astype(bool)
+    x.append(loadmat(os.path.join(session_ios_dir, "Processed/mat_files", "IOS_singleTrial1.mat")))
+    x.append(loadmat(os.path.join(session_ios_dir, "Processed/mat_files", "IOS_singleTrial2.mat")))
+    x.append(loadmat(os.path.join(session_ios_dir, "Processed/mat_files", "IOS_singleTrial3.mat")))
+    x.append(loadmat(os.path.join(session_ios_dir, "Processed/mat_files", "IOS_singleTrial4.mat")))
+    x.append(loadmat(os.path.join(session_ios_dir, "Processed/mat_files", "IOS_singleTrial5.mat")))
+    x.append(loadmat(os.path.join(session_ios_dir, "Processed/mat_files", "IOS_singleTrial6.mat")))
+    x.append(loadmat(os.path.join(session_ios_dir, "Processed/mat_files", "IOS_singleTrial7.mat")))
+    if os.path.exists(os.path.join(session_ios_dir, "trial_mask.csv")):
+        trial_mask = pd.read_csv(os.path.join(session_spk_dir, "trial_mask.csv"), header=None).to_numpy().squeeze().astype(bool)
+    else:
+        trial_mask = np.ones(x[0]['ios_trials_local'].shape[0], dtype=bool)
     # print(trial_mask.shape)
     data = np.stack([xx['ios_trials_local'][trial_mask, :, :] for xx in x], axis=0) # (nROIs, nTrials, time, n_modalities)
     data = np.transpose(data, axes=[0,3,1,2]) # (nROIs, nModalities, nTrials, nTime)
     return data
 
-def corrs_one_session(session_dir):
+def corrs_one_session(session_spk_dir, session_ios_dir):
     """
     Return a list of dicts; each dict is a trial-average cross-correlation result b/w some units' firing rates and some IOS ROI.
     """
     ret = []
     # read session and trials metadata
     # trial_mask = pd.read_csv(os.path.join(session_dir, "trial_mask.csv"), header=None).to_numpy().squeeze().astype(bool)
-    with open(os.path.join(session_dir, "pre_MS.json"), "r") as f:
+    with open(os.path.join(session_spk_dir, "pre_MS.json"), "r") as f:
         session_info = json.load(f)
     # trial_duration = session_info["SequenceTime"]*session_info["SeqPerTrial"]
     # trial_start_stamps = loadmat(os.path.join(session_dir, "trials_times.mat"))['t_trial_start'].squeeze()
 
     # read and resample Imaging signal
-    data = read_ios_signals(session_dir)  # (nROIs, nModalities, nTrials, nTime)
+    data = read_ios_signals(session_spk_dir, session_ios_dir)  # (nROIs, nModalities, nTrials, nTime)
     data_r, bin_len = utils_cc.resample_0phase(data, session_info['SequenceTime'], 18, 5, axis=-1)
     data_r = data_r - np.mean(data_r, axis=-1)[..., None] # MEAN SUBSTRACTION - THIS IS VERY IMPORTANT!!!
     n_trials = data_r.shape[2]
@@ -75,20 +78,25 @@ if __name__ == "__main__":
     #     "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/tmp_figs/rh8_imaging/2022-12-03",
     #     "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/tmp_figs/rh8_imaging/2022-12-05"
     #     ]
-    figdir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/tmp_figs/rh8_imaging_vein_all"
-    session_dirs=[
-        "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/spikesort_out/processed_data_rh8/2022-12-01",
-        "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/spikesort_out/processed_data_rh8/2022-12-03",
-        "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/spikesort_out/processed_data_rh8/2022-12-05"
-        ]
+    ios_dir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/IOS/processed_data_rh8/"
+    spk_dir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/spikesort_out/processed_data_rh8/"
+
+    fig_dir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/tmp_figs/rh8_ioscorr_chronic"
+    session_rel_dirs=os.listdir(spk_dir)
+
 
     best_lags = {}
     best_scores = {}
     all_corrs = {}
-    for session_dir in session_dirs:
-        if not os.path.exists(figdir):
-            os.makedirs(figdir)
-        ret = corrs_one_session(session_dir)
+    for session_rel_dir in session_rel_dirs:
+        # if not os.path.exists(figdir):
+        #     os.makedirs(figdir)
+        session_spk_dir = os.path.join(spk_dir, session_rel_dir)
+        session_ios_dir = os.path.join(ios_dir, session_rel_dir)
+        session_fig_dir = os.path.join(fig_dir, session_rel_dir)
+        if not os.path.exists(session_fig_dir):
+            os.makedirs(session_fig_dir)
+        ret = corrs_one_session(session_spk_dir, session_ios_dir)
         plot_range = [-3.5, 3.5]
         for d in ret:
             corr_lags = d["corr_lags"]
@@ -111,38 +119,38 @@ if __name__ == "__main__":
                 best_lags[kname].append(best_lag)
                 best_scores[kname].append(best_score)
                 all_corrs[kname].append(tuple([corr_lags_valid, corr_avg_valid]))
-            # plt.figure()
-            # plt.plot(corr_lags_valid, corr_avg_valid, linewidth=0.7, marker='x', label='mean correlation')
-            # plt.fill_between(corr_lags_valid, corr_avg_valid-corr_std_valid, corr_avg_valid+corr_std_valid, color='orange', alpha=0.3)
-            # plt.ylim([-1,1])
-            # plt.axhline(0, color='r', linestyle="--")
-            # plt.axvline(0, color='yellow', linestyle="--")
-            # plt.xlabel("Lag (seconds) (Negative means A is earlier)")
-            # plt.title(d["description"])
+            plt.figure()
+            plt.plot(corr_lags_valid, corr_avg_valid, linewidth=0.7, marker='x', label='mean correlation')
+            plt.fill_between(corr_lags_valid, corr_avg_valid-corr_std_valid, corr_avg_valid+corr_std_valid, color='orange', alpha=0.3)
+            plt.ylim([-1,1])
+            plt.axhline(0, color='r', linestyle="--")
+            plt.axvline(0, color='yellow', linestyle="--")
+            plt.xlabel("Lag (seconds) (Negative means A is earlier)")
+            plt.title(d["description"])
             # plt.show()
-            # plt.savefig(os.path.join(figdir, d["description"]+".png"))
-            # plt.close()
-    days = [0,1,2]
+            plt.savefig(os.path.join(session_fig_dir, d["description"]+".png"))
+            plt.close()
+    days = [-5, -3, -1, 2, 7, 14, 21, 28, 35, 42]
     for kname in best_lags.keys():
         plt.figure()
         plt.bar(days, best_lags[kname], color='k', width=0.3)
         plt.xticks(days)
         plt.title(kname+" - Best Lag")
-        plt.savefig(os.path.join(figdir, kname+"_bestlag.png"))
+        plt.savefig(os.path.join(fig_dir, kname+"_bestlag.png"))
         plt.close()
 
         plt.figure()
         plt.bar(days, best_scores[kname], color='k', width=0.3)
         plt.xticks(days)
         plt.title(kname+" - Best Correlation Score")
-        plt.savefig(os.path.join(figdir, kname+"_bestscore.png"))
+        plt.savefig(os.path.join(fig_dir, kname+"_bestscore.png"))
         plt.close()
 
         plt.figure()
         for i in range(len(all_corrs[kname])):
             plt.plot(all_corrs[kname][i][0], all_corrs[kname][i][1])
         plt.title(kname + " - Cross correlation")
-        plt.savefig(os.path.join(figdir, kname+"_corrs.png"))
+        plt.savefig(os.path.join(fig_dir, kname+"_corrs.png"))
         plt.close()
 
 

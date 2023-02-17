@@ -73,30 +73,34 @@ def func_savelfp(input_rootdir, output_rootdir, rel_dir):
         dict_ch_nativeorder_allsessions[i_file] = chs_native_order_local   
         
     TrueNativeChOrder,n_ch = intersection_lists(dict_ch_nativeorder_allsessions)
-    # writer = DiskWriteMda(os.path.join(output_dir, "converted_data.mda"), (n_ch, n_samples), dt="int16")
+    writer = DiskWriteMda(os.path.join(output_dir, "converted_data.mda"), (n_ch, n_samples), dt="int16")
 
     for i_file, filename in enumerate(filenames):
         print("----%s----"%(os.path.join(Raw_dir, filename)))
-        # data_dict = read_data(os.path.join(Raw_dir, filename))
-        # chs_info = deepcopy(data_dict['amplifier_channels'])
-        # chs_native_order = [e['native_order'] for e in chs_info]
-        # reject_ch_indx = np.where(chs_native_order == np.setdiff1d(chs_native_order,TrueNativeChOrder))[0]
-        # # print("Applying notch")
-        # print("Data are read") # no need to notch since we only care about 250~5000Hz
-        # ephys_data = data_dict['amplifier_data']
-        # # ephys_data = notch_filter(ephys_data, sample_freq, notch_freq, Q=20)
-        # ephys_data = ephys_data.astype(np.int16)
-        # ephys_data = np.delete(ephys_data,reject_ch_indx,axis = 0)
-        # print("Appending chunk to disk")
-        # entry_offset = n_samples_cumsum_by_file[i_file] * n_ch
-        # writer.writeChunk(ephys_data, i1=0, i2=entry_offset)
-        # del(ephys_data)
-        # del(data_dict)
-        # del(reject_ch_indx)
-        # gc.collect()
+        with logtofile():
+            data_dict = read_data(os.path.join(Raw_dir, filename))
+        chs_info = deepcopy(data_dict['amplifier_channels'])
+        sample_freq = data_dict['sample_rate']
+        chs_native_order = [e['native_order'] for e in chs_info]
+        reject_ch_indx = np.where(chs_native_order == np.setdiff1d(chs_native_order,TrueNativeChOrder))[0]
+        # print("Applying notch")
+        print("    RHD chunk is read") # no need to notch since we only care about 250~5000Hz
+        ephys_data = data_dict['amplifier_data']
+        ephys_data = notch_filter(ephys_data, sample_freq, 60, Q=20) # 60Hz notch with Q=20
+        print("    RHD chunk is notched")
+        ephys_data = ephys_data.astype(np.int16)
+        ephys_data = np.delete(ephys_data,reject_ch_indx,axis = 0)
+        print("    Appending chunk to disk")
+        entry_offset = n_samples_cumsum_by_file[i_file] * n_ch
+        writer.writeChunk(ephys_data, i1=0, i2=entry_offset)
+        del(ephys_data)
+        del(data_dict)
+        del(reject_ch_indx)
+        gc.collect()
 
 
-rawdir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/data/"
-outputdir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/mytempfolder/"
-rel_dir = "RH-8/2022-12-03"
-func_savelfp(rawdir, outputdir, rel_dir)
+if __name__ == "__main__":
+    rawdir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/data/"
+    outputdir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/mytempfolder/"
+    rel_dir = "RH-8/2022-12-03"
+    func_savelfp(rawdir, outputdir, rel_dir)
