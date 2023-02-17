@@ -394,7 +394,7 @@ if ~dry
     end
     % Generate video
     Avg_amber = permute(Avg_amber,[2,3,1]);
-    Generate_video_stack(Avg_amber-1,fps_local,seq_period,output_video,sample_img,BW,'label','\DeltaR_n','overlay_range',[-0.025,-0.009],'show_scalebar',false,'sc_range',[amin,amax],'show_timestamp',false);  % good overlay range for 580 nm and our current whisker stim (2.7 sec at 11.1 Hz)
+%     Generate_video_stack(Avg_amber-1,fps_local,seq_period,output_video,sample_img,BW,'label','\DeltaR_n','overlay_range',[-0.025,-0.009],'show_scalebar',false,'sc_range',[amin,amax]);
     Avg_amber = permute(Avg_amber,[3,1,2]);
     % store .mat
     mat_dir = fullfile(output_dir,'mat_files');
