@@ -25,7 +25,7 @@ dir_expsummary = os.path.join(source_dir,'exp_summary.xlsx')
 os.makedirs(output_dir)
 
 
-# Extracting data from summary file .xlsx
+# Extracting data from summary file .xlsx (.json)
 df_exp_summary = pd.read_excel(dir_expsummary)
 arr_exp_summary = df_exp_summary.to_numpy()
 Num_chan = arr_exp_summary[0,0]         # Number of channels
