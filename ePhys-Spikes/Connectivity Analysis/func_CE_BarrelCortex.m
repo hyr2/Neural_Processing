@@ -94,10 +94,11 @@ if min(chmap_mat(:)) == 1
     disp("Subtracted one from channel map to make sure channel index starts from 0 (Original map file NOT changed)")
     chmap_map = chmap_mat - 1;
 end
-shank_num = -1 * ones(1,n_clus);
+shank_num = int8 (-1 * ones(1,n_clus));
 for i_clus = 1:n_clus   % each cluster in mountainsort output is assigned a shank here
-    prim_ch = pri_ch_lut(i_clus);   % this is the Mountainsort channel ID (starts from 1)
-    shank_num(i_clus) = get_shanknum_from_msort_id(prim_ch,Native_orders,chmap_mat,chmap2x16); % function used to get shank ID    
+    prim_ch = pri_ch_lut(i_clus);   % this is the Mountainsort channel ID (starts from 1)]
+%     disp(get_shanknum_from_msort_id(prim_ch,Native_orders,chmap_mat,chmap2x16))
+    shank_num(i_clus) = int8(get_shanknum_from_msort_id(prim_ch,Native_orders,chmap_mat,chmap2x16)); % function used to get shank ID    
 end
 
 % More curation code
