@@ -116,8 +116,6 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     
     chs_impedance = None
     notch_freq = None
-    data_rhd_list = []
-    ephys_data_whole = None
     chs_native_order = None
     sample_freq = None
     df_final = pd.DataFrame(columns=['Time','ADC'])
@@ -162,12 +160,12 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         if chs_native_order is None:
             chs_native_order = [e['native_order'] for e in chs_info]
             chs_impedance = [e['electrode_impedance_magnitude'] for e in chs_info]
-            print("#Chans with >= 3MOhm impedance:", np.sum(np.array(chs_impedance)>=3e6))
+            print("    #Chans with >= 3MOhm impedance:", np.sum(np.array(chs_impedance)>=3e6))
             notch_freq = head_dict['notch_filter_frequency']
             sample_freq = head_dict['sample_rate']
         else:
             tmp_native_order = [e['native_order'] for e in chs_info]
-            print("#Chans with >= 3MOhm impedance:", np.sum(np.array([e['electrode_impedance_magnitude'] for e in chs_info])>=3e6))
+            print("    #Chans with >= 3MOhm impedance:", np.sum(np.array([e['electrode_impedance_magnitude'] for e in chs_info])>=3e6))
             if not check_header_consistency(tmp_native_order, chs_native_order):
                 warnings.warn("WARNING in preprocess_rhd: native ordering of channels inconsistent within one session\n")
             if notch_freq != head_dict['notch_filter_frequency']:
@@ -177,13 +175,17 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         
         chs_native_order = [e['native_order'] for e in chs_info]
         reject_ch_indx = np.where(chs_native_order == np.setdiff1d(chs_native_order,TrueNativeChOrder))[0]
+        print("    Intan channels to reject:", reject_ch_indx)
         # print("Applying notch")
-        print("Data are read") # no need to notch since we only care about 250~5000Hz
+        print("    Data are read") # no need to notch since we only care about 250~5000Hz
         ephys_data = data_dict['amplifier_data']
-        # ephys_data = notch_filter(ephys_data, sample_freq, notch_freq, Q=20)
-        ephys_data = ephys_data.astype(np.int16)
         ephys_data = np.delete(ephys_data,reject_ch_indx,axis = 0)
-        print("Appending chunk to disk")
+        print("    Notching + CMR of medians")
+        ephys_data = notch_filter(ephys_data, sample_freq, notch_freq, Q=20)
+        ephys_data = ephys_data - np.median(ephys_data, axis=0)
+        ephys_data = ephys_data.astype(np.int16)
+        
+        print("    Appending chunk to disk")
         entry_offset = n_samples_cumsum_by_file[i_file] * n_ch
         writer.writeChunk(ephys_data, i1=0, i2=entry_offset)
         del(ephys_data)
@@ -191,19 +193,6 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         del(df)
         del(reject_ch_indx)
         gc.collect()
-        # print("Concatenating")
-        # if ephys_data_whole is None:
-        #     ephys_data_whole = ephys_data
-        # else:
-        #     ephys_data_whole = np.concatenate([ephys_data_whole, ephys_data], axis=1)
-        #     del(ephys_data)
-        #     del(data_dict)
-        #     gc.collect()
-    
-    # print("Saving mda...")
-    # ##save to mda
-    # writemda16i(ephys_data_whole, os.path.join(SESSION_FOLDER_MDA, "converted_data.mda"))
-    # print("MDA file saved to %s" % (os.path.join(SESSION_FOLDER_MDA, "converted_data.mda")))
     
     # Saving trial_times.mat
     arr_Time = pd.Series(df_final.Time)          # Time in seconds
@@ -278,7 +267,7 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         chmap_mat = loadmat(CHANNEL_MAP_FPATH)['Ch_Map_new']
         # print(list(chmap_mat.keys()))
         if np.min(chmap_mat)==1:
-            print("Subtracted one from channel map to make sure channel index starts from 0 (Original map file NOT changed)")
+            print("    Subtracted one from channel map to make sure channel index starts from 0 (Original map file NOT changed)")
             chmap_mat -= 1
     
         print(chmap_mat.shape)
@@ -297,7 +286,7 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         # chmap_mat = np.concatenate(chmap_mat, axis=1) # should be (16, 8)
         chmap_mat = loadmat(CHANNEL_MAP_FPATH)['Ch_Map_new']
         if np.min(chmap_mat)==1:
-            print("Subtracted one from channel map to make sure channel index starts from 0 (Original map file NOT changed)")
+            print("    Subtracted one from channel map to make sure channel index starts from 0 (Original map file NOT changed)")
             chmap_mat -= 1
         print(chmap_mat.shape)
         if chmap_mat.shape!=(16,8):
@@ -324,5 +313,5 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     with open(os.path.join(SESSION_FOLDER_CSV, "info.json"), "w") as fjson:
         json.dump(infodict, fjson)
     np.save(os.path.join(SESSION_FOLDER_CSV, "native_ch_order.npy"), TrueNativeChOrder)
-    print("Done!")
+    print("    Done!")
 
