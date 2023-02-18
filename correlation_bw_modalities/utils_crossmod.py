@@ -93,9 +93,9 @@ def my_correlation_lags(in1_len, in2_len, mode='full'):
     return lags
 
 
-# NOT TESTED YET
 def corr_normalized(in1, in2, sampling_interval=1, unbiased=True, normalized=True):
     ''' calculate correlation between two inputs
+
     Parameters
     --------
     in1 : 1st input series (should be 1-d)
@@ -125,7 +125,8 @@ def corr_normalized(in1, in2, sampling_interval=1, unbiased=True, normalized=Tru
 
 
 def resample_0phase(d, sampling_interval, up, dn, axis=0):
-    """ Performs zero-phase resampling using scipy.signal.resample_poly
+    """ Performs zero-phase resampling using scipy.signal.resample_poly.
+
         Parameters
         --------
         d : data to be resampled
@@ -133,6 +134,11 @@ def resample_0phase(d, sampling_interval, up, dn, axis=0):
         up : (integer) how many times to upsample
         dn : (integer) how many times to downsample
         axis : which axis to resample; default to 0 just as `resample_poly`
+
+        Returns
+        --------
+        d_r : resampled data
+        resampling_interval : sampling interval of output data
     """
     l_extrap = d.shape[axis]//8
     resampling_interval = sampling_interval * dn / up 
@@ -154,3 +160,43 @@ def resample_0phase(d, sampling_interval, up, dn, axis=0):
     )
     # print(d_r.shape)
     return d_r, resampling_interval
+
+def bin_spikes(spiking, segments, blen, get_rate=False):
+    """ Bin the spikes and returns the firing rate series; this function assumes all inputs use the same time unit
+
+    Parameters
+    --------
+    spiking : 1-d array spike stamps
+    segments : list of len-2 lists
+    blen : length of bin
+    get_rate : if True, divide the binned spike count result by `blen`
+    
+    Returns
+    --------
+    spike_counts : a list of arrays, each array representing the binned spike count series
+    """
+    spike_counts = []
+    for i_seg, (s_beg, s_end) in enumerate(segments):
+        this_stamp = spiking[((spiking>s_beg) & (spiking<s_end))] - s_beg
+        timeseries_len = int(np.ceil((s_end-s_beg)/blen))
+        hist_binedges = np.arange(timeseries_len+1)*blen
+        timeseries, _ = np.histogram(this_stamp, hist_binedges, normed=False, density=False)
+        spike_counts.append(timeseries)
+    if get_rate:
+        return [k/blen for k in spike_counts]
+    return spike_counts
+
+def box_smooth(data, winlen, axis):
+    l_extrap = winlen//2
+    concat_func = lambda arr: np.concatenate([arr[:l_extrap][::-1], arr, arr[-l_extrap:][::-1]])
+    d_tmp = np.apply_along_axis(concat_func, axis, data)
+    ker_dim = np.ones(len(data.shape))
+    ker_dim[axis] = winlen
+    ker = np.ones(ker_dim) / winlen
+    smoothed = signal.convolve(d_tmp, ker, mode="same")
+    smoothed = np.apply_along_axis(
+        lambda x: x[l_extrap:-l_extrap],
+        axis,
+        smoothed
+    )
+    return smoothed
