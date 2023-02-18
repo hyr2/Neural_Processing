@@ -88,9 +88,9 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     NATIVE_ORDERS = np.load(os.path.join(session_folder, "native_ch_order.npy"))
 
     # macro definitions
-    ANALYSIS_NOCHANGE = 0
-    ANALYSIS_EXCITATORY = 1
-    ANALYSIS_INHIBITORY = -1
+    ANALYSIS_NOCHANGE = 0       # A better name is non-stimulus locked
+    ANALYSIS_EXCITATORY = 1     # A better name is activated
+    ANALYSIS_INHIBITORY = -1    # A better name is suppressed
 
     # read cluster rejection data
     curation_masks = np.load(curation_mask_path, allow_pickle=True)
