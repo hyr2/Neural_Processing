@@ -1,4 +1,4 @@
-function func_CE_BarrelCortex(datafolder,Fs)
+function func_CE_BarrelCortex(datafolder,Fs,Chan_map_path)
 %FUNC_CE_BARRELCORTEX is used to call cell explorer's core functions to
 %perform cell type classification analysis based on firing properties of
 %the putative neurons. In addition it also can perform connectivity
@@ -10,6 +10,12 @@ function func_CE_BarrelCortex(datafolder,Fs)
 %          should have been successfully run without any errors for this
 %          code to work.
 %          Fs: the sampling freq used during electrophysiological recording
+%          Chan_map_path : full file path to the channel map for recording
+%          device used
+
+% Note: This code also requires the use of a 3rd party .npy file reader
+% obtained here: https://github.com/kwikteam/npy-matlab. Make sure the
+% functions from this repo are in the matlab path 
 
 close all;
 
@@ -19,15 +25,28 @@ addpath(genpath(folder));
 % Fs = 30e3;
 % datafolder = '/home/hyr2-office/Documents/Data/NVC/RH-7/10-17-22/';
 disp(datafolder)
-GW_BETWEENSHANK = 300;
-GH = 25;
-% datestr = '10-2';
+% channel specific code. 2x16 vs 1x32 microelectrode array designs
+json_file = fullfile(datafolder,'pre_MS.json');
+fid = fopen(json_file); 
+raw = fread(fid,inf); 
+tmp_str = char(raw'); 
+fclose(fid); 
+json_struct = jsondecode(tmp_str);
+chmap2x16 = json_struct.ELECTRODE_2X16;
+if (chmap2x16 == true)     % 2x16 channel map
+    GH = 30;
+    GW_BWTWEENSHANK = 250;
+elseif (chmap2x16 == false)  % 1x32 channel map
+    GH = 25;
+    GW_BWTWEENSHANK = 250;
+end
 plotfolder = fullfile(datafolder,'Processed','cell_type');
-% plotfolder = '/home/hyr2-office/Documents/Data/NVC/RH-3/processed_data_rh3/tmp/Processed/Connectivity/';
 mkdir(plotfolder);
 templates = readmda(fullfile(datafolder, 'templates.mda'));
 firings = readmda(fullfile(datafolder, 'firings.mda'));
-% Location = csvread("data/mustang220123/location.csv");
+chmap_mat = load(Chan_map_path,'Ch_Map_new');
+chmap_mat = chmap_mat.Ch_Map_new;
+Native_orders = readNPY(fullfile(datafolder,'native_ch_order.npy'));    
 curation_mask = logical(csvread(fullfile(datafolder, 'accept_mask.csv')));
 response_mask = csvread(fullfile(datafolder,'Processed','count_analysis','cluster_response_mask.csv'));
 clus_locations = csvread(fullfile(datafolder, 'clus_locations.csv'));
@@ -46,7 +65,7 @@ disp('------')
 spike_times_all = firings(2,idx) - START_TIME;
 disp(size(spike_times_all))
 spike_labels = firings(3,idx);
-ch_stamp = firings(1,idx);
+ch_stamp = firings(1,idx); %primary channel
 spike_times_by_clus = cell(1, n_clus);
 ts_by_clus = cell(1, n_clus);
 pri_ch_lut = -1*ones(1, n_clus);
@@ -70,6 +89,16 @@ for i=1:length(spike_times_all)
     ts_by_clus{spk_lbl}(end+1) = spike_times_all(i);
 end
 
+% Locating the cluster (shank ID + location)
+if min(chmap_mat(:)) == 1
+    disp("Subtracted one from channel map to make sure channel index starts from 0 (Original map file NOT changed)")
+    chmap_map = chmap_mat - 1;
+end
+shank_num = -1 * ones(1,n_clus);
+for i_clus = 1:n_clus   % each cluster in mountainsort output is assigned a shank here
+    prim_ch = pri_ch_lut(i_clus);   % this is the Mountainsort channel ID (starts from 1)
+    shank_num(i_clus) = get_shanknum_from_msort_id(prim_ch,Native_orders,chmap_mat,chmap2x16); % function used to get shank ID    
+end
 
 % More curation code
 curation = 1;
@@ -77,6 +106,7 @@ if curation
     % extract accepted cluster locations & their responsiveness
     response_mask = response_mask(curation_mask,:);
     clus_locations = clus_locations(curation_mask,:);
+    shank_num = shank_num(curation_mask);
     spike_times_curated = [];
     spike_labels_curated = [];
     spike_labels_mapping = zeros(n_clus);
@@ -100,7 +130,7 @@ if curation
         if curation_mask(i)==1
           filtWaveform{spike_labels_mapping(i)} = templates(pri_ch_lut(i), [10:90], i);
 %             filtWaveform{spike_labels_mapping(i)} = templates(pri_ch_lut(i), [2:52], i);    % for 25 KHZ
-            timeWaveform{spike_labels_mapping(i)} = [-40:40]/Fs*1000;
+          timeWaveform{spike_labels_mapping(i)} = [-40:40]/Fs*1000;
 %             figure;plot(timeWaveform{spike_labels_mapping(i)},filtWaveform{spike_labels_mapping(i)})
             % spike_times_by_clus{i} = spike_times_by_clus{i}';
         end
@@ -230,7 +260,7 @@ troughtopeak_inhib = cell_metrics.troughToPeak(idx_inhib);
 % filename = fullfile(plotfolder,'cell_type_analysis.png');
 % print(filename,'-dpng','-r0');
 filename = fullfile(plotfolder,'pop_celltypes.mat');
-save(filename,'type_excit','type_inhib','troughToPeak','derivative_TroughtoPeak','celltype');
+save(filename,'type_excit','type_inhib','troughToPeak','derivative_TroughtoPeak','celltype','shank_num'); % all these quantities are only for the curated clusters
 
 
 end
