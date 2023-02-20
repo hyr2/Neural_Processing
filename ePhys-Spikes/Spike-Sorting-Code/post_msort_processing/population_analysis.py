@@ -365,7 +365,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     shankC_act = (shankC_act) if np.size(shankC_act) != 0 else np.nan
     shankD_act = (shankD_act) if np.size(shankD_act) != 0 else np.nan
     # average FR during activation
-    shankA_act = np.amax(np.amax(shankA_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankA_act).any() else np.nan  # average FR during activation
+    shankA_act = np.mean(np.amax(shankA_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankA_act).any() else np.nan  # average FR during activation
     shankB_act = np.mean(np.amax(shankB_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankB_act).any()  else np.nan  # average FR during activation
     shankC_act = np.mean(np.amax(shankC_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankC_act).any()  else np.nan  # average FR during activation
     shankD_act = np.mean(np.amax(shankD_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankD_act).any()  else np.nan  # average FR during activation
