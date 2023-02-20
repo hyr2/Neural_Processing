@@ -2,7 +2,7 @@ import os, json
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.io import loadmat, savemat
-from scipy.stats import ttest_ind
+from scipy.stats import ttest_ind, zscore
 import pandas as pd
 from utils.read_mda import readmda
 from utils.read_stimtxt import read_stimtxt
@@ -189,7 +189,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             if trial_firing_stamp.shape[0]==0:
                 continue
             tmp_hist, _ = np.histogram(trial_firing_stamp, bin_edges)   # The firing rate series for each trial for a single cluster
-            firing_rate_series_by_trial[i,:] = tmp_hist     
+            firing_rate_series_by_trial[i,:] = tmp_hist   
         return firing_rate_series_by_trial
 
     def single_cluster_main(i_clus):
@@ -201,12 +201,14 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             trial_duration_in_samples, 
             window_in_samples
             )
+        firing_rate_series = firing_rate_series/WINDOW_LEN_IN_SEC       # This gives firing rate in Hz
         firing_rate_avg = np.mean(firing_rate_series[TRIAL_KEEP_MASK, :], axis=0) # averaging over all trials
         firing_rate_avg = filterSignal_lowpass(firing_rate_avg, np.single(1/WINDOW_LEN_IN_SEC), axis_value = 0)
         firing_rate_sum = np.sum(firing_rate_series[TRIAL_KEEP_MASK, :], axis=0)
         
         n_samples_baseline = int(np.ceil(stim_start_time/WINDOW_LEN_IN_SEC))
         n_samples_stim = int(np.ceil((stim_end_time-stim_start_time)/WINDOW_LEN_IN_SEC))
+        # firing_rate_zscore = zscore(firing_rate_avg, axis = 0)          # Zscore to classify cluster as activated or suppressed
         t_stat, pval_2t = ttest_ind(
             firing_rate_avg[:n_samples_baseline], 
             firing_rate_avg[1+n_samples_baseline:1+n_samples_baseline+n_samples_stim], 
@@ -214,7 +216,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         if t_stat > 0:
             # inhibitory
             t_stat, pval_2t = ttest_ind(
-                firing_rate_avg[:n_samples_baseline], 
+                firing_rate_avg[6:n_samples_baseline-6], 
                 firing_rate_avg[1+n_samples_baseline:1+n_samples_baseline+n_samples_stim], 
                 equal_var=False,alternative = 'greater')
             if pval_2t < 0.01:  
@@ -225,7 +227,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         else:
             # excitatory
             t_stat, pval_2t = ttest_ind(
-                firing_rate_avg[:n_samples_baseline], 
+                firing_rate_avg[6:n_samples_baseline-6], 
                 firing_rate_avg[1+n_samples_baseline:1+n_samples_baseline+n_samples_stim], 
                 equal_var=False,alternative = 'less')                
             if pval_2t < 0.01:  
@@ -334,9 +336,13 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         elif shanknum_local == 3:
             num_channels_perShank[3] = num_channels_perShank[3] + 1
                 
-        
-    # Firing rate computation
+    
+    # A mask for SUA and MUA
     FR_series_all_clusters = np.squeeze(np.array(FR_series_all_clusters))
+    # accept_mask_local = np.logical_or(single_unit_mask == True, multi_unit_mask == True)
+    FR_series_all_clusters = FR_series_all_clusters[single_unit_mask]  # Only save the accepted clusters
+    
+    # Firing rate computation
     Time_vec = np.linspace(0,13.5,FR_series_all_clusters.shape[1])
     stim_start_idx = int(stim_start_time/WINDOW_LEN_IN_SEC)
     doi_end_idx = int((stim_start_time+DURATION_OF_INTEREST)/WINDOW_LEN_IN_SEC)
@@ -351,27 +357,27 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     shankD_act = np.squeeze(FR_list_byshank_act[3])
     shankD_act = np.reshape(shankD_act,[int(shankD_act.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]]) 
     # compute bsl FR
-    shankA_act_bsl = np.mean(shankA_act[:,:stim_start_idx],axis = 1) if np.size(shankA_act) != 0 else np.nan
-    shankB_act_bsl = np.mean(shankB_act[:,:stim_start_idx],axis = 1) if np.size(shankB_act) != 0 else np.nan
-    shankC_act_bsl = np.mean(shankC_act[:,:stim_start_idx],axis = 1) if np.size(shankC_act) != 0 else np.nan
-    shankD_act_bsl = np.mean(shankD_act[:,:stim_start_idx],axis = 1) if np.size(shankD_act) != 0 else np.nan
+    # shankA_act_bsl = np.mean(shankA_act[:,:stim_start_idx],axis = 1) if np.size(shankA_act) != 0 else np.nan
+    # shankB_act_bsl = np.mean(shankB_act[:,:stim_start_idx],axis = 1) if np.size(shankB_act) != 0 else np.nan
+    # shankC_act_bsl = np.mean(shankC_act[:,:stim_start_idx],axis = 1) if np.size(shankC_act) != 0 else np.nan
+    # shankD_act_bsl = np.mean(shankD_act[:,:stim_start_idx],axis = 1) if np.size(shankD_act) != 0 else np.nan
     # bsl normalized FR
     # shankA_act = (shankA_act / shankA_act_bsl[:, np.newaxis] - 1) if np.size(shankA_act) != 0 else np.nan
     # shankB_act = (shankB_act / shankB_act_bsl[:, np.newaxis] - 1) if np.size(shankB_act) != 0 else np.nan
     # shankC_act = (shankC_act / shankC_act_bsl[:, np.newaxis] - 1) if np.size(shankC_act) != 0 else np.nan
     # shankD_act = (shankD_act / shankD_act_bsl[:, np.newaxis] - 1) if np.size(shankD_act) != 0 else np.nan
-    shankA_act = (shankA_act) if np.size(shankA_act) != 0 else np.nan
-    shankB_act = (shankB_act) if np.size(shankB_act) != 0 else np.nan
-    shankC_act = (shankC_act) if np.size(shankC_act) != 0 else np.nan
-    shankD_act = (shankD_act) if np.size(shankD_act) != 0 else np.nan
+    shankA_act = zscore(shankA_act, axis = 1) if np.size(shankA_act) != 0 else np.nan
+    shankB_act = zscore(shankB_act, axis = 1) if np.size(shankB_act) != 0 else np.nan
+    shankC_act = zscore(shankC_act, axis = 1) if np.size(shankC_act) != 0 else np.nan
+    shankD_act = zscore(shankD_act, axis = 1) if np.size(shankD_act) != 0 else np.nan
     # average FR during activation
     shankA_act = np.mean(np.amax(shankA_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankA_act).any() else np.nan  # average FR during activation
     shankB_act = np.mean(np.amax(shankB_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankB_act).any()  else np.nan  # average FR during activation
     shankC_act = np.mean(np.amax(shankC_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankC_act).any()  else np.nan  # average FR during activation
     shankD_act = np.mean(np.amax(shankD_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankD_act).any()  else np.nan  # average FR during activation
     
-    # inhibited neurons
-    # activated neurons
+    # supressed neurons
+    # supressed neurons
     shankA_inh = np.squeeze(FR_list_byshank_inh[0])
     shankA_inh = np.reshape(shankA_inh,[int(shankA_inh.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]]) 
     shankB_inh = np.squeeze(FR_list_byshank_inh[1])
@@ -381,24 +387,24 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     shankD_inh= np.squeeze(FR_list_byshank_inh[3])
     shankD_inh = np.reshape(shankD_inh,[int(shankD_inh.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]]) 
     # compute bsl FR
-    shankA_inh_bsl = np.mean(shankA_inh[:,:stim_start_idx],axis = 1) if np.size(shankA_inh) != 0 else np.nan
-    shankB_inh_bsl = np.mean(shankB_inh[:,:stim_start_idx],axis = 1) if np.size(shankB_inh) != 0 else np.nan
-    shankC_inh_bsl = np.mean(shankC_inh[:,:stim_start_idx],axis = 1) if np.size(shankC_inh) != 0 else np.nan
-    shankD_inh_bsl = np.mean(shankD_inh[:,:stim_start_idx],axis = 1) if np.size(shankD_inh) != 0 else np.nan
+    # shankA_inh_bsl = np.mean(shankA_inh[:,:stim_start_idx],axis = 1) if np.size(shankA_inh) != 0 else np.nan
+    # shankB_inh_bsl = np.mean(shankB_inh[:,:stim_start_idx],axis = 1) if np.size(shankB_inh) != 0 else np.nan
+    # shankC_inh_bsl = np.mean(shankC_inh[:,:stim_start_idx],axis = 1) if np.size(shankC_inh) != 0 else np.nan
+    # shankD_inh_bsl = np.mean(shankD_inh[:,:stim_start_idx],axis = 1) if np.size(shankD_inh) != 0 else np.nan
     # bsl normalized FR
     # shankA_inh = (shankA_inh/ shankA_inh_bsl[:, np.newaxis] - 1) if (np.size(shankA_inh) != 0) else np.nan
     # shankB_inh= (shankB_inh/ shankB_inh_bsl[:, np.newaxis] - 1) if np.size(shankB_inh) != 0 else np.nan
     # shankC_inh= (shankC_inh/ shankC_inh_bsl[:, np.newaxis] - 1) if np.size(shankC_inh) != 0 else np.nan
     # shankD_inh= (shankD_inh/ shankD_inh_bsl[:, np.newaxis] - 1) if np.size(shankD_inh) != 0 else np.nan
-    shankA_inh = (shankA_inh) if (np.size(shankA_inh) != 0) else np.nan
-    shankB_inh = (shankB_inh) if np.size(shankB_inh) != 0 else np.nan
-    shankC_inh = (shankC_inh) if np.size(shankC_inh) != 0 else np.nan
-    shankD_inh = (shankD_inh) if np.size(shankD_inh) != 0 else np.nan
-    # average FR during activation
-    shankA_inh= np.mean(shankA_inh[:,stim_start_idx:stim_end_idx]) if not np.isnan(shankA_inh).any() else np.nan  # average FR during activation
-    shankB_inh= np.mean(shankB_inh[:,stim_start_idx:stim_end_idx]) if not np.isnan(shankB_inh).any()  else np.nan  # average FR during activation
-    shankC_inh= np.mean(shankC_inh[:,stim_start_idx:stim_end_idx]) if not np.isnan(shankC_inh).any()  else np.nan  # average FR during activation
-    shankD_inh= np.mean(shankD_inh[:,stim_start_idx:stim_end_idx]) if not np.isnan(shankD_inh).any()  else np.nan  # average FR during activation
+    shankA_inh = zscore(shankA_inh, axis = 1) if (np.size(shankA_inh) != 0) else np.nan
+    shankB_inh = zscore(shankB_inh, axis = 1) if np.size(shankB_inh) != 0 else np.nan
+    shankC_inh = zscore(shankC_inh, axis = 1) if np.size(shankC_inh) != 0 else np.nan
+    shankD_inh = zscore(shankD_inh, axis = 1) if np.size(shankD_inh) != 0 else np.nan
+    # average FR during suppression
+    shankA_inh= np.mean(np.amin(shankA_inh[:,stim_start_idx:stim_end_idx], axis = 1)) if not np.isnan(shankA_inh).any() else np.nan  # average FR during activation
+    shankB_inh= np.mean(np.amin(shankB_inh[:,stim_start_idx:stim_end_idx], axis = 1)) if not np.isnan(shankB_inh).any()  else np.nan  # average FR during activation
+    shankC_inh= np.mean(np.amin(shankC_inh[:,stim_start_idx:stim_end_idx], axis = 1)) if not np.isnan(shankC_inh).any()  else np.nan  # average FR during activation
+    shankD_inh= np.mean(np.amin(shankD_inh[:,stim_start_idx:stim_end_idx], axis = 1)) if not np.isnan(shankD_inh).any()  else np.nan  # average FR during activation
 
     # Output .mat file
     pd.DataFrame(data=clus_response_mask).to_csv(os.path.join(result_folder, "cluster_response_mask.csv"), index=False, header=False)
@@ -406,14 +412,14 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     avg_FR_act = np.array([shankA_act,shankB_act,shankC_act,shankD_act],dtype = float)
     data_dict = {
         "total_nclus_by_shank": total_nclus_by_shank,
-        "single_nclus_by_shank": single_nclus_by_shank,
-        "multi_nclus_by_shank": multi_nclus_by_shank,
-        "act_nclus_by_shank": act_nclus_by_shank,
-        "inh_nclus_by_shank": inh_nclus_by_shank, 
-        "nor_nclus_by_shank": nor_nclus_by_shank,
-        "FR_series_all_clusters": FR_series_all_clusters,
-        "avg_FR_act_by_shank": avg_FR_act,
-        "avg_FR_inh_by_shank": avg_FR_inh,
-        "numChan_perShank": num_channels_perShank
+        "single_nclus_by_shank": single_nclus_by_shank,     # Number of activated/suppressed cluster (SUA)
+        "multi_nclus_by_shank": multi_nclus_by_shank,       # Number of activated/suppressed cluster (MUA)
+        "act_nclus_by_shank": act_nclus_by_shank,           # Number of activated cluster
+        "inh_nclus_by_shank": inh_nclus_by_shank,           # Number of suppressed cluster
+        "nor_nclus_by_shank": nor_nclus_by_shank,           # no response neurons 
+        "FR_series_all_clusters": FR_series_all_clusters,   # FR series (Only accepted clusters and SUA)
+        "avg_FR_act_by_shank": avg_FR_act,                  # Average over clusters of their "pk max firing rate" during stimulation
+        "avg_FR_inh_by_shank": avg_FR_inh,                  # Average over clusters of their "pk min firing rate" during stimulation
+        "numChan_perShank": num_channels_perShank           
     }
     savemat(os.path.join(result_folder, "population_stat_responsive_only.mat"), data_dict)
