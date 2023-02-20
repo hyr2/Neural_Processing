@@ -6,7 +6,10 @@ Created on Sun Nov  6 20:30:52 2022
 """
 
 # This script is used to perform post processing following spike sorting. It performs automatic curation of the clusters 
-# (putative neurons) as well as population analysis of stimulus locked clusters (ie the firing rates). 
+# (putative neurons) as well as population analysis of stimulus locked clusters (ie the firing rates).It also performs cell type analysis,
+# and excitatory vs inhibitory cell population trakcing post stroke. It calls cell explorer (matlab).
+# This is a complete, fully automated script that is doing about a dozen of various spike analysis
+# plots being generated for our longitudinal ephys data. 
 # Make sure the working directory is where this script resides.
 
 import numpy as np
