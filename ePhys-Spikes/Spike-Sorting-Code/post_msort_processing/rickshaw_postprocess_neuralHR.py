@@ -41,7 +41,7 @@ for iter, filename in enumerate(source_dir_list):
         file_pre_ms = os.path.join(Raw_dir,'pre_MS.json')
         with open(file_pre_ms, 'r') as f:
             data_pre_ms = json.load(f)
-        F_SAMPLE = np.float(data_pre_ms['SampleRate'])
+        F_SAMPLE = float(data_pre_ms['SampleRate'])
 
         # Curation
         func_discard_noise_and_viz(Raw_dir)
