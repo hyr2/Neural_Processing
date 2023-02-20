@@ -24,10 +24,22 @@ plt.rc('legend', fontsize=13)    # legend fontsize
 plt.rc('font', size=16)          # controls default text sizes
 
 # Used to process one single animal, all sessions
-# Make sure the codes: population_analysis.py is run as well as hanlin_buz_ce.m
+# Make sure the codes: population_analysis.py is run as well as func_CE_BarrelCortex.m before this (see the rickshaw post processing file)
 
+def sort_by_shank(type_local,shank_num_local):
+    # This function is used to assign the excitatory and inhibitory type neurons to their respective shanks (A,B,C,D)
+    # INPUTS: 
+    #    type_local: array of boolean for excitatory/inhibitory neurons (1 -> excitatory_cell, 0 -> not excitatory_cell)
+    #    shank_num_local: an array the same size as type_local containing the shank info of each cell/cluster 
+    output_main = np.zeros([4,])
+    for iter in range(4):
+        output_local = np.logical_and(type_local,shank_num_local == iter+1) 
+        output_main[iter] = np.sum(output_local)
+        
+    return output_main
+    
 def sort_cell_type(input_arr):
-    # Function counts the number of wide, narrow and pyramidal cells from the matlab output
+    # Function counts the number of wide, narrow and pyramidal cells from the matlab output (.mat file called pop_celltypes.mat)
     output_arr = np.zeros([3,],dtype = np.int16)
     if not input_arr.shape:
         return output_arr
@@ -43,6 +55,7 @@ def sort_cell_type(input_arr):
         return output_arr
     
 def convert2df(T2P_allsessions):
+    # Function is being used to organize the array for trough to peak time (ms) 
     # the input is a dictionary of multiple numpy arrays of different lengths. 
     # Each index of the dictionary represents one session
     # The output is a dataframe to be used for better data organization and plotting
@@ -123,8 +136,8 @@ N_chan_shank = np.zeros([len(pop_stats),4])
 act_nclus_total = np.zeros([len(pop_stats),])
 suppressed_nclus_total = np.zeros([len(pop_stats),])
 celltype_total = np.zeros([len(pop_stats),3])
-excitatory_cell = np.zeros([len(pop_stats),])
-inhibitory_cell = np.zeros([len(pop_stats),])
+excitatory_cell = np.zeros([len(pop_stats),4]) # by shank
+inhibitory_cell = np.zeros([len(pop_stats),4]) # by shank
 # celltype_excit = np.zeros([len(pop_stats),3])
 # celltype_inhib = np.zeros([len(pop_stats),3])
 T2P_allsessions = {}    # dictionary of 1D numpy arrays
@@ -168,8 +181,8 @@ for iter in range(len(pop_stats)):
     celltype_total[iter,:] = sort_cell_type(tmp)
     
     # excitatory and inhibitory neuron populations
-    excitatory_cell[iter] = np.sum(pop_stats_cell[iter]['type_excit'])
-    inhibitory_cell[iter] = np.sum(pop_stats_cell[iter]['type_inhib'])
+    excitatory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_excit'],pop_stats_cell[iter]['shank_num'])
+    inhibitory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_inhib'],pop_stats_cell[iter]['shank_num'])
     
     # Saving T2P for global histogram
     T2P_allsessions[iter] = pop_stats_cell[iter]['troughToPeak']
@@ -223,16 +236,24 @@ a[1,1].set_title("All neurons")
 a[1,1].plot(x_ticks_labels,act_nclus_total,'r', lw=1.5)
 a[1,1].plot(x_ticks_labels,suppressed_nclus_total,'b', lw=1.5)
 a[1,1].legend(['Activated','Suppressed'])
-a[0,2].set_title("Excitatory/Inhibitory Neurons")
-a[0,2].plot(x_ticks_labels,excitatory_cell[:],'r', lw=1.5)
-a[0,2].plot(x_ticks_labels,inhibitory_cell[:],'b', lw=1.5)
-a[0,2].legend(['Excitatory','Inhibitory'])
+a[0,2].set_title("Excitatory Neurons (Waveform Analysis)")
+a[0,2].plot(x_ticks_labels,excitatory_cell[:,0],'r', lw=1.5)
+a[0,2].plot(x_ticks_labels,excitatory_cell[:,1],'g', lw=1.5)
+a[0,2].plot(x_ticks_labels,excitatory_cell[:,2],'b', lw=1.5)
+a[0,2].plot(x_ticks_labels,excitatory_cell[:,3],'y', lw=1.5)
+a[0,2].legend(['ShankA', 'ShankB','ShankC','ShankD'])
+a[1,2].set_title("Inhibitory Neurons (Waveform Analysis)")
+a[1,2].plot(x_ticks_labels,inhibitory_cell[:,0],'r', lw=1.5)
+a[1,2].plot(x_ticks_labels,inhibitory_cell[:,1],'g', lw=1.5)
+a[1,2].plot(x_ticks_labels,inhibitory_cell[:,2],'b', lw=1.5)
+a[1,2].plot(x_ticks_labels,inhibitory_cell[:,3],'y', lw=1.5)
+a[1,2].legend(['ShankA', 'ShankB','ShankC','ShankD'])
 a[0,1].set_title("Cell Types")
 a[0,1].plot(x_ticks_labels,celltype_total[:,0],'g', lw=1.5)
 a[0,1].plot(x_ticks_labels,celltype_total[:,1],'k', lw=1.5)
 a[0,1].plot(x_ticks_labels,celltype_total[:,2],'y', lw=1.5)
 a[0,1].legend(['Pyramidal','Narrow','Wide'])
-f.set_size_inches((20, 6), forward=False)
+f.set_size_inches((20, 8), forward=False)
 plt.savefig(filename_save,format = 'png')
 plt.close(f)
 
