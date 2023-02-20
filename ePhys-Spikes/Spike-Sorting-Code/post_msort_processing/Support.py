@@ -72,6 +72,14 @@ def filterSignal_notch(input_signal, Fs, C0 = 60, axis_value = 0):
     signal_out = signal.filtfilt(b,a, input_signal, axis = axis_value)
     return signal_out
 
+# Low pass <2 Hz
+def filterSignal_lowpass(input_signal, Fs, axis_value = 0):
+    signal_out = np.empty((input_signal.shape),dtype=np.single)
+    cutoff_low = 2                  # Low pass freq for LFP band
+    sos = signal.butter(5, cutoff_low, btype = 'lowpass', output = 'sos', fs = Fs)  # IIR filter
+    signal_out = signal.sosfiltfilt(sos, input_signal, axis = axis_value)
+    return signal_out
+
 # 13 - 160 Hz
 def filterSignal_lowpassLFP(input_signal, Fs, axis_value = 0):
     signal_out = np.empty((input_signal.shape),dtype=np.single)
@@ -306,11 +314,20 @@ def plot_all_trials(input_arr,Fs,folder_path,clus_dict):
     plt.rc('font', size=16)          # controls default text sizes
     
     f, a = plt.subplots(1,1)
-    a.set_ylabel('FR (Spikes/sec)')
+    a.set_ylabel('FR (arb. units)')
     len_str = 'Cluster ID:' + str(clus_dict['cluster_id']) + '| Shank:' + str(clus_dict['shank_num']) + '| Depth:' + str(clus_dict['prim_ch_coord'][1])
     f.suptitle(len_str)
-    a.plot(t_axis,input_arr,'g', lw=2.0)
-    f.set_size_inches((5, 3), forward=False)
+    if clus_dict['clus_prop'] == 1:
+        a.plot(t_axis[6:],input_arr[6:],'g', lw=2.0)
+    elif (clus_dict['clus_prop'] == -1):
+        a.plot(t_axis[6:],input_arr[6:],'b', lw=2.0)
+    else:
+        a.plot(t_axis[6:],input_arr[6:],'k', lw=2.0)
+
+    plt.axvline(2.2,linestyle = 'dashed', linewidth = 2.1)
+    plt.axvline(5.5,linestyle = 'dashed', linewidth = 2.1)
+    a.set_yticks([])
+    f.set_size_inches((5, 3), forward=True)
     plt.savefig(filename_save,format = 'png')
     plt.close(f)
     

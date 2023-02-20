@@ -6,13 +6,13 @@ from scipy.stats import ttest_ind
 import pandas as pd
 from utils.read_mda import readmda
 from utils.read_stimtxt import read_stimtxt
-from Support import plot_all_trials
+from Support import plot_all_trials, filterSignal_lowpass
 
 def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
 
     # Input parameters ---------------------
     # firing rate calculation params
-    WINDOW_LEN_IN_SEC = 250e-3
+    WINDOW_LEN_IN_SEC = 50e-3
     SMOOTHING_SIZE = 11
     DURATION_OF_INTEREST = 2.5  # how many seconds to look at upon stim onset (this is the activation or inhibition window)
     # Setting up
@@ -201,7 +201,8 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             trial_duration_in_samples, 
             window_in_samples
             )
-        firing_rate_avg = np.mean(firing_rate_series[TRIAL_KEEP_MASK, :], axis=0)
+        firing_rate_avg = np.mean(firing_rate_series[TRIAL_KEEP_MASK, :], axis=0) # averaging over all trials
+        firing_rate_avg = filterSignal_lowpass(firing_rate_avg, np.single(1/WINDOW_LEN_IN_SEC), axis_value = 0)
         firing_rate_sum = np.sum(firing_rate_series[TRIAL_KEEP_MASK, :], axis=0)
         
         n_samples_baseline = int(np.ceil(stim_start_time/WINDOW_LEN_IN_SEC))
@@ -272,6 +273,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         i_clus_dict['total_spike_count'] = firing_stamp.shape
         i_clus_dict['prim_ch_coord'] = geom[prim_ch, :]
         i_clus_dict['shank_num'] = shank_num
+        i_clus_dict['clus_prop'] = clus_property
         
         FR_series_all_clusters[i_clus].append(np.array(firing_rate_avg,dtype = float))
         failed = (single_unit_mask[i_clus]==False and multi_unit_mask[i_clus]==False)
