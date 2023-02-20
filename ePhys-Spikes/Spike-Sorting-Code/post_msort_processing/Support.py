@@ -8,7 +8,7 @@ Created on Wed May 19 22:52:24 2021
 import os
 from openpyxl import load_workbook
 import pandas as pd
-from scipy import signal, interpolate
+from scipy import signal, interpolate, stats
 import seaborn as sns
 from matplotlib import pyplot as plt
 import numpy as np
@@ -296,12 +296,18 @@ def read_stimtxt(matlabTXT):
     
     return stim_start_time, stim_num, seq_period, len_trials, num_trials, FramePerSeq, total_seq, len_trials_arr
 
+def toggle_plot(fig):
+  # This function is called by a keypress to hide/show the figure
+  fig.set_visible(not fig.get_visible())
+  plt.draw()
+
 def plot_all_trials(input_arr,Fs,folder_path,clus_dict):
     # INPUT input_arr is a 1D array with avg FR of a single cluster
     # INPUT Fs is the sampling frequency representing the time axis
     # INPUT folder_path is the output folder where the figures will be saved
     # INPUT clus_dict contains the information on the cluster 
     
+    input_arr = stats.zscore(input_arr)
     t_axis = np.linspace(0,input_arr.shape[0]/Fs,input_arr.shape[0])
     filename_save = os.path.join(folder_path,'FR_' + str(clus_dict['cluster_id']) + '.png')
     # Plotting fonts
@@ -327,7 +333,7 @@ def plot_all_trials(input_arr,Fs,folder_path,clus_dict):
     plt.axvline(2.2,linestyle = 'dashed', linewidth = 2.1)
     plt.axvline(5.5,linestyle = 'dashed', linewidth = 2.1)
     a.set_yticks([])
-    f.set_size_inches((5, 3), forward=True)
+    f.set_size_inches((5, 3), forward=False)
     plt.savefig(filename_save,format = 'png')
     plt.close(f)
     
