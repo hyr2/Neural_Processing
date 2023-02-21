@@ -8,13 +8,16 @@ Created on Sun Nov  6 20:30:52 2022
 # This script is used to perform post processing following spike sorting. It performs automatic curation of the clusters 
 # (putative neurons) as well as population analysis of stimulus locked clusters (ie the firing rates). 
 # Make sure the working directory is where this script resides.
-
+import sys
+sys.path.append(r'../../Time-Series/')
 import numpy as np
 from discard_noise_and_viz import *
 from population_analysis import *
+from FR_TS_pop import combine_sessions 
 import os, json
 from natsort import natsorted
 import matlab.engine
+
 # Automate batch processing of the pre processing step
 
 # read parameters
@@ -57,3 +60,7 @@ for iter, filename in enumerate(source_dir_list):
                 os.remove(os.path.join(Raw_dir, item))
 
 eng.quit()
+
+# Running FR_TS_pop.py script for complete statics of this mouse over all sessions (longitudinal)
+# WARNING: Make sure to edit script for the correct animal (since their measurement days might differ)
+combine_sessions(input_dir,'Mouse_ID')
