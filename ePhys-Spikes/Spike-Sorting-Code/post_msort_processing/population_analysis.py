@@ -214,18 +214,18 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             firing_rate_avg[1+n_samples_baseline:1+n_samples_baseline+n_samples_stim], 
             equal_var=False)
         if t_stat > 0:
-            # inhibitory
+            # suppressed
             t_stat, pval_2t = ttest_ind(
                 firing_rate_avg[6:n_samples_baseline-6], 
                 firing_rate_avg[1+n_samples_baseline:1+n_samples_baseline+n_samples_stim], 
                 equal_var=False,alternative = 'greater')
-            if pval_2t < 0.01:  
+            if pval_2t < 0.001:  
                 # reject null
                 clus_property = ANALYSIS_INHIBITORY
             else:
                 clus_property = ANALYSIS_NOCHANGE
         else:
-            # excitatory
+            # activated
             t_stat, pval_2t = ttest_ind(
                 firing_rate_avg[6:n_samples_baseline-6], 
                 firing_rate_avg[1+n_samples_baseline:1+n_samples_baseline+n_samples_stim], 
