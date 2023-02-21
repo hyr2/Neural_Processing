@@ -92,7 +92,7 @@ end
 % Locating the cluster (shank ID + location)
 if min(chmap_mat(:)) == 1
     disp("Subtracted one from channel map to make sure channel index starts from 0 (Original map file NOT changed)")
-    chmap_map = chmap_mat - 1;
+    chmap_mat = chmap_mat - 1;
 end
 shank_num = int8 (-1 * ones(1,n_clus));
 for i_clus = 1:n_clus   % each cluster in mountainsort output is assigned a shank here
