@@ -147,7 +147,6 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     # exit(0)
     # read trials times
     trials_start_times = loadmat(session_trialtimes)['t_trial_start'].squeeze()
-
     firings = readmda(os.path.join(session_folder, "firings.mda")).astype(np.int64)
     # get spike stamp for all clusters (in SAMPLEs not seconds)
     spike_times_all = firings[1,:]
@@ -178,7 +177,6 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         n_windows_in_trial = int(np.ceil(trial_duration_in_samples/window_in_samples))
         bin_edges = np.arange(0, window_in_samples*n_windows_in_trial+1, step=window_in_samples)
         n_trials = t_trial_start.shape[0]
-        print(n_trials)
         assert n_trials==Ntrials or n_trials==Ntrials+1, "%d %d" % (n_trials, Ntrials)
         if n_trials > Ntrials:
             n_trials = Ntrials
