@@ -106,7 +106,7 @@ def corr_normalized(in1, in2, sampling_interval=1, unbiased=True, normalized=Tru
     corr_res  : correlation results
     '''
     if len(in1.shape)!=1 or len(in2.shape)!=1 or in1.shape[-1]!=in2.shape[-1]:
-        raise ValueError("")
+        raise ValueError("#samples does not align!")
     N = in1.shape[0]
     corr_lags = my_correlation_lags(in1.shape[0], in2.shape[0], mode="same")
     corr_res  = signal.correlate(in1, in2, mode="same")

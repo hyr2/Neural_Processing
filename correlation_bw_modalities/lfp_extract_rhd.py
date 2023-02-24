@@ -78,14 +78,15 @@ def func_savelfp(input_rootdir, output_rootdir, rel_dir):
     for i_file, filename in enumerate(filenames):
         print("----%s----"%(os.path.join(Raw_dir, filename)))
         with logtofile():
+            with open(os.path.join(Raw_dir, filename), "rb") as fh:
+                head_dict = read_header(fh)
             data_dict = read_data(os.path.join(Raw_dir, filename))
         chs_info = deepcopy(data_dict['amplifier_channels'])
         sample_freq = data_dict['sample_rate']
-        notch_freq  = data_dict['notch_filter_frequency']
+        notch_freq  = head_dict['notch_filter_frequency']
         chs_native_order = [e['native_order'] for e in chs_info]
         reject_ch_indx = np.where(chs_native_order == np.setdiff1d(chs_native_order,TrueNativeChOrder))[0]
-        # print("Applying notch")
-        print("    RHD chunk is read") # no need to notch since we only care about 250~5000Hz
+        print("    RHD chunk is read")
         ephys_data = data_dict['amplifier_data']
         ephys_data = notch_filter(ephys_data, sample_freq, notch_freq, Q=20) # 60Hz notch with Q=20
         ephys_data = ephys_data - np.mean(ephys_data, axis=0)
