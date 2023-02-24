@@ -174,7 +174,7 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
                 warnings.warn("WARNING in preprocess_rhd: sampling frequency inconsistent within one session\n")
         
         chs_native_order = [e['native_order'] for e in chs_info]
-        reject_ch_indx = np.where(chs_native_order == np.setdiff1d(chs_native_order,TrueNativeChOrder))[0]
+        reject_ch_indx = np.where(np.any(chs_native_order==(np.setdiff1d(chs_native_order,TrueNativeChOrder)[:,None]), axis=0))[0]
         print("    Intan channels to reject:", reject_ch_indx)
         # print("Applying notch")
         print("    Data are read") # no need to notch since we only care about 250~5000Hz
