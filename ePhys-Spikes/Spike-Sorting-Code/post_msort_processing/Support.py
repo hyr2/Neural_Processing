@@ -8,7 +8,7 @@ Created on Wed May 19 22:52:24 2021
 import os
 from openpyxl import load_workbook
 import pandas as pd
-from scipy import signal, interpolate
+from scipy import signal, interpolate, stats
 import seaborn as sns
 from matplotlib import pyplot as plt
 import numpy as np
@@ -70,6 +70,14 @@ def filterSignal_notch(input_signal, Fs, C0 = 60, axis_value = 0):
     Q = 20                     # Quality factor determines bandwidth
     b,a = signal.iirnotch(C0,Q, fs = Fs)  # IIR comb filter
     signal_out = signal.filtfilt(b,a, input_signal, axis = axis_value)
+    return signal_out
+
+# Low pass <2 Hz
+def filterSignal_lowpass(input_signal, Fs, axis_value = 0):
+    signal_out = np.empty((input_signal.shape),dtype=np.single)
+    cutoff_low = 2                  # Low pass freq for LFP band
+    sos = signal.butter(5, cutoff_low, btype = 'lowpass', output = 'sos', fs = Fs)  # IIR filter
+    signal_out = signal.sosfiltfilt(sos, input_signal, axis = axis_value)
     return signal_out
 
 # 13 - 160 Hz
@@ -288,12 +296,18 @@ def read_stimtxt(matlabTXT):
     
     return stim_start_time, stim_num, seq_period, len_trials, num_trials, FramePerSeq, total_seq, len_trials_arr
 
+def toggle_plot(fig):
+  # This function is called by a keypress to hide/show the figure
+  fig.set_visible(not fig.get_visible())
+  plt.draw()
+
 def plot_all_trials(input_arr,Fs,folder_path,clus_dict):
     # INPUT input_arr is a 1D array with avg FR of a single cluster
     # INPUT Fs is the sampling frequency representing the time axis
     # INPUT folder_path is the output folder where the figures will be saved
     # INPUT clus_dict contains the information on the cluster 
     
+    input_arr = stats.zscore(input_arr)
     t_axis = np.linspace(0,input_arr.shape[0]/Fs,input_arr.shape[0])
     filename_save = os.path.join(folder_path,'FR_' + str(clus_dict['cluster_id']) + '.png')
     # Plotting fonts
@@ -306,10 +320,19 @@ def plot_all_trials(input_arr,Fs,folder_path,clus_dict):
     plt.rc('font', size=16)          # controls default text sizes
     
     f, a = plt.subplots(1,1)
-    a.set_ylabel('FR (Spikes/sec)')
+    a.set_ylabel('FR (arb. units)')
     len_str = 'Cluster ID:' + str(clus_dict['cluster_id']) + '| Shank:' + str(clus_dict['shank_num']) + '| Depth:' + str(clus_dict['prim_ch_coord'][1])
     f.suptitle(len_str)
-    a.plot(t_axis,input_arr,'g', lw=2.0)
+    if clus_dict['clus_prop'] == 1:
+        a.plot(t_axis[6:],input_arr[6:],'g', lw=2.0)
+    elif (clus_dict['clus_prop'] == -1):
+        a.plot(t_axis[6:],input_arr[6:],'b', lw=2.0)
+    else:
+        a.plot(t_axis[6:],input_arr[6:],'k', lw=2.0)
+
+    plt.axvline(2.2,linestyle = 'dashed', linewidth = 2.1)
+    plt.axvline(5.5,linestyle = 'dashed', linewidth = 2.1)
+    a.set_yticks([])
     f.set_size_inches((5, 3), forward=False)
     plt.savefig(filename_save,format = 'png')
     plt.close(f)
