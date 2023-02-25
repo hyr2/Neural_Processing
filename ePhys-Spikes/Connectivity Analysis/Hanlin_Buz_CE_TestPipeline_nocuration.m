@@ -8,7 +8,7 @@ addpath(genpath(folder));
 % *****(2) read trials_times.mat to obtain spikes during stim only
 % *****(3) read trials_times.mat to obtain spikes during baseline only
 Fs=30e3;        % read from .json file
-datafolder = '/home/hyr2-office/Documents/Data/NVC/RH-7_completed/12-16-22/';
+datafolder = '/home/hyr2-office/Documents/Data/NVC/RH-7/10-27-22-temp/';
 
 GW_BETWEENSHANK = 300;
 GH = 25;
@@ -125,7 +125,7 @@ end
 % end of curation
 disp(size(spikes.spindices));
 tic
-mono_res = ce_MonoSynConvClick(spikes); %,'includeInhibitoryConnections',false); % detects the monosynaptic connections
+mono_res = ce_MonoSynConvClick(spikes,'includeInhibitoryConnections',true); % detects the monosynaptic connections
 toc
 %% Copied from ProcessCellMetrics ,section Putative MonoSynaptic connections
 

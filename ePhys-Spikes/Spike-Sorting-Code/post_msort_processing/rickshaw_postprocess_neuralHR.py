@@ -6,7 +6,10 @@ Created on Sun Nov  6 20:30:52 2022
 """
 
 # This script is used to perform post processing following spike sorting. It performs automatic curation of the clusters 
-# (putative neurons) as well as population analysis of stimulus locked clusters (ie the firing rates). 
+# (putative neurons) as well as population analysis of stimulus locked clusters (ie the firing rates).It also performs cell type analysis,
+# and excitatory vs inhibitory cell population trakcing post stroke. It calls cell explorer (matlab).
+# This is a complete, fully automated script that is doing about a dozen of various spike analysis
+# plots being generated for our longitudinal ephys data. 
 # Make sure the working directory is where this script resides.
 
 import numpy as np
@@ -38,7 +41,7 @@ for iter, filename in enumerate(source_dir_list):
         file_pre_ms = os.path.join(Raw_dir,'pre_MS.json')
         with open(file_pre_ms, 'r') as f:
             data_pre_ms = json.load(f)
-        F_SAMPLE = np.float(data_pre_ms['SampleRate'])
+        F_SAMPLE = float(data_pre_ms['SampleRate'])
 
         # Curation
         func_discard_noise_and_viz(Raw_dir)
@@ -46,7 +49,7 @@ for iter, filename in enumerate(source_dir_list):
         func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
 
         # Calling matlab scripts from python
-        # eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,nargout=0)
+        # eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,CHANNEL_MAP_FPATH,nargout=0)
 
         # delete converted_data.mda and filt.mda and raw data files (.rhd) 
         # os.remove(os.path.join(Raw_dir,'converted_data.mda'))
