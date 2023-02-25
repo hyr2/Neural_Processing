@@ -443,7 +443,7 @@ def postprocess_one_session(SESSION_FOLDER, session_newsavefolder, PARAMS, COMMO
         isi = np.diff(spike_times_by_clus[i_clus]) / F_SAMPLE * 1000 # ISI series in millisec
         isi_hist_this, _ = np.histogram(isi, bins=isi_bin_edges)
         isi_hists[i_clus, :] =isi_hist_this
-        refrac_violation_ratio[i_clus] = (isi_hist_this[0]+isi_hist_this[1]) / isi.shape[0]
+        refrac_violation_ratio[i_clus] = (isi_hist_this[0]+isi_hist_this[1]) / isi.shape[0]     # 2 ms criteria
 
 
     #### reject clusters by average amplitude, ISI violation ratio, and spatial spread(from template amplitude at each channel)
@@ -487,7 +487,7 @@ def postprocess_one_session(SESSION_FOLDER, session_newsavefolder, PARAMS, COMMO
             cluster_accept_mask[i_clus] = False
             violation_log[i_clus] += 16
     print("%d/%d clusters kept after rejecting bursting children"%(np.sum(cluster_accept_mask), n_clus))
-    # reject by 2ms-ISI violation ratio of 1%
+    # reject by 2ms-ISI violation ratio of 2.5%
     multi_unit_mask = np.logical_and(cluster_accept_mask, refrac_violation_ratio > PARAMS['ISI_VIOLATION_RATIO'])
     cluster_accept_mask[multi_unit_mask] = False # cluster_accept_mask indicates single unit clusters
     violation_log[multi_unit_mask] += 32
@@ -792,11 +792,11 @@ def func_discard_noise_and_viz(SESSION_FOLDER):
 
     COMMON_AVG_REREFERENCE = True
     ADJACENCY_RADIUS_SQUARED = 200**2 # um^2, [consistent with mountainsort shell script](not anymore)
-    SNR_THRESH = 1.5
+    SNR_THRESH = 2.0    # SNR increased from 1.5
     AMP_THRESH = 50 # 35 for Anesthetized # 50 for awake
-    FIRING_RATE_THRESH = 0.05#0.05 # 0.5
+    FIRING_RATE_THRESH = 0.1 # 0.1 Hz and below over the 20 min session of trial based whisker stimulation
     P2P_PROPORTION_THRESH = 0.2         # For spatial screening (p2p threshold %) AKA isolation in space
-    ISI_VIOLATION_RATIO = 0.0303         # ratio of spikes violating the inter spike interval criterion
+    ISI_VIOLATION_RATIO = 0.0303         # ratio of spikes violating the inter spike interval criterion (3% criteria)
     PARAMS = {}
     PARAMS['F_SAMPLE'] = F_SAMPLE
     PARAMS['ADJACENCY_RADIUS_SQUARED'] = ADJACENCY_RADIUS_SQUARED
