@@ -105,19 +105,20 @@ def combine_sessions(source_dir, str_ID):
     # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 9','Day 14 ','Day 21','Day 28','Day 35','Day 49'] # BC6 (stroke not formed at all. Data should be rejected)
     # linear_xaxis = np.array([-2,-1,2,9,14,21,28,35,49]) 
     # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14','Day 21','Day 47'] # B-BC5
-    # linear_xaxis = np.array([-2,-1,2,7,14,21,47]) 
-    x_ticks_labels = ['bl-1','bl-2','bl-3','Day 2','Day 7','Day 14 ','Day 24','Day 28','Day 35','Day 42','Day 49','Day 56'] # R-H7 (main)
-    linear_xaxis = np.array([-3,-2,-1,2,7,14,24,28,35,42,49,56]) # 24 special for rh7
+    linear_xaxis = np.array([-2,-1,2,7,14,21,47]) 
+    # x_ticks_labels = ['bl-1','bl-2','bl-3','Day 2','Day 7','Day 14 ','Day 24','Day 28','Day 35','Day 42','Day 49','Day 56'] # R-H7 (main)
+    # linear_xaxis = np.array([-3,-2,-1,2,7,14,24,28,35,42,49,56]) # 24 special for rh7
     # x_ticks_labels = ['bl-1','Day 2','Day 7','Day 14 ','Day 21','Day 42'] # BC8 
     # linear_xaxis = np.array([-3,-2,-1,2,2,7,8,14,21,54])            
     # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 42'] # R-H8 
     # linear_xaxis = np.array([-2,-1,2,7,14,21,28,35,42,49])            
+    # linear_xaxis = np.array([-3,-2,-1,2,7,14,21,28,35,42,49])  # RH-9
 
     x_ticks_labels = linear_xaxis
 
     pop_stats = {}
     pop_stats_cell = {}
-    names_datasets = {}
+    names_datasets = []
     iter = 0
     # Loading all longitudinal data into dictionaries 
     for name in source_dir_list:
@@ -126,7 +127,7 @@ def combine_sessions(source_dir, str_ID):
             if os.path.isdir(folder_loc_mat):
                 pop_stats[iter] = sio.loadmat(os.path.join(folder_loc_mat,'Processed/count_analysis/population_stat_responsive_only.mat'))
                 pop_stats_cell[iter] = sio.loadmat(os.path.join(folder_loc_mat,'Processed/cell_type/pop_celltypes.mat'))
-                names_datasets[iter] = name
+                names_datasets.append(name)
                 iter += 1
             
     act_nclus = np.zeros([len(pop_stats),4])
@@ -142,7 +143,7 @@ def combine_sessions(source_dir, str_ID):
     inhibitory_cell = np.zeros([len(pop_stats),4]) # by shank
     # celltype_excit = np.zeros([len(pop_stats),3])
     # celltype_inhib = np.zeros([len(pop_stats),3])
-    T2P_allsessions = {}    # dictionary of 1D numpy arrays
+    T2P_allsessions = []    # list of 1D numpy arrays
     for iter in range(len(pop_stats)):
         # population extraction from dictionaries
         
@@ -187,9 +188,10 @@ def combine_sessions(source_dir, str_ID):
         inhibitory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_inhib'],pop_stats_cell[iter]['shank_num'])
         
         # Saving T2P for global histogram
-        T2P_allsessions[iter] = pop_stats_cell[iter]['troughToPeak']
+        str_local = 'session_' + str(iter)
+        T2P_allsessions.append(np.squeeze(pop_stats_cell[iter]['troughToPeak']))
         
-
+        
     # total neurons by cell type
     # celltype_total = celltype_excit + celltype_inhib
     # total_activity_act = act_FR
@@ -209,10 +211,14 @@ def combine_sessions(source_dir, str_ID):
     full_mouse_ephys['suppressed_nclus'] = suppressed_nclus
     full_mouse_ephys['x_ticks_labels'] = x_ticks_labels
     full_mouse_ephys['celltype_total'] = celltype_total
-    full_mouse_ephys['T2P'] = T2P_allsessions
+    # full_mouse_ephys['T2P'] = T2P_allsessions
     # full_mouse_ephys['total_activity_act'] = total_activity_act
     full_mouse_ephys['FR_act'] = act_FR
     sio.savemat(os.path.join(source_dir,'full_mouse_ephys.mat'), full_mouse_ephys)
+    np.savez(os.path.join(source_dir,'full_mouse_T2P.npz'),T2P = np.array(T2P_allsessions,dtype = object))        # saving as object
+    # sio.savemat(os.path.join(source_dir,'full_mouse_T2P.mat'), T2P_allsessions)
+    # np.save(os.path.join(source_dir,'full_mouse_T2P.npy'), T2P_allsessions)     
+    # sio.savemat(os.path.join(source_dir,'full_mouse_T2P.mat'), {'T2P_allsessions' : T2P_allsessions})
 
     # Plot of cell types + activated/suppressed + excitatory/inhibitory neurons
     filename_save = os.path.join(source_dir,'Population_analysis_cell_activation.png')
