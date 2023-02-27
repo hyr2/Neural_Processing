@@ -32,6 +32,7 @@ import matplotlib.gridspec as gridspec
 import pandas as pd
 import scipy.signal as signal
 from utils.read_mda import readmda
+from utils.waveform_metrics import calc_t2p
 
 # -------------------------------
 
@@ -496,6 +497,23 @@ def postprocess_one_session(SESSION_FOLDER, session_newsavefolder, PARAMS, COMMO
         single_unit_mask=cluster_accept_mask,
         multi_unit_mask=multi_unit_mask
         )
+    
+    # calculate trough2peak and polarity and mark suspicious cluster accordingly.
+    # TODO restructure and vectorize
+    suspicious_mask = np.zeros(n_clus, dtype=bool)
+    positive_mask = np.zeros(n_clus, dtype=bool)
+    for i_clus in range(n_clus):
+        if (cluster_accept_mask[i_clus]==False):
+            continue
+        trough2peak_duration, polarity = calc_t2p(template_waveforms[pri_ch_lut[i_clus], :, i_clus], F_SAMPLE)
+        if (polarity>0):
+            positive_mask[i_clus] = True
+            suspicious_mask[i_clus] = True
+        if (trough2peak_duration<0.2 or trough2peak_duration>1.3):
+            suspicious_mask[i_clus] = True
+
+    pd.DataFrame(data=positive_mask.astype(int)).to_csv(os.path.join(session_folder_load, "positive_mask.csv"), index=False, header=False)
+    pd.DataFrame(data=suspicious_mask.astype(int)).to_csv(os.path.join(session_folder_load, "suspicious_mask.csv"), index=False, header=False)
     pd.DataFrame(data=cluster_accept_mask.astype(int)).to_csv(os.path.join(session_folder_load, "accept_mask.csv"), index=False, header=False)
     pd.DataFrame(data=multi_unit_mask.astype(int)).to_csv(os.path.join(session_folder_load, "multi_unit_mask.csv"), index=False, header=False)
     # exit(0)
