@@ -6,13 +6,13 @@ from scipy.stats import ttest_ind, zscore
 import pandas as pd
 from utils.read_mda import readmda
 from utils.read_stimtxt import read_stimtxt
-from Support import plot_all_trials, filterSignal_lowpass
+from Support import plot_all_trials, filterSignal_lowpass, filter_Savitzky_slow, filter_Savitzky_fast, zscore_bsl
 
 def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
 
     # Input parameters ---------------------
     # firing rate calculation params
-    WINDOW_LEN_IN_SEC = 50e-3
+    WINDOW_LEN_IN_SEC = 40e-3
     SMOOTHING_SIZE = 11
     DURATION_OF_INTEREST = 2.5  # how many seconds to look at upon stim onset (this is the activation or inhibition window)
     # Setting up
@@ -193,6 +193,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     def single_cluster_main(i_clus):
         
         firing_stamp = spike_times_by_clus[i_clus] 
+        N_spikes_local = spike_times_by_clus[i_clus].size 
         firing_rate_series = get_single_cluster_spikebincouts_all_trials(
             firing_stamp, 
             trials_start_times, 
@@ -201,12 +202,30 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             )
         firing_rate_series = firing_rate_series/WINDOW_LEN_IN_SEC       # This gives firing rate in Hz
         firing_rate_avg = np.mean(firing_rate_series[TRIAL_KEEP_MASK, :], axis=0) # averaging over all trials
-        firing_rate_avg = filterSignal_lowpass(firing_rate_avg, np.single(1/WINDOW_LEN_IN_SEC), axis_value = 0)
+        # firing_rate_avg = filterSignal_lowpass(firing_rate_avg, np.single(1/WINDOW_LEN_IN_SEC), axis_value = 0)
+        firing_rate_avg = filter_Savitzky_slow(firing_rate_avg)
         firing_rate_sum = np.sum(firing_rate_series[TRIAL_KEEP_MASK, :], axis=0)
         
         n_samples_baseline = int(np.ceil(stim_start_time/WINDOW_LEN_IN_SEC))
         n_samples_stim = int(np.ceil((stim_end_time-stim_start_time)/WINDOW_LEN_IN_SEC))
+        
+        t_axis = np.linspace(0,firing_rate_avg.shape[0]*WINDOW_LEN_IN_SEC,firing_rate_avg.shape[0])
+        t_1 = np.squeeze(np.where(t_axis >= 1.4))[0]      # stim start set to 2.45 seconds
+        t_2 = np.squeeze(np.where(t_axis >= 2.1))[0]
+        t_3 = np.squeeze(np.where(t_axis <= 2.7))[-1]        # stim end set to 5.15 seconds
+        t_4 = np.squeeze(np.where(t_axis <= 4.0))[-1]
+        t_5 = np.squeeze(np.where(t_axis <= 10))[-1]        # post stim quiet period
+        t_6 = np.squeeze(np.where(t_axis <= 11))[-1]
+        
+        # Zscore
+        bsl_mean = np.mean(firing_rate_avg[t_1:t_2])
+        bsl_std = np.std(firing_rate_avg[t_1:t_2])
+        firing_rate_zscore = zscore_bsl(firing_rate_avg, bsl_mean, bsl_std)          # Zscore to classify cluster as activated or suppressed
+        max_zscore_stim = np.amax(np.absolute(firing_rate_zscore[t_3:t_4]))          # Thresholding for Z score values
+        # plt.figure()
+        # plt.plot(t_axis,firing_rate_zscore)
         # firing_rate_zscore = zscore(firing_rate_avg, axis = 0)          # Zscore to classify cluster as activated or suppressed
+
         t_stat, pval_2t = ttest_ind(
             firing_rate_avg[:n_samples_baseline], 
             firing_rate_avg[1+n_samples_baseline:1+n_samples_baseline+n_samples_stim], 
@@ -214,10 +233,10 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         if t_stat > 0:
             # suppressed
             t_stat, pval_2t = ttest_ind(
-                firing_rate_avg[6:n_samples_baseline-6], 
-                firing_rate_avg[1+n_samples_baseline:1+n_samples_baseline+n_samples_stim], 
+                np.hstack((firing_rate_avg[t_1:t_2],firing_rate_avg[t_5:t_6])), 
+                firing_rate_avg[t_3:t_4], 
                 equal_var=False,alternative = 'greater')
-            if pval_2t < 0.001:  
+            if pval_2t < 0.01 and N_spikes_local>300 and max_zscore_stim > 2:   # sparse firing neuron is rejected + peak response needs to be 2 sd higher than bsl
                 # reject null
                 clus_property = ANALYSIS_INHIBITORY
             else:
@@ -225,14 +244,15 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         else:
             # activated
             t_stat, pval_2t = ttest_ind(
-                firing_rate_avg[6:n_samples_baseline-6], 
-                firing_rate_avg[1+n_samples_baseline:1+n_samples_baseline+n_samples_stim], 
+                np.hstack((firing_rate_avg[t_1:t_2],firing_rate_avg[t_5:t_6])), 
+                firing_rate_avg[t_3:t_4], 
                 equal_var=False,alternative = 'less')                
-            if pval_2t < 0.01:  
+            if pval_2t < 0.01 and N_spikes_local>300 and max_zscore_stim > 3:   # sparse firing neuron is rejected + peak response needs to be 3 sd higher than bsl
                 # reject null
                 clus_property = ANALYSIS_EXCITATORY
             else:
                 clus_property = ANALYSIS_NOCHANGE
+                    
             
         # if pval_2t > .01:
         #     clus_property = ANALYSIS_NOCHANGE
@@ -265,15 +285,17 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         (clus_property, t_stat, pval_2t), firing_rate_avg, firing_rate_sum = single_cluster_main(i_clus)
         # creating a dictionary for this cluster
         firing_stamp = spike_times_by_clus[i_clus]
+        N_spikes_local = spike_times_by_clus[i_clus].size 
         prim_ch = pri_ch_lut[i_clus]
         # Get shank ID from primary channel for the cluster
         shank_num = get_shanknum_from_msort_id(prim_ch)
         i_clus_dict  = {}
-        i_clus_dict['cluster_id'] = i_clus
+        i_clus_dict['cluster_id'] = i_clus + 1 # to align with the discard_noise_viz.py code cluster order [folder: figs_allclus_waveforms]
         i_clus_dict['total_spike_count'] = firing_stamp.shape
         i_clus_dict['prim_ch_coord'] = geom[prim_ch, :]
         i_clus_dict['shank_num'] = shank_num
         i_clus_dict['clus_prop'] = clus_property
+        i_clus_dict['N_spikes'] = N_spikes_local
         
         FR_series_all_clusters[i_clus].append(np.array(firing_rate_avg,dtype = float))
         failed = (single_unit_mask[i_clus]==False and multi_unit_mask[i_clus]==False)
