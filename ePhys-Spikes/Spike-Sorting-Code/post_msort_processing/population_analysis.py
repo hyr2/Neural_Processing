@@ -298,7 +298,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         i_clus_dict['N_spikes'] = N_spikes_local
         
         FR_series_all_clusters[i_clus].append(np.array(firing_rate_avg,dtype = float))
-        failed = (single_unit_mask[i_clus]==False and multi_unit_mask[i_clus]==False)
+        failed = (single_unit_mask[i_clus]==False and multi_unit_mask[i_clus]==False)                       # included MUA as well
         print(i_clus)
         if not(failed): 
             plot_all_trials(firing_rate_avg,1/WINDOW_LEN_IN_SEC,result_folder_FR_avg,i_clus_dict)           # Plotting function
