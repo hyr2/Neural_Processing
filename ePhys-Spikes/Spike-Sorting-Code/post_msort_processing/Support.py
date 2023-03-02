@@ -315,7 +315,11 @@ def zscore_bsl(time_series,bsl_mean,bsl_std):
 
 def bsl_norm(time_series):
     bsl_mean = np.mean(time_series[0:3])
-    time_series_out = (time_series - bsl_mean)/bsl_mean
+    if bsl_mean == 0:
+        time_series_out = np.nan * np.ones(time_series.shape) 
+    else:
+        time_series_out = (time_series - bsl_mean)/bsl_mean
+        
     return time_series_out
 
 def plot_all_trials(input_arr,Fs,folder_path,clus_dict):
