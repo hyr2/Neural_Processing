@@ -89,7 +89,7 @@ def func_savelfp(input_rootdir, output_rootdir, rel_dir):
         print("    RHD chunk is read")
         ephys_data = data_dict['amplifier_data']
         ephys_data = notch_filter(ephys_data, sample_freq, notch_freq, Q=20) # 60Hz notch with Q=20
-        ephys_data = ephys_data - np.mean(ephys_data, axis=0)
+        # ephys_data = ephys_data - np.mean(ephys_data, axis=0)
         print("    RHD chunk is notched")
         ephys_data = ephys_data.astype(np.int16)
         ephys_data = np.delete(ephys_data,reject_ch_indx,axis = 0)
@@ -105,5 +105,5 @@ def func_savelfp(input_rootdir, output_rootdir, rel_dir):
 if __name__ == "__main__":
     rawdir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/data/"
     outputdir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/mytempfolder/"
-    rel_dir = "RH-8/2022-12-03"
+    rel_dir = "BC7/2021-12-06"
     func_savelfp(rawdir, outputdir, rel_dir)

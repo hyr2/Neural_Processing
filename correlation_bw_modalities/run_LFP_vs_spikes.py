@@ -114,7 +114,7 @@ def corrs_one_session(session_spk_dir, session_lfp_dir):
     # data_r, bin_len = utils_cc.resample_0phase(data, session_info['SequenceTime'], 18, 5, axis=-1)
     # data_r = data_r - np.mean(data_r, axis=-1)[..., None] # MEAN SUBSTRACTION - THIS IS VERY IMPORTANT!!!
     trials_gamma_env = np.transpose(trials_gamma_env, [1,0,2]) # (n_chs, n_trials, n_samples)
-    trials_gamma_env = np.mean(trials_gamma_env, axis=0)[None, :] # average all the channels
+    # trials_gamma_env = np.mean(trials_gamma_env, axis=0)[None, :] # average all the channels
     data_r, bin_len = utils_cc.resample_0phase(trials_gamma_env, 1/ephys_tempsampfreq, 1, 25, axis=-1) # 50ms
 
     # read and prepare spiking time series
@@ -229,12 +229,12 @@ def corrs_one_session(session_spk_dir, session_lfp_dir):
     #         print(temp_res["description"])
 
     # id_iosmod = 0 
-    for i_region in range(spiking_timeseries.shape[0]):
+    for i_unit in range(spiking_timeseries.shape[0]):
         for i_ch in range(data_r.shape[0]):
             corr_all = []
             for i_trial in range(n_trials): 
                 sig_a = data_r[i_ch, i_trial, :]
-                sig_b = spiking_timeseries[i_region, i_trial, :]
+                sig_b = spiking_timeseries[i_unit, i_trial, :]
                 # iterate over all trials
                 corr_lags, corr_res = utils_cc.corr_normalized(sig_a, sig_b, sampling_interval=bin_len, unbiased=True, normalized=True)
                 # plt.figure(figsize=(20, 12))
@@ -256,7 +256,7 @@ def corrs_one_session(session_spk_dir, session_lfp_dir):
             corr_avg = np.mean(corr_all, axis=0)
             corr_std = np.std(corr_all, axis=0)
             temp_res = {}
-            temp_res["description"]="LFP-vs-unii%d" % (i_region)
+            temp_res["description"]="LFPch%d-vs-unit%d" % (i_ch, i_unit)
             temp_res["corr_avg"] = corr_avg
             temp_res["corr_std"] = corr_std
             temp_res["corr_lags"] = corr_lags
@@ -269,7 +269,7 @@ if __name__ == "__main__":
     spk_dir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/spikesort_out/processed_data_rh8/"
     lfp_dir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/mytempfolder/RH-8"
 
-    fig_dir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/tmp_figs/rh8_lfp_spk_corr_chronic"
+    fig_dir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/tmp_figs/rh8_lfp_spk_corr_230227"
     session_rel_dirs=["2022-12-03"]#os.listdir(spk_dir)
 
 
@@ -329,7 +329,7 @@ if __name__ == "__main__":
             plt.close()
         best_lag_datasets.append(best_lag_dataset_thisses)
         best_score_datasets.append(best_score_dataset_thisses)
-
+    exit()
     days = [-5, -3, -1, 2, 7, 14, 21, 28, 35, 42]
     plt.figure()
     plt.boxplot(best_lag_datasets, positions=days, showfliers=False, widths=3)
