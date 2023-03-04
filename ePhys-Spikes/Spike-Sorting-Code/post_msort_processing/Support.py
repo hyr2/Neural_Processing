@@ -75,9 +75,17 @@ def filterSignal_notch(input_signal, Fs, C0 = 60, axis_value = 0):
 # Low pass <2 Hz
 def filterSignal_lowpass(input_signal, Fs, axis_value = 0):
     signal_out = np.empty((input_signal.shape),dtype=np.single)
-    cutoff_low = 2                  # Low pass freq for LFP band
+    cutoff_low = 1.5                  # Low pass freq for LFP band
     sos = signal.butter(5, cutoff_low, btype = 'lowpass', output = 'sos', fs = Fs)  # IIR filter
     signal_out = signal.sosfiltfilt(sos, input_signal, axis = axis_value)
+    return signal_out
+
+def filter_Savitzky_fast(input_signal):
+    signal_out = signal.savgol_filter(input_signal,9,3)
+    return signal_out
+
+def filter_Savitzky_slow(input_signal):
+    signal_out = signal.savgol_filter(input_signal,25,3)
     return signal_out
 
 # 13 - 160 Hz
@@ -300,6 +308,19 @@ def toggle_plot(fig):
   # This function is called by a keypress to hide/show the figure
   fig.set_visible(not fig.get_visible())
   plt.draw()
+  
+def zscore_bsl(time_series,bsl_mean,bsl_std):
+    time_series_out = (time_series - bsl_mean)/bsl_std
+    return time_series_out
+
+def bsl_norm(time_series):
+    bsl_mean = np.mean(time_series[0:3])
+    if bsl_mean == 0:
+        time_series_out = np.nan * np.ones(time_series.shape) 
+    else:
+        time_series_out = (time_series - bsl_mean)/bsl_mean
+        
+    return time_series_out
 
 def plot_all_trials(input_arr,Fs,folder_path,clus_dict):
     # INPUT input_arr is a 1D array with avg FR of a single cluster
@@ -307,8 +328,10 @@ def plot_all_trials(input_arr,Fs,folder_path,clus_dict):
     # INPUT folder_path is the output folder where the figures will be saved
     # INPUT clus_dict contains the information on the cluster 
     
-    input_arr = stats.zscore(input_arr)
+    # input_arr = stats.zscore(input_arr)
     t_axis = np.linspace(0,input_arr.shape[0]/Fs,input_arr.shape[0])
+    t_start_indx = np.squeeze(np.where(t_axis >= 1.8))[0]      # stim start set to 2.45 seconds
+    t_end_indx = np.squeeze(np.where(t_axis <= 6.5))[-1]        # stim end set to 5.15 seconds
     filename_save = os.path.join(folder_path,'FR_' + str(clus_dict['cluster_id']) + '.png')
     # Plotting fonts
     sns.set_style('darkgrid') # darkgrid, white grid, dark, white and ticks
@@ -320,19 +343,19 @@ def plot_all_trials(input_arr,Fs,folder_path,clus_dict):
     plt.rc('font', size=16)          # controls default text sizes
     
     f, a = plt.subplots(1,1)
-    a.set_ylabel('FR (arb. units)')
+    a.set_ylabel('FR/Hz')
     len_str = 'Cluster ID:' + str(clus_dict['cluster_id']) + '| Shank:' + str(clus_dict['shank_num']) + '| Depth:' + str(clus_dict['prim_ch_coord'][1])
     f.suptitle(len_str)
     if clus_dict['clus_prop'] == 1:
-        a.plot(t_axis[6:],input_arr[6:],'g', lw=2.0)
+        a.plot(t_axis[t_start_indx:t_end_indx+25],input_arr[t_start_indx:t_end_indx+25],'g', lw=2.0)
     elif (clus_dict['clus_prop'] == -1):
-        a.plot(t_axis[6:],input_arr[6:],'b', lw=2.0)
+        a.plot(t_axis[t_start_indx:t_end_indx+25],input_arr[t_start_indx:t_end_indx+25],'b', lw=2.0)
     else:
-        a.plot(t_axis[6:],input_arr[6:],'k', lw=2.0)
+        a.plot(t_axis[t_start_indx:t_end_indx+25],input_arr[t_start_indx:t_end_indx+25],'k', lw=2.0)
 
-    plt.axvline(2.2,linestyle = 'dashed', linewidth = 2.1)
-    plt.axvline(5.5,linestyle = 'dashed', linewidth = 2.1)
-    a.set_yticks([])
+    plt.axvline(2.4,linestyle = 'dashed', linewidth = 2.1)
+    plt.axvline(5.15,linestyle = 'dashed', linewidth = 2.1)
+    # a.set_yticks([])
     f.set_size_inches((5, 3), forward=False)
     plt.savefig(filename_save,format = 'png')
     plt.close(f)

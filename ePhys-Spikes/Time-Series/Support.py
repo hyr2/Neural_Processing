@@ -9,7 +9,6 @@ import os
 from openpyxl import load_workbook
 import pandas as pd
 from scipy import signal, interpolate
-
 from matplotlib import pyplot as plt
 import numpy as np
 
@@ -186,6 +185,69 @@ def detect_peak_basic(arr, num, x):
     #     else:
     #         arr_max_indx = arr_max_indx[-1]
     #         arr_max = arr[arr_max_indx]
+  
+
+def fill_missing_FR(data_in,day_local_axis,day_axis_ideal):
+    """
+    fill_missing_FR Fill in missing data values as interpolated FR in a
+    longitudinal stroke study
+       The function takes as its input a 2D array with rows as sessions and
+       columns as shanks. 
+       
+       INPUT data_in : 2D matrix containing time and shank information as rows
+       and columns, respectively. Each column is therefore a new shank.
+       INPUT day_local_axis : An array for the days the recordings took place
+       INPUT day_axis_ideal: An array for the ideal days 
+       
+       (This function uses the same conventions as after discussion with Dr. Lan
+        and simply does nearest-neighbour interpolation for day<28 and averaged 
+        values for day >= 28)
+    """  
+    # YY_dim = data_in.shape[1]
+    
+    # # day_local_axis changed to include all three baselines
+    # if not any(np.isin(day_local_axis,-3)):
+    #     day_local_axis = np.insert(day_local_axis,0,-3)
+        
+    # ss = np.in1d(day_axis_ideal,day_local_axis)
+    # tmp = np.nan * np.ones(ss.shape,dtype = 'float')
+    # tmp[ss] =  day_local_axis
+    # return tmp
+    
+    # 2nd dimension is extracted here: 4 for shanks and 3 for cell types
+    YY_dim = data_in.shape[1]
+    
+    # day_local_axis changed to include all three baselines
+    if not any(np.isin(day_local_axis,-3)):
+        day_local_axis = np.insert(day_local_axis,0,-3)
+        
+    local_indx = np.squeeze(np.where(day_local_axis < 28 ))
+    # if before day 28 (performing nearest neighbour)    
+    f_data_out = interpolate.interp1d(day_local_axis[local_indx],data_in[local_indx,:],kind = 'nearest',axis = 0, fill_value='extrapolate')
+    local_indx = np.squeeze(np.where(day_axis_ideal < 28 ))
+    out_arr = f_data_out(day_axis_ideal[local_indx])
+    
+    # if after day 28 (performing average value of post day 28)
+    local_indx = np.squeeze(np.where(day_local_axis >= 28 ))
+    avg_local = np.nanmean(np.reshape(data_in[local_indx,:],[local_indx.size,YY_dim]),axis = 0)
+    tmp_indx = np.isin(day_axis_ideal,day_local_axis[local_indx])
+    tmp_indx = ~tmp_indx[7:]    # day 28 is a hard coded (requested by Dr.Lan)
+    out_arr_28 = np.zeros([tmp_indx.size,YY_dim])
+    out_arr_28[tmp_indx,:] = avg_local
+    
+    # merging two
+    merged_arr = np.vstack((out_arr,out_arr_28))
+    local_indx = ~np.isin(day_axis_ideal,day_local_axis)
+    local_indx[:7] = True
+    local_indx = ~local_indx
+    
+    local_indx_tmp = np.squeeze(np.where(day_local_axis >= 28 ))
+    data_fill = data_in[local_indx_tmp,:]
+    merged_arr[local_indx,:] = data_fill
+    
+    out_arr = merged_arr
+    # out_arr = np.rint(f_data_out(day_axis_ideal))
+    return out_arr
     
 
 def interp_session_loss(data_in, day_local_axis, day_axis_ideal):
@@ -193,21 +255,50 @@ def interp_session_loss(data_in, day_local_axis, day_axis_ideal):
     NTERP_SESSION_LOSS Interpolate data values of missing sessions in a
     longitudinal stroke study
        The function takes as its input a 2D array with rows as sessions and
-       columns as shanks. Missing sessions would therefore be signified
-       by a row of NaNs.
+       columns as shanks. The function does nearest neighbour interpolation 
+       for days less than 28. For days >= 28, averaging of the existing data 
+       points is performed to fill the missing data points.
        
        INPUT data_in : 2D matrix containing time and shank information as rows
        and columns, respectively. Each column is therefore a new shank.
        INPUT day_local_axis : An array for the days the recordings took place
        INPUT day_axis_ideal: An array for the ideal days (used for interpolation)
     """
+    
+    # 2nd dimension is extracted here: 4 for shanks and 3 for cell types
+    YY_dim = data_in.shape[1]
+    
     # day_local_axis changed to include all three baselines
     if not any(np.isin(day_local_axis,-3)):
         day_local_axis = np.insert(day_local_axis,0,-3)
         
-    f_data_out = interpolate.interp1d(day_local_axis,data_in,kind = 'linear',axis = 0, fill_value='extrapolate')
-
-    return np.rint(f_data_out(day_axis_ideal))
+    local_indx = np.squeeze(np.where(day_local_axis < 28 ))
+    # if before day 28 (performing nearest neighbour)    
+    f_data_out = interpolate.interp1d(day_local_axis[local_indx],data_in[local_indx,:],kind = 'nearest',axis = 0, fill_value='extrapolate')
+    local_indx = np.squeeze(np.where(day_axis_ideal < 28 ))
+    out_arr = np.rint(f_data_out(day_axis_ideal[local_indx]))
+    
+    # if after day 28 (performing average value of post day 28)
+    local_indx = np.squeeze(np.where(day_local_axis >= 28 ))
+    avg_local = np.rint(np.nanmean(np.reshape(data_in[local_indx,:],[local_indx.size,YY_dim]),axis = 0))
+    tmp_indx = np.isin(day_axis_ideal,day_local_axis[local_indx])
+    tmp_indx = ~tmp_indx[7:]    # day 28 is a hard coded (requested by Dr.Lan)
+    out_arr_28 = np.zeros([tmp_indx.size,YY_dim])
+    out_arr_28[tmp_indx,:] = avg_local
+    
+    # merging two
+    merged_arr = np.vstack((out_arr,out_arr_28))
+    local_indx = ~np.isin(day_axis_ideal,day_local_axis)
+    local_indx[:7] = True
+    local_indx = ~local_indx
+    
+    local_indx_tmp = np.squeeze(np.where(day_local_axis >= 28 ))
+    data_fill = data_in[local_indx_tmp,:]
+    merged_arr[local_indx,:] = data_fill
+    
+    out_arr = merged_arr
+    # out_arr = np.rint(f_data_out(day_axis_ideal))
+    return out_arr
 
 
 def interp_chan_loss(data_in, shank_missed):
@@ -389,5 +480,31 @@ def append_df_to_excel(filename, df, sheet_name='Sheet1', startrow=None,
 
     # save the workbook
     writer.save()
+    
+def bsl_norm(time_series):
+    # 1D timeseries (baeline is the first three data points by default)
+    bsl_mean = np.mean(time_series[0:3])
+    if bsl_mean == 0:
+        time_series_out = np.nan * np.ones(time_series.shape) 
+    else:
+        time_series_out = (time_series - bsl_mean)/bsl_mean
+        
+    return time_series_out
+
+def bsl_norm_df(input_df):
+    [x,y] = input_df.shape
+    # bsl_mean_arr_s = pd.Series([],index=['activated','suppressed','excitatory','inhibitory','nor'],dtype = 'float')
+    bsl_mean_arr = np.zeros([y,])
+    for iter in range(y):
+        bsl_mean_arr[iter] = input_df.iloc[0:3,iter].mean()
+    bsl_mean_arr_s = pd.Series(np.squeeze(bsl_mean_arr),index=['index','activated','suppressed','excitatory','inhibitory','nor'],dtype = 'float')
+    output_df = input_df.subtract(bsl_mean_arr_s,axis = 1)
+    output_df = output_df.div(bsl_mean_arr_s,axis = 1)
+    return output_df
+    
+    
+    
+        
+    
     
     
