@@ -82,7 +82,7 @@ def corrs_one_session(session_spk_dir, session_ios_dir, session_lfp_dir):
     trials_gamma_env, ephys_tempsampfreq = read_lfp_data(session_spk_dir, os.path.join(session_lfp_dir, "ephys_trial_padded.npz"))
     # trials_gamma_env = np.mean(trials_gamma_env, axis=1) # average all the channels
     trials_gamma_env = np.transpose(trials_gamma_env, [1,0,2]) # (n_chs, n_trials, n_samples)
-    trials_gamma_env = np.mean(trials_gamma_env, axis=0)[None, :] # average all the channels
+    # trials_gamma_env = np.mean(trials_gamma_env, axis=0)[None, :] # average all the channels
     trials_gamma_env_r, bin_len0 = utils_cc.resample_0phase(trials_gamma_env, 1/ephys_tempsampfreq, 1, 50, axis=-1) # 100ms
     # plt.figure()
     # plt.subplot(211)
@@ -118,20 +118,20 @@ def corrs_one_session(session_spk_dir, session_ios_dir, session_lfp_dir):
                 sig_b = trials_gamma_env_r[i_ch, i_trial, :]
                 # iterate over all trials
                 corr_lags, corr_res = utils_cc.corr_normalized(sig_a, sig_b, sampling_interval=bin_len, unbiased=True, normalized=True)
-                plt.figure(figsize=(20, 12))
-                plt.subplot(211)
-                plt.plot(np.arange(sig_a.shape[0])*bin_len, sig_a, marker='.', color="blue")
-                ax1 = plt.gca()
-                ax1.set_xlabel("Time (seconds)")
-                ax1.set_ylabel("A - Imaging signal\n(resampled and mean subtracted)", color="blue")
-                ax2 = plt.gca().twinx()
-                ax2.plot(np.arange(sig_b.shape[0])*bin_len, sig_b, marker='.', color="orange")
-                ax2.set_ylabel("B - LFP Gamma Envelope\n(resampled and mean subtracted)", color='orange')
-                plt.subplot(212)
-                plt.plot(corr_lags, corr_res, linewidth=0.7, marker='x', label='Cross-correlation')
-                plt.xlabel("Lag (seconds) (Negative means A is earlier)")
-                plt.legend()
-                plt.show()
+                # plt.figure(figsize=(20, 12))
+                # plt.subplot(211)
+                # plt.plot(np.arange(sig_a.shape[0])*bin_len, sig_a, marker='.', color="blue")
+                # ax1 = plt.gca()
+                # ax1.set_xlabel("Time (seconds)")
+                # ax1.set_ylabel("A - Imaging signal\n(resampled and mean subtracted)", color="blue")
+                # ax2 = plt.gca().twinx()
+                # ax2.plot(np.arange(sig_b.shape[0])*bin_len, sig_b, marker='.', color="orange")
+                # ax2.set_ylabel("B - LFP Gamma Envelope\n(resampled and mean subtracted)", color='orange')
+                # plt.subplot(212)
+                # plt.plot(corr_lags, corr_res, linewidth=0.7, marker='x', label='Cross-correlation')
+                # plt.xlabel("Lag (seconds) (Negative means A is earlier)")
+                # plt.legend()
+                # plt.show()
                 corr_all.append(corr_res)
             corr_all = np.array(corr_all)
             corr_avg = np.mean(corr_all, axis=0)
@@ -155,7 +155,7 @@ if __name__ == "__main__":
     spk_dir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/spikesort_out/processed_data_rh8/"
     lfp_dir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/mytempfolder/RH-8"
 
-    fig_dir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/tmp_figs/rh8_ios-lfp-avg"
+    fig_dir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/tmp_figs/rh8_ios-lfp-avg-230227"
     session_rel_dirs= ["2022-12-03"] # os.listdir(spk_dir)
 
 
