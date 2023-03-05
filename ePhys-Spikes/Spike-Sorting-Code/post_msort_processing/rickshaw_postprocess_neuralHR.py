@@ -60,3 +60,14 @@ for iter, filename in enumerate(source_dir_list):
                 # os.remove(os.path.join(Raw_dir, item))
 
 # eng.quit()
+
+# Params.json file:
+#     {
+#     "raw_dir": "/home/hyr2-office/Documents/Data/NVC/B-BC5/",
+#     "spikesort_dir": "/home/hyr2-office/Documents/Data/NVC/B-BC5/",
+#     "CHANNEL_MAP_FPATH": "/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_2x16_rigid_hanlin_fei.mat",
+#     "ELECTRODE_2X16": true,
+#     "msort_num_features": "8",
+#     "msort_max_num_clips_for_pca": "1000",
+#     "msort_temp_dir": "/home/hyr2-office/Documents/Data/NVC/ml-temp"
+# }
