@@ -13,6 +13,7 @@ import seaborn as sns
 import os
 from natsort import natsorted
 import pandas as pd
+import sys
 
 # Plotting fonts
 sns.set_style('darkgrid') # darkgrid, white grid, dark, white and ticks
@@ -98,6 +99,26 @@ def combine_sessions(source_dir, str_ID):
     # source_dir_list = source_dir_list.tolist()
     # source_dir_list = natsorted(os.listdir(source_dir))
 
+    if (str_ID.lower() == 'RH-3'.lower()):
+        linear_xaxis = np.array([-2,-1,2,7,14,21,28,56]) 
+    elif (str_ID.lower() == 'BC7'.lower()):
+        linear_xaxis = np.array([-2,-1,2,7,14,21,28,42]) 
+    elif (str_ID.lower() == 'BC6'.lower()):
+        linear_xaxis = np.array([-2,-1,2,9,14,21,28,35,49])
+    elif (str_ID.lower() == 'B-BC5'.lower()):
+        linear_xaxis = np.array([-2,-1,2,7,14,21,47]) 
+    elif (str_ID.lower() == 'RH-7'.lower()):
+        linear_xaxis = np.array([-3,-2,-1,2,7,14,24,28,35,42,49,56])
+    elif (str_ID.lower() == 'BC8'.lower()):
+        linear_xaxis = np.array([-3,-2,-1,2,2,7,8,14,21,54]) 
+    elif (str_ID.lower() == 'RH-8'.lower()):
+        linear_xaxis = np.array([-2,-1,2,7,14,21,28,35,42,49])  
+    elif (str_ID.lower() == 'RH-9'.lower()):
+        linear_xaxis = np.array([-3,-2,-1,2,7,14,21,28,35,42,49])
+    else:
+        sys.exit('No string matched with: ' + str_ID)
+            
+    
     # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14','Day 21','Day 28','Day 56']  # RH3 (reject baselines 0 and 2)
     # linear_xaxis = np.array([-2,-1,2,7,14,21,28,56]) 
     # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 28','Day 42'] # BC7 (reject baseline 0)
@@ -105,7 +126,7 @@ def combine_sessions(source_dir, str_ID):
     # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 9','Day 14 ','Day 21','Day 28','Day 35','Day 49'] # BC6 (stroke not formed at all. Data should be rejected)
     # linear_xaxis = np.array([-2,-1,2,9,14,21,28,35,49]) 
     # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14','Day 21','Day 47'] # B-BC5
-    linear_xaxis = np.array([-2,-1,2,7,14,21,47]) 
+    # linear_xaxis = np.array([-2,-1,2,7,14,21,47]) 
     # x_ticks_labels = ['bl-1','bl-2','bl-3','Day 2','Day 7','Day 14 ','Day 24','Day 28','Day 35','Day 42','Day 49','Day 56'] # R-H7 (main)
     # linear_xaxis = np.array([-3,-2,-1,2,7,14,24,28,35,42,49,56]) # 24 special for rh7
     # x_ticks_labels = ['bl-1','Day 2','Day 7','Day 14 ','Day 21','Day 42'] # BC8 
