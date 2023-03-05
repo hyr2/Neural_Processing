@@ -63,4 +63,5 @@ eng.quit()
 
 # Running FR_TS_pop.py script for complete statics of this mouse over all sessions (longitudinal)
 # WARNING: Make sure to edit script for the correct animal (since their measurement days might differ)
-combine_sessions(input_dir,'Mouse_ID')
+moouse_id = input_dir.split('/')[-2]
+combine_sessions(input_dir,moouse_id)
