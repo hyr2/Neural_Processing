@@ -2,6 +2,7 @@ import os, json
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.io import loadmat, savemat
+from scipy import integrate
 from scipy.stats import ttest_ind, zscore
 import pandas as pd
 from utils.read_mda import readmda
@@ -11,6 +12,8 @@ from Support import plot_all_trials, filterSignal_lowpass, filter_Savitzky_slow,
 def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
 
     # Input parameters ---------------------
+    # session folder is a single measurement 
+    
     # firing rate calculation params
     WINDOW_LEN_IN_SEC = 40e-3
     SMOOTHING_SIZE = 11
@@ -274,7 +277,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
 
     clus_response_mask = np.zeros(n_clus, dtype=int)
 
-    FR_series_all_clusters = [ [] for i in range(n_clus) ]  # create empty list
+    FR_series_all_clusters = [ [] for i in range(n_clus) ]  # create a list of empty lists in a loop
     Avg_FR_byshank = np.zeros([4,])
     FR_list_byshank_act =  [ [] for i in range(4) ]  # create empty list
     FR_list_byshank_inh =  [ [] for i in range(4) ]  # create empty list
@@ -386,15 +389,16 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     # shankB_act = (shankB_act / shankB_act_bsl[:, np.newaxis] - 1) if np.size(shankB_act) != 0 else np.nan
     # shankC_act = (shankC_act / shankC_act_bsl[:, np.newaxis] - 1) if np.size(shankC_act) != 0 else np.nan
     # shankD_act = (shankD_act / shankD_act_bsl[:, np.newaxis] - 1) if np.size(shankD_act) != 0 else np.nan
-    shankA_act = zscore(shankA_act, axis = 1) if np.size(shankA_act) != 0 else np.nan
-    shankB_act = zscore(shankB_act, axis = 1) if np.size(shankB_act) != 0 else np.nan
-    shankC_act = zscore(shankC_act, axis = 1) if np.size(shankC_act) != 0 else np.nan
-    shankD_act = zscore(shankD_act, axis = 1) if np.size(shankD_act) != 0 else np.nan
+    
+    # shankA_act = zscore(shankA_act, axis = 1) if np.size(shankA_act) != 0 else np.nan
+    # shankB_act = zscore(shankB_act, axis = 1) if np.size(shankB_act) != 0 else np.nan
+    # shankC_act = zscore(shankC_act, axis = 1) if np.size(shankC_act) != 0 else np.nan
+    # shankD_act = zscore(shankD_act, axis = 1) if np.size(shankD_act) != 0 else np.nan
     # average FR during activation
-    shankA_act = np.mean(np.amax(shankA_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankA_act).any() else np.nan  # average FR during activation
-    shankB_act = np.mean(np.amax(shankB_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankB_act).any()  else np.nan  # average FR during activation
-    shankC_act = np.mean(np.amax(shankC_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankC_act).any()  else np.nan  # average FR during activation
-    shankD_act = np.mean(np.amax(shankD_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankD_act).any()  else np.nan  # average FR during activation
+    shankA_act = np.mean(np.mean(shankA_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankA_act).any() else np.nan  # average FR during activation
+    shankB_act = np.mean(np.mean(shankB_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankB_act).any()  else np.nan  # average FR during activation
+    shankC_act = np.mean(np.mean(shankC_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankC_act).any()  else np.nan  # average FR during activation
+    shankD_act = np.mean(np.mean(shankD_act[:,stim_start_idx:doi_end_idx],axis=1)) if not np.isnan(shankD_act).any()  else np.nan  # average FR during activation
     
     # supressed neurons
     # supressed neurons
@@ -416,10 +420,11 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     # shankB_inh= (shankB_inh/ shankB_inh_bsl[:, np.newaxis] - 1) if np.size(shankB_inh) != 0 else np.nan
     # shankC_inh= (shankC_inh/ shankC_inh_bsl[:, np.newaxis] - 1) if np.size(shankC_inh) != 0 else np.nan
     # shankD_inh= (shankD_inh/ shankD_inh_bsl[:, np.newaxis] - 1) if np.size(shankD_inh) != 0 else np.nan
-    shankA_inh = zscore(shankA_inh, axis = 1) if (np.size(shankA_inh) != 0) else np.nan
-    shankB_inh = zscore(shankB_inh, axis = 1) if np.size(shankB_inh) != 0 else np.nan
-    shankC_inh = zscore(shankC_inh, axis = 1) if np.size(shankC_inh) != 0 else np.nan
-    shankD_inh = zscore(shankD_inh, axis = 1) if np.size(shankD_inh) != 0 else np.nan
+    
+    # shankA_inh = zscore(shankA_inh, axis = 1) if (np.size(shankA_inh) != 0) else np.nan
+    # shankB_inh = zscore(shankB_inh, axis = 1) if np.size(shankB_inh) != 0 else np.nan
+    # shankC_inh = zscore(shankC_inh, axis = 1) if np.size(shankC_inh) != 0 else np.nan
+    # shankD_inh = zscore(shankD_inh, axis = 1) if np.size(shankD_inh) != 0 else np.nan
     # average FR during suppression
     shankA_inh= np.mean(np.amin(shankA_inh[:,stim_start_idx:stim_end_idx], axis = 1)) if not np.isnan(shankA_inh).any() else np.nan  # average FR during activation
     shankB_inh= np.mean(np.amin(shankB_inh[:,stim_start_idx:stim_end_idx], axis = 1)) if not np.isnan(shankB_inh).any()  else np.nan  # average FR during activation
