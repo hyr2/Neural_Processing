@@ -6,10 +6,15 @@ Created on Sun Mar 19 14:57:09 2023
 @author: hyr2-office
 """
 
+# This standalone script is used to convert the curated output files from 
+# discard_noise_viz.py file and give the correct output files to be used for
+# manual curation in the software PHY
+
 import os, sys, json
 sys.path.append(os.path.join(os.getcwd(),'utils-mountainsort'))
 sys.path.append(os.getcwd())
 from itertools import groupby
+from copy import deepcopy
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import loadmat, savemat
@@ -39,6 +44,24 @@ nTemplates = np.max(spike_clusters) + 1                      # number of cluster
 nChan = np.amax(prim_ch)                                  # number of channels in the recording (effective)
 
 # Needs to be fixed (read all_waveforms_by_cluster.npz)
+amplitudes = np.zeros([nSpikes,])
+all_waveforms_by_cluster = np.load(os.path.join(session_folder,'all_waveforms_by_cluster.npz'))
+for i_clus in range(nTemplates):
+    waveforms_this_cluster = all_waveforms_by_cluster['clus%d'%(i_clus+1)]  # cluster IDs in .npz start from 1
+    waveform_peaks = np.max(waveforms_this_cluster, axis=1)
+    waveform_troughs = np.min(waveforms_this_cluster, axis=1)
+    tmp_amp_series = (waveform_peaks-waveform_troughs) * (1-2*(waveform_peaks<0))
+    indx_amplitudes = np.where(spike_clusters == i_clus)[0]     # spike_clusters starts from 0
+    # assert tmp_amp_series.shape[0] == indx_amplitudes.shape[0], \
+    if (tmp_amp_series.shape[0] != indx_amplitudes.shape[0]):       # @jiaaoz please take a look at this error
+        print('Number of spikes in cluster %d did not match'%(i_clus+1))
+        tmp_num = indx_amplitudes.shape[0] - tmp_amp_series.shape[0] 
+        for iter in range(tmp_num):
+            tmp_amp_series = np.append(tmp_amp_series,np.mean(tmp_amp_series))
+        # print(tmp_amp_series.shape[0] - indx_amplitudes.shape[0])
+    amplitudes[indx_amplitudes] = tmp_amp_series
+    
+amplitudes = amplitudes.astype(dtype = 'float64')
 # amplitudes = np.ones([nSpikes,],dtype = 'float64')         # This is amplitudes.npy
 
 template_waveforms = np.moveaxis(template_waveforms,[0,1,2],[2,1,0]).astype(dtype = 'float32') # This is templates.npy
@@ -72,14 +95,26 @@ l6 = 'hp_filtered = ' + str('False') + '\n'
 with open(fname, 'w') as f:
     f.writelines([l1,l2,l3,l4,l5,l6])
 
-np.save(os.path.join(output_phy,'spike_times.npy'),spike_times)
-np.save(os.path.join(output_phy,'spike_clusters.npy'),spike_clusters)
-np.save(os.path.join(output_phy,'amplitudes.npy'),amplitudes)
-np.save(os.path.join(output_phy,'templates.npy'),template_waveforms)
-np.save(os.path.join(output_phy,'spike_templates.npy'),spike_templates)
-np.save(os.path.join(output_phy,'templates_ind.npy'),templates_ind)
+# Applying the curation mask (accept_mask.csv)
+curation_mask_file = os.path.join(session_folder,'accept_mask.csv')
+curation_mask = pd.read_csv(curation_mask_file, header=None, index_col=False,dtype = bool)
+curation_mask_np = curation_mask.to_numpy()
+curation_mask_np = np.reshape(curation_mask_np,[curation_mask_np.shape[0],])
+tmp = curation_mask_np[spike_clusters]    # remove these spikes from the firings.mda structure
+spike_clusters_new = deepcopy(spike_clusters[tmp])
+spike_templates_new = deepcopy(spike_templates[tmp])
+spike_times_new = deepcopy(spike_times[tmp])
+amplitudes_new = deepcopy(amplitudes[tmp])
+templates_ind_new = deepcopy(templates_ind[curation_mask_np,:])
+template_waveforms_new = deepcopy(template_waveforms[curation_mask_np,:,:])
+
+np.save(os.path.join(output_phy,'spike_times.npy'),spike_times_new)
+np.save(os.path.join(output_phy,'spike_clusters.npy'),spike_clusters_new)
+np.save(os.path.join(output_phy,'amplitudes.npy'),amplitudes_new)
+np.save(os.path.join(output_phy,'templates.npy'),template_waveforms_new)
+np.save(os.path.join(output_phy,'spike_templates.npy'),spike_templates_new)
+np.save(os.path.join(output_phy,'templates_ind.npy'),templates_ind_new)
 np.save(os.path.join(output_phy,'channel_map.npy'),channel_map)
 np.save(os.path.join(output_phy,'channel_positions.npy'),channel_positions)
-
 
 # For feature space (PCA)
