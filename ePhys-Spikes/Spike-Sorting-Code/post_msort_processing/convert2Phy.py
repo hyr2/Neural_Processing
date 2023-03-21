@@ -22,7 +22,7 @@ import scipy.signal as signal
 import pandas as pd
 from utils.Support import read_stimtxt
 from utils.read_mda import readmda
-from Support import calc_key_metrics, calc_merge_candidates
+from Support import calc_key_metrics, calc_merge_candidates, makeSymmetric
 
 session_folder = '/home/hyr2-office/Documents/Data/NVC/RH-7-merging-orig/10-17-22/'
 output_phy = os.path.join(session_folder,'phy_output')
@@ -131,6 +131,7 @@ merge_cand_mat[:,1] = merge_cand_mat[:,1] - 1   # Cluster IDs now start from 0
 similar_templates = np.zeros([nTemplates_new,nTemplates_new],dtype = 'single')
 for iter in range(merge_cand_mat.shape[0]):
     similar_templates[merge_cand_mat[iter,0],merge_cand_mat[iter,1]] = merge_cand_mat[iter,2]
+similar_templates_new = deepcopy(makeSymmetric(similar_templates))
 
 np.save(os.path.join(output_phy,'spike_times.npy'),spike_times_new)
 np.save(os.path.join(output_phy,'spike_clusters.npy'),spike_clusters_new)
@@ -140,5 +141,6 @@ np.save(os.path.join(output_phy,'spike_templates.npy'),spike_templates_new)
 np.save(os.path.join(output_phy,'templates_ind.npy'),templates_ind_new)
 np.save(os.path.join(output_phy,'channel_map.npy'),channel_map)
 np.save(os.path.join(output_phy,'channel_positions.npy'),channel_positions)
+np.save(os.path.join(output_phy, 'similar_templates.npy'), similar_templates_new)
 
 # For feature space (PCA)
