@@ -105,5 +105,5 @@ def func_savelfp(input_rootdir, output_rootdir, rel_dir):
 if __name__ == "__main__":
     rawdir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/data/"
     outputdir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/mytempfolder/"
-    rel_dir = "BC7/2021-12-06"
+    rel_dir = "BC7/2021-12-09"
     func_savelfp(rawdir, outputdir, rel_dir)

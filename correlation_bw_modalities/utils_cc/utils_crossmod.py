@@ -228,3 +228,23 @@ def hamming_smooth(data, winlen, axis):
         smoothed
     )
     return smoothed
+
+
+def group_spikes_into_trials(spiking, segments):
+    """ Bin the spikes and returns the firing rate series; this function assumes all inputs use the same time unit
+
+    Parameters
+    --------
+    spiking : 1-d array spike stamps
+    segments : list of len-2 tuples: segment[0] is start time and segment[1] is duration
+    
+    Returns
+    --------
+    spike_counts : a list of arrays, each array representing the spike stamp at a trial
+    """
+    spike_counts = []
+    for i_seg, (s_beg, s_dur) in enumerate(segments):
+        s_end = s_beg + s_dur
+        this_stamp = spiking[((spiking>s_beg) & (spiking<s_end))] - s_beg
+        spike_counts.append(this_stamp)
+    return spike_counts
