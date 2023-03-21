@@ -23,7 +23,7 @@ import pandas as pd
 from utils.Support import read_stimtxt
 from utils.read_mda import readmda
 
-session_folder = '/home/hyr2-office/Documents/Data/NVC/RH-7-merging/10-24-22/'
+session_folder = '/home/hyr2-office/Documents/Data/NVC/RH-7-merging-orig/10-17-22/'
 output_phy = os.path.join(session_folder,'phy_output')
 if not os.path.exists(output_phy):
     os.makedirs(output_phy)
@@ -102,11 +102,26 @@ curation_mask_np = curation_mask.to_numpy()
 curation_mask_np = np.reshape(curation_mask_np,[curation_mask_np.shape[0],])
 tmp = curation_mask_np[spike_clusters]    # remove these spikes from the firings.mda structure
 spike_clusters_new = deepcopy(spike_clusters[tmp])
-spike_templates_new = deepcopy(spike_templates[tmp])
+# spike_templates_new = deepcopy(spike_templates[tmp])
 spike_times_new = deepcopy(spike_times[tmp])
 amplitudes_new = deepcopy(amplitudes[tmp])
 templates_ind_new = deepcopy(templates_ind[curation_mask_np,:])
 template_waveforms_new = deepcopy(template_waveforms[curation_mask_np,:,:])
+nTemplates_new = np.sum(curation_mask_np)
+new_cluster_id = np.arange(0,nTemplates_new,1)
+old_cluster_id = np.unique(spike_clusters_new)
+# cluster_mapping = old_cluster_id
+for iter in range(nTemplates_new):
+    indx_temp = np.where(spike_clusters_new == old_cluster_id[iter])[0]
+    spike_clusters_new[indx_temp] = iter
+spike_templates_new = spike_clusters_new
+cluster_mapping = np.vstack((new_cluster_id,old_cluster_id))
+cluster_mapping = np.transpose(cluster_mapping)
+pd.DataFrame(data=cluster_mapping.astype(int)).to_csv(os.path.join(output_phy, "cluster_mapping.csv"), index=False, header=False)
+# spike_templates_new = spike_clusters_new
+
+# Generating similar_templates.npy containing possible merging candidates (Jiaao's code)
+
 
 np.save(os.path.join(output_phy,'spike_times.npy'),spike_times_new)
 np.save(os.path.join(output_phy,'spike_clusters.npy'),spike_clusters_new)
