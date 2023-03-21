@@ -11,7 +11,7 @@ Created on Sun Mar 19 14:57:09 2023
 # manual curation in the software PHY
 
 import os, sys, json
-sys.path.append(os.path.join(os.getcwd(),'utils-mountainsort'))
+sys.path.append(os.path.join(os.getcwd(),'utils'))
 sys.path.append(os.getcwd())
 from itertools import groupby
 from copy import deepcopy
@@ -22,6 +22,7 @@ import scipy.signal as signal
 import pandas as pd
 from utils.Support import read_stimtxt
 from utils.read_mda import readmda
+from Support import calc_key_metrics, calc_merge_candidates
 
 session_folder = '/home/hyr2-office/Documents/Data/NVC/RH-7-merging-orig/10-17-22/'
 output_phy = os.path.join(session_folder,'phy_output')
@@ -121,7 +122,15 @@ pd.DataFrame(data=cluster_mapping.astype(int)).to_csv(os.path.join(output_phy, "
 # spike_templates_new = spike_clusters_new
 
 # Generating similar_templates.npy containing possible merging candidates (Jiaao's code)
-
+prim_ch_new = deepcopy(prim_ch[tmp])
+firings_new = np.vstack((prim_ch_new,spike_times_new,spike_clusters_new))
+templates_sliced, _, peak_amplitudes, clus_coordinates = calc_key_metrics(np.moveaxis(template_waveforms_new,[0,1,2],[2,1,0]), firings_new, channel_positions, F_SAMPLE)
+merge_cand_mat = calc_merge_candidates(templates_sliced, clus_coordinates, peak_amplitudes)
+merge_cand_mat[:,0] = merge_cand_mat[:,0] - 1   # Cluster IDs now start from 0
+merge_cand_mat[:,1] = merge_cand_mat[:,1] - 1   # Cluster IDs now start from 0
+similar_templates = np.zeros([nTemplates_new,nTemplates_new],dtype = 'single')
+for iter in range(merge_cand_mat.shape[0]):
+    similar_templates[merge_cand_mat[iter,0],merge_cand_mat[iter,1]] = merge_cand_mat[iter,2]
 
 np.save(os.path.join(output_phy,'spike_times.npy'),spike_times_new)
 np.save(os.path.join(output_phy,'spike_clusters.npy'),spike_clusters_new)
