@@ -181,7 +181,11 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         ephys_data = data_dict['amplifier_data']
         ephys_data = np.delete(ephys_data,reject_ch_indx,axis = 0)
         print("    Notching + CMR of medians")
-        ephys_data = notch_filter(ephys_data, sample_freq, notch_freq, Q=20)
+        if notch_freq < 1:
+            print("      RHD says notch_freq=%.2f, we'll do 60."%(notch_freq))
+            ephys_data = notch_filter(ephys_data, sample_freq, 60, Q=20)
+        else:
+            ephys_data = notch_filter(ephys_data, sample_freq, notch_freq, Q=20)
         ephys_data = ephys_data - np.median(ephys_data, axis=0)
         ephys_data = ephys_data.astype(np.int16)
         
