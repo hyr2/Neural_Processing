@@ -3,26 +3,25 @@ import os
 import glob
 import warnings
 
-rawfolder = "/media/G1/xl_neurovascular_coupling/November_2021 - NVC/RH-9/"
-locfolder = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/data/RH-9"
+rawfolder = "/media/G1/xl_neurovascular_coupling/November_2021 - NVC/BC8/"
+locfolder = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/data/BC8"
 if not os.path.exists(locfolder):
     os.makedirs(locfolder)
 
 
 sessions = [
-    "22-12-14",
-    "22-12-15",
-    "22-12-16",
-    "22-12-17"
-    # "22-12-19",
-    # "22-12-23",
-    # "22-12-28",
-    # "23-01-04",
-    # "23-01-11",
-    # "23-01-18",
-    # "23-01-25",
-    # "23-02-01",
-    # "23-02-08",
+    # "2021-11-18",
+    # "2021-11-19",
+    # "2021-11-24",
+    # "2021-11-30-a",
+    # "2021-11-30-b",
+    # "2021-12-05-a",
+    # "2021-12-05-b",
+    # "2021-12-06",
+    # "2021-12-13",
+    # "2021-12-19",
+    # "2021-12-26",
+    "2022-01-9",
 ]
 
 
