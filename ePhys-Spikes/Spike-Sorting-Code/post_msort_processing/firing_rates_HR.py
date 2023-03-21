@@ -1,7 +1,4 @@
 '''
-Adapt to 2x16 channel maps
-Non visualization yet
-read Haad's rejection file -> update: simply reject first 6 trials
 Author: Jia-ao
 '''
 import os, sys, json
