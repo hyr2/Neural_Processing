@@ -442,4 +442,135 @@ def append_df_to_excel(filename, df, sheet_name='Sheet1', startrow=None,
     # save the workbook
     writer.save()
     
+# The following is Jiaao's code for determining possible candidates for merging
+# TRANSIENT_AMPLITUDE_VALID_DURATION = 10e-4 # seconds (duration of data before and after each spike that we consider when deciding the transient amplitude)
+# tavd_nsample = int(np.ceil(TRANSIENT_AMPLITUDE_VALID_DURATION*F_SAMPLE))
+MAX_GEOM_DIST = 25 # um
+ADJACENCY_RADIUS_SQUARED = 140**2
+def get_peak_amp_ratio_matrix(data_a, data_b=None):
+    """
+    assumes data_a is (n_1, ) and data_b is (n_2, )
+    returns (n_1, n_2) distance matrix
+    where n_1 and n_2 could be cluster counts from 2 sessions
+    """
+    if data_b is None:
+        data_b = data_a
+    data_min = np.minimum(data_a[:,None], data_b[None,:])
+    data_max = np.maximum(data_a[:,None], data_b[None,:])
+    return data_max/data_min - 1.
+
+# The following is Jiaao's code for determining possible candidates for merging
+def calc_key_metrics(templates_full, firings, geom, f_sample, radius_squared=ADJACENCY_RADIUS_SQUARED):
+    """Calculate key cluster metrics used by recursive automerging"""
+    # Must input curated templates.mda numpy array and firings.mda numpy array 
     
+    TRANSIENT_AMPLITUDE_VALID_DURATION = 10e-4 # seconds (duration of data before and after each spike that we consider when deciding the transient amplitude)
+    tavd_nsample = int(np.ceil(TRANSIENT_AMPLITUDE_VALID_DURATION*f_sample))
+    n_chs, waveform_len, n_clus = templates_full.shape
+    
+    # get primary channels
+    pri_ch_lut = -1 * np.ones(n_clus, dtype=int)
+    n_pri_ch_known = 0
+    for (spk_ch, spk_lbl) in zip(firings[0,:], firings[2,:]):
+        spk_lbl = int(spk_lbl)
+        if pri_ch_lut[spk_lbl-1]==-1:
+            pri_ch_lut[spk_lbl-1] = spk_ch-1
+            n_pri_ch_known += 1
+            if n_pri_ch_known==n_clus:
+                break
+    
+    # slice templates
+    my_slice = slice(int(waveform_len//2-tavd_nsample), int(waveform_len//2+tavd_nsample), 1)
+    templates = templates_full[:,my_slice,:]
+    # waveform_len_sliced = templates.shape[1]
+
+    # get template peaks and p2ps
+    template_peaks = np.max(np.abs(templates), axis=1)
+    print("template_peaks shape <should be (n_ch,n_clus)>:", template_peaks.shape)
+    peak_amplitudes = template_peaks[pri_ch_lut, np.arange(n_clus)] # (n_clus,)
+    template_peaks = np.max(templates, axis=1) # use full to calculate p2p
+    template_troughs = np.min(templates, axis=1)
+    template_p2ps = template_peaks - template_troughs
+
+    # estimate locations by center-of-mass
+    clus_coordinates = np.zeros((n_clus, 2))
+    for i_clus in range(n_clus):
+        prim_ch = pri_ch_lut[i_clus]
+        prim_x, prim_y = geom[prim_ch, :]
+        non_neighbor_mask = ((geom[:,0]-prim_x)**2 + (geom[:,1]-prim_y)**2 >= radius_squared)
+        weights = template_p2ps[:, i_clus]
+        weights[non_neighbor_mask] = 0
+        weights = weights / np.sum(weights)
+        clus_coordinates[i_clus, :] = np.sum(weights[:,None] * geom, axis=0)
+    
+    return templates, pri_ch_lut, peak_amplitudes, clus_coordinates
+
+# The following is Jiaao's code for determining possible candidates for merging
+def calc_merge_candidates(templates, locations, peak_amplitudes):
+    """
+    calculate merging candidates by distance & waveform similarity\n
+    returns a 3-column matrix of (n_pairs), the columns would be (src_unit, snk_unit, cand?)\n
+    Please Use sliced templates and clean firings only (noise cluster must be rejected and the clean ones reordered)
+    """
+    # Must input curated templates.mda numpy array 
+
+    n_ch, waveform_len, n_clus = templates.shape
+    template_features = templates.reshape((n_ch*waveform_len, n_clus)).T
+
+    pairs_all = []
+    pairs_cand = []
+    for i_clus in range(n_clus):
+        neighborhood_mask = np.sum((locations-locations[i_clus,:])**2, axis=1) < MAX_GEOM_DIST**2
+        neighborhood_mask[i_clus: ] = False # Force non-directed graph for merging; also no comparison with self
+        n_neighborhood = np.sum(neighborhood_mask)
+        if n_neighborhood<1:
+            continue
+        neighborhood_clus_ids = np.where(neighborhood_mask)[0] + 1 # cluster id starts from 1
+        current_clus_id = i_clus + 1        # Cluster IDs start from 1
+        dist_mat = np.array([np.corrcoef(template_features[i_clus,:], template_features[k-1, :])[1,0] for k in neighborhood_clus_ids])
+        corr_mask = dist_mat > 0.7 # actually a vector
+        amp_ratio_mat = get_peak_amp_ratio_matrix(peak_amplitudes[:,None][i_clus,:], peak_amplitudes[neighborhood_mask]).squeeze()
+        amp_ratio_mask = amp_ratio_mat < 0.5 # np.logical_and(amp_ratio_mat>0.8, amp_ratio_mat<1.25)
+        merge_cand_mask = np.logical_and(amp_ratio_mask, corr_mask) # actually a vector
+        n_cands = np.sum(merge_cand_mask)
+        
+        clus_id_paired_prev_all, clus_id_paired_post_all = np.zeros(n_neighborhood, dtype=int)+current_clus_id, neighborhood_clus_ids
+        clus_id_paired_prev_cand, clus_id_paired_post_cand = np.zeros(n_cands, dtype=int)+current_clus_id, neighborhood_clus_ids[merge_cand_mask]
+
+        pairs_all.extend(list(zip(clus_id_paired_prev_all, clus_id_paired_post_all))) # list of tuples
+        pairs_cand.extend(list(zip(clus_id_paired_prev_cand, clus_id_paired_post_cand))) # list of tuples
+
+        # plt.figure(figsize=(12,4)); 
+        # plt.subplot(131); plt.imshow(merge_cand_mask, cmap='gray'); plt.colorbar(); 
+        # plt.xticks(np.arange(n_neighborhood), neighborhood_clus_ids+1)
+        # plt.yticks(np.arange(n_neighborhood), neighborhood_clus_ids+1)
+        # plt.subplot(132); plt.imshow(dist_mat, cmap='gray', vmin=0, vmax=1); plt.colorbar(); plt.title("Corr")
+        # plt.xticks(np.arange(n_neighborhood), neighborhood_clus_ids+1)
+        # plt.yticks(np.arange(n_neighborhood), neighborhood_clus_ids+1)
+        # plt.subplot(133); plt.imshow(amp_ratio_mat, cmap='gray'); plt.colorbar(); plt.title("ampRatio")
+        # plt.xticks(np.arange(n_neighborhood), neighborhood_clus_ids+1)
+        # plt.yticks(np.arange(n_neighborhood), neighborhood_clus_ids+1)
+        # plt.show()
+    if len(pairs_all) > 0: 
+        cand_mask_1d = np.array([(pair in pairs_cand) for pair in pairs_all], dtype=bool) # (n_pairs,)
+        assert(np.sum(cand_mask_1d)==len(pairs_cand))
+        arr_pairs_all = np.array(pairs_all) # (n_pairs,2)
+        print(arr_pairs_all.shape,cand_mask_1d.shape)
+        arr_ret = np.concatenate([arr_pairs_all, cand_mask_1d[:,None]], axis=1)
+    else:
+        arr_ret = None
+    return arr_ret
+    
+def makeSymmetric(mat):
+    assert mat.shape[0] == mat.shape[1], \
+        print('Matrix is not a square matrix')
+    N = mat.shape[0]
+    # Loop to traverse lower triangular
+    # elements of the given matrix
+    for i in range(0, N):
+        for j in range(0, N):
+            if (j < i):
+                mat[i][j] = mat[j][i] = (mat[i][j] +
+                                         mat[j][i]) / 2
+                
+    return mat
