@@ -11,6 +11,8 @@ Created on Sun Mar 19 14:57:09 2023
 # manual curation in the software PHY
 
 import os, sys, json
+from time import time
+
 sys.path.append(os.path.join(os.getcwd(),'utils'))
 sys.path.append(os.getcwd())
 from itertools import groupby
@@ -24,7 +26,8 @@ from utils.Support import read_stimtxt
 from utils.read_mda import readmda
 from Support import calc_key_metrics, calc_merge_candidates, makeSymmetric
 
-session_folder = '/home/hyr2-office/Documents/Data/NVC/RH-7-merging-orig/10-17-22/'
+# session_folder = '/home/hyr2-office/Documents/Data/NVC/RH-7-merging-orig/10-17-22/'
+session_folder = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/spikesort_out/processed_data_bc8_new/2021-11-18/"
 output_phy = os.path.join(session_folder,'phy_output')
 if not os.path.exists(output_phy):
     os.makedirs(output_phy)
@@ -48,7 +51,7 @@ nChan = np.amax(prim_ch)                                  # number of channels i
 amplitudes = np.zeros([nSpikes,])
 all_waveforms_by_cluster = np.load(os.path.join(session_folder,'all_waveforms_by_cluster.npz'))
 for i_clus in range(nTemplates):
-    waveforms_this_cluster = all_waveforms_by_cluster['clus%d'%(i_clus+1)]  # cluster IDs in .npz start from 1
+    waveforms_this_cluster = all_waveforms_by_cluster['clus%d'%(i_clus+1)]  # cluster IDs in .npz start from 1; (n_spikes, len_waveforms)
     waveform_peaks = np.max(waveforms_this_cluster, axis=1)
     waveform_troughs = np.min(waveforms_this_cluster, axis=1)
     tmp_amp_series = (waveform_peaks-waveform_troughs) * (1-2*(waveform_peaks<0))
@@ -144,3 +147,143 @@ np.save(os.path.join(output_phy,'channel_positions.npy'),channel_positions)
 np.save(os.path.join(output_phy, 'similar_templates.npy'), similar_templates_new)
 
 # For feature space (PCA)
+# ====================================================================
+# ====================================================================
+print("========================Starting PCA======================")
+# DEBUG CHEK check after done
+mpath = os.path.join(output_phy,'pc_features.npy')
+x = np.load(mpath, allow_pickle=True).squeeze()
+# x = np.memmap(mpath)
+x1 = x[:, 1]
+x1 = x1[~np.isnan(x1)]
+x2 = x[:, 0]
+x2 = x2[~np.isnan(x2)]
+print(x.shape)
+# x = x[:6000, :, :].squeeze()
+# xxxx = []
+# for k in range(template_waveforms_new.shape[0]):
+#     x1 = x[np.where((spike_clusters_new==k) & (spike_times_new<1000))[0], :]
+#     xxxx.append(x1)
+# plt.figure()
+# for xxx in xxxx:
+#     plt.scatter(xxx[:, 1], xxx[:, 0], s=1)
+# plt.scatter(x1[:, 1], x1[:, 0])
+# plt.scatter(x2[:, 1], x2[:, 0])
+
+# plt.xlim(np.mean(x1)-np.std(x1), np.mean(x1)+np.std(x1))
+# plt.ylim(np.mean(x2)-np.std(x2), np.mean(x2)+np.std(x2))
+plt.scatter(x[:500, 1], x[:500, 0], s=1)
+plt.show()
+# ###END DEBUG CHEK
+
+
+import multiprocessing
+from utils.pca_utils import compute_pca_by_channel, get_nearest_neighboors, compute_pca_single_channel
+N_JOBS = 32
+# from tqdm import tqdm
+nSpikes_curated = spike_clusters_new.shape[0]
+n_units_curated = template_waveforms_new.shape[0]
+prim_ch_by_unit_b0 = np.full(n_units_curated, -1)
+for spk_label, pri_ch in zip(spike_clusters_new, prim_ch_new):
+    prim_ch_by_unit_b0[spk_label] = pri_ch-1
+
+prim_locations = channel_positions[prim_ch_by_unit_b0, :] # (n_untis, 2)
+print(n_units_curated)
+# exit(0)
+# for now we only do k_chs=1 because ffs we did not record the non-primary-channel waveforms at each spike occurences
+# so this should equal prim_locations
+# TODO use the more reliable way of `getting cluster_mapping`
+MULTI_CHANNEL = False
+ts = time()
+neighbor_channels = get_nearest_neighboors(prim_locations, channel_positions, k_chs=1) # (n_units, 1)
+print("Time for neighboorhoold channel determiniation: %.2f" % (time()-ts))
+
+len_waveform = template_waveforms_new.shape[1]
+n_chs = template_waveforms_new.shape[2]
+temp_wavs_fname = os.path.join(output_phy, "all_waveforms_temp.npy")
+if os.path.exists(temp_wavs_fname):
+    os.unlink(temp_wavs_fname)
+
+
+if MULTI_CHANNEL:
+    all_waveforms = np.memmap(temp_wavs_fname, shape=(nSpikes_curated, len_waveform, n_chs), dtype=all_waveforms_by_cluster["clus1"].dtype, mode="w+")
+else:
+    all_waveforms = np.memmap(temp_wavs_fname, shape=(nSpikes_curated, len_waveform), dtype=all_waveforms_by_cluster["clus1"].dtype, mode="w+")
+
+
+def helper_prepare_one_unit(i_clus):
+    # print(i_clus, end=" ")
+    i_clus_original = int(cluster_mapping[i_clus, 1])
+    spk_ids_global = np.where(spike_clusters_new==i_clus)[0]
+    stamp_this_cluster = spike_times_new[spk_ids_global]
+    primch_this_cluster = prim_ch_by_unit_b0[i_clus]
+    waveforms_this_cluster = all_waveforms_by_cluster['clus%d'%(i_clus_original+1)]  # cluster IDs in .npz start from 1; (n_spikes, len_waveforms)
+    # print(waveforms_this_cluster.shape)
+    # if the first spike happens before we can capture the complete "pre-peak" part of the transient waveform, 
+    # then we don't include that spike in the PCA
+    spk_ids_local_maskfullwav = (stamp_this_cluster>=int((len_waveform-1)/2))
+    spk_ids_global_withfullwav = spk_ids_global[spk_ids_local_maskfullwav] 
+    # print(spk_ids_global_withfullwav.shape)
+    wvfm_valid_prim = waveforms_this_cluster#[spk_ids_local_maskfullwav, :] # (n_spikes, len_waveform)
+    # print(wvfm_valid_prim.shape)
+    if wvfm_valid_prim.shape[0] == spk_ids_global_withfullwav.shape[0]:
+        # print(all_waveforms[stamp_this_cluster, :, primch_this_cluster].shape)
+        if MULTI_CHANNEL:
+            all_waveforms[spk_ids_global_withfullwav, :, primch_this_cluster] = wvfm_valid_prim
+        else:
+            all_waveforms[spk_ids_global_withfullwav, :] = wvfm_valid_prim
+    elif wvfm_valid_prim.shape[0] == stamp_this_cluster.shape[0]-1:
+        if MULTI_CHANNEL:
+            all_waveforms[spk_ids_global_withfullwav[:-1], :, primch_this_cluster] = wvfm_valid_prim # ditto for the last spike
+        else:
+            all_waveforms[spk_ids_global_withfullwav[:-1], :] = wvfm_valid_prim
+    else:
+        raise ValueError("#waveforms and #spikes do not match. Likely that more than 2 spike occurences are missing")
+
+def helper_prepare_units(i_beg, i_end):
+    for i_u in range(i_beg, i_end):
+        if i_u >= n_units_curated:
+            break
+        print (i_u)
+        helper_prepare_one_unit(i_u)
+    all_waveforms.flush()
+
+# n_units_per_job = int(np.ceil(n_units_curated/N_JOBS))
+# print(n_units_per_job)
+# procs = []
+# for i_job in range(N_JOBS):
+#     procs.append(multiprocessing.Process(target=helper_prepare_units, args=(i_job*n_units_per_job, (i_job+1)*n_units_per_job)))
+# for proc in procs:
+#     proc.start()
+# for proc in procs:
+#     proc.join()
+helper_prepare_units(0, n_units_curated)
+
+all_waveforms.flush()
+print("Saved temp waveforms..")
+# exit(0)
+mpath = os.path.join(output_phy,'pc_features.npy')
+mpatht = os.path.join(output_phy,'pc_features_t.npy')
+ts = time()
+if MULTI_CHANNEL:
+    pcs = compute_pca_by_channel(all_waveforms, spike_clusters_new, neighbor_channels, mpatht)
+else:
+    pcs = compute_pca_single_channel(all_waveforms, spike_clusters_new, prim_ch_by_unit_b0, mpatht)
+print(pcs.shape)
+print("Time for PCA: %.2f"% (time()-ts))
+np.save(mpath, pcs)
+np.save(os.path.join(output_phy, "pc_feature_ind.npy"), neighbor_channels)
+os.unlink(temp_wavs_fname)
+
+mpath = os.path.join(output_phy,'pc_features.npy')
+x = np.load(mpath, allow_pickle=True)
+# x = np.memmap(mpath)
+print(x.shape)
+x = x[:2000, :, :].squeeze()
+x1 = x[np.where((spike_clusters_new==1) & (spike_times_new<5000))[0], :]
+x2 = x[np.where((spike_clusters_new==3) & (spike_times_new<5000))[0], :]
+plt.figure()
+plt.scatter(x[:, 1], x[:, 0], s=0.2)
+# plt.scatter(x1[:, 1], x1[:, 0])
+# plt.scatter(x2[:, 1], x2[:, 0])
+plt.show()
