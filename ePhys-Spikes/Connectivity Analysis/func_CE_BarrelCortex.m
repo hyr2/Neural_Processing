@@ -235,8 +235,9 @@ cell_metrics.putativeCellType = celltype_classification.standard(cell_metrics,pr
 celltype = cell_metrics.putativeCellType;
 
 % Addition based on excitatory vs inhibitory (based on waveform shape which is same as CCG based)
-type_excit = (cell_metrics.troughToPeak > 0.55);    % Buzsaki lab (https://www.cell.com/neuron/pdfExtended/S0896-6273(18)31085-7)
-type_inhib = (cell_metrics.troughToPeak <= 0.55);
+% values modified for Barrel cortex data from the original value of 0.55ms
+type_excit = (cell_metrics.troughToPeak > 0.475);    % Buzsaki lab (https://www.cell.com/neuron/pdfExtended/S0896-6273(18)31085-7)
+type_inhib = (cell_metrics.troughToPeak <= 0.475);
 
 idx_act = (type_excit == 1);     
 idx_inhib = (type_inhib == 1);  
