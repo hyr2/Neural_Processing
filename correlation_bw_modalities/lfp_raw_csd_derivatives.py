@@ -8,6 +8,7 @@ from copy import deepcopy
 import gc
 import json
 from collections import OrderedDict
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -43,9 +44,14 @@ def save_trial_ephys_resample(path_whole_mda, path_dest, *, trial_stamps, resamp
     
     for i_trial, start_stamp_sample in enumerate(trial_stamps):
         print("    In func save_trial_ephys_resample: trial#", i_trial)
-        assert start_stamp_sample>=pad_samples and start_stamp_sample+trial_duration+pad_samples < reader.N2()
+        if not (start_stamp_sample>=pad_samples and start_stamp_sample+trial_duration+pad_samples < reader.N2()):
+            warnings.warn("Won't be able to get enough out-of-trial samples for padding. Be aware of potential edge effect")
         # pad samples
-        d_raw = reader.readChunk(i1=0, i2=start_stamp_sample-pad_samples, N1=n_ch, N2=trial_duration+2*pad_samples) # (should be n_channels x n_samples)
+        sample_start = max(0, start_stamp_sample-pad_samples)
+        # print(reader.N2())
+        sample_durat = min(trial_duration+2*pad_samples, reader.N2()-sample_start)
+        # print(sample_durat)
+        d_raw = reader.readChunk(i1=0, i2=sample_start, N1=n_ch, N2=sample_durat) # (should be n_channels x n_samples)
         if up != down:
             d_downsampled = signal.resample_poly(d_raw, up, down, axis=-1)
         else:
@@ -60,10 +66,11 @@ def save_trial_ephys_resample(path_whole_mda, path_dest, *, trial_stamps, resamp
         np.savez(path_dest, **trials_npz)
     return trials_npz
 
-def interpolate_one_shank(this_shank_lfp_, i_depths_existing_, i_depths_to_interp_, desired_depths_):
+def interpolate_one_shank(this_shank_lfp_, i_depths_existing_, i_depths_to_interp_, desired_depths_, interp_mode_):
+    print("DEBUG: interpolating from %d samples" % (len(i_depths_existing_)))
     below = this_shank_lfp_[i_depths_existing_[0], :]
     above = this_shank_lfp_[i_depths_existing_[-1], :]
-    interpolator = interp1d(i_depths_existing_, this_shank_lfp_[i_depths_existing_, :], axis=0, kind='cubic', assume_sorted=True, bounds_error=False, fill_value=(below, above))
+    interpolator = interp1d(i_depths_existing_, this_shank_lfp_[i_depths_existing_, :], axis=0, kind=interp_mode_, assume_sorted=True, bounds_error=False, fill_value=(below, above))
     # print("Existing:", i_depths_existing)
     # print("To interpolate", i_depths_to_interp)
     if np.max(i_depths_to_interp_)>np.max(i_depths_existing_):
@@ -93,15 +100,10 @@ def plot_helper(plot_t_, plot_h_, shank_data_, xlim_seconds_, stim_onset_, figti
     plt.close() # plt.show()
 
 
-
-if __name__ == "__main__":
-    session_spk_dir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/spikesort_out/processed_data_bc7/2021-12-06"
-    outputdir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/mytempfolder/"
-    rel_dir = "BC7/2021-12-06"
-    fig_dir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/tmp_figs/bc7_2112006_raw_fs500hz_230310"
-    path_temp_csd = os.path.join(outputdir, rel_dir, "ephys_csdmat.npy")
-    if not os.path.exists(fig_dir):
-        os.makedirs(fig_dir)
+def csds_one_session(session_spk_dir, session_templfp_dir, session_res_dir):
+    
+    if not os.path.exists(session_res_dir):
+        os.makedirs(session_res_dir)
 
     with open(os.path.join(session_spk_dir, "pre_MS.json"), "r") as f:
         session_info = json.load(f)
@@ -149,8 +151,8 @@ if __name__ == "__main__":
 
 
     ############ read trial-based EPHYS
-    path_wholemda = os.path.join(outputdir, rel_dir, "converted_data.mda")
-    path_dest = os.path.join(outputdir, rel_dir, "ephys_trial_padded_500hz.npz")
+    path_wholemda = os.path.join(session_templfp_dir, "converted_data.mda")
+    path_dest = os.path.join(session_templfp_dir, "ephys_trial_padded_500hz.npz")
     trials_npz = save_trial_ephys_resample(path_wholemda, path_dest, trial_stamps=trial_start_stamps, trial_duration=trial_duration_samples, resample_factor=(1, 60), pad_samples=30000, save=True, read_cache=True) # 500Hz
     # trials_npz = save_trial_ephys_resample(path_wholemda, path_dest, trial_stamps=trial_start_stamps, trial_duration=trial_duration_samples, resample_factor=(1, 15), pad_samples=30000, save=True, read_cache=True) # 2000Hz
     # trials_npz = save_trial_ephys_resample(path_wholemda, path_dest, trial_stamps=trial_start_stamps, trial_duration=trial_duration_samples, resample_factor=(1, 1), pad_samples=30000, save=False, read_cache=False) # no resampling
@@ -167,7 +169,7 @@ if __name__ == "__main__":
 
     ############### REJECT BAD TRIALS
     print("#trials before ePhys noise rejection:", np.sum(trial_mask))
-    trial_mask_temp = reject_trials_by_ephys(trials_data, 900, [2,4], ephys_newfreq)
+    trial_mask_temp = reject_trials_by_ephys(trials_data, 10000, [2,4], ephys_newfreq)
     trial_mask = (trial_mask & trial_mask_temp)
     print("#trials after ePhys noise rejection:", np.sum(trial_mask))
     trials_data = trials_data[trial_mask, :, :]
@@ -201,7 +203,6 @@ if __name__ == "__main__":
 #endregion
 
     shank_lfp_trial_avg = np.empty((n_shanks, nchs_vertical, n_samples), dtype=float)
-    interpped_depths_by_shank = []
     i_depths_to_interp_by_shank = []
     for i_dict, shank_dict in enumerate(shank_depth_lut_list):
         i_depths_to_interp = []
@@ -224,11 +225,13 @@ if __name__ == "__main__":
                 this_shank_lfp[i_depth, :] = data_trial_avg[intan_tuple[0], :]# np.mean(data_trial_avg[intan_tuple, :], axis=0)
                 i_depths_existing.append(i_depth)
         if (len(i_depths_to_interp)>0):
-            this_shank_lfp = interpolate_one_shank(this_shank_lfp, i_depths_existing, i_depths_to_interp, desired_depths)
+            interp_mode = "cubic" if len(i_depths_existing)>=4 else "linear"
+            this_shank_lfp = interpolate_one_shank(this_shank_lfp, i_depths_existing, i_depths_to_interp, desired_depths, interp_mode)
         shank_lfp_trial_avg[i_shank, :, :] = this_shank_lfp
         i_depths_to_interp_by_shank.append(i_depths_to_interp)
         
     # interpolation - second time (remove outlier channels)
+    interpped_depths_by_shank = []
     for i_shank, _ in enumerate(shank_depth_lut_list):
         this_shank_lfp = shank_lfp_trial_avg[i_shank, :, :]
         diff1 = np.sum(np.abs(np.diff(this_shank_lfp, axis=0)), axis=-1)
@@ -240,12 +243,14 @@ if __name__ == "__main__":
         for idx_ch in range(1, bad_tmpmask.shape[0]):
             if bad_tmpmask[idx_ch-1] and bad_tmpmask[idx_ch]:
                 bad_channel_ids.append(idx_ch)
-        ids_interp = ( set(i_depths_to_interp_by_shank[i_shank]) | set(bad_channel_ids) )
-        ids_existing = set(desired_depth_ids) - ids_interp
-        if (len(ids_interp)>0):
-            this_shank_lfp = interpolate_one_shank(this_shank_lfp, list(ids_existing), list(ids_interp), desired_depths)
-        i_depths_to_interp_by_shank.append(list(ids_interp))
-        interpped_depths_by_shank.append([desired_depths[i_dpth] for i_dpth in i_depths_to_interp])
+        print("DEBUG shank%d has %d bad channels" % (i_shank, len(bad_channel_ids)))
+        ids_interp_net = ( set(i_depths_to_interp_by_shank[i_shank]) | set(bad_channel_ids) )
+        ids_existing = set(desired_depth_ids) - set(bad_channel_ids)
+        if (len(bad_channel_ids)>0):
+            interp_mode = "cubic" if len(i_depths_existing)>=4 else "linear"
+            this_shank_lfp = interpolate_one_shank(this_shank_lfp, list(ids_existing), bad_channel_ids, desired_depths, interp_mode)
+        # i_depths_to_interp_by_shank.append(list(ids_interp))
+        interpped_depths_by_shank.append([desired_depths[i_dpth] for i_dpth in ids_interp_net])
         shank_lfp_trial_avg[i_shank, :, :] = this_shank_lfp
         # plt.figure()
         # plt.subplot(211)
@@ -304,7 +309,11 @@ if __name__ == "__main__":
 
 
     ############## SAVE AND PLOT
-    np.save(path_temp_csd, shank_raw_ord0)
+    np.save(os.path.join(session_res_dir, "ephys_psth_raw0.npy"), shank_raw_ord0)
+    np.save(os.path.join(session_res_dir, "ephys_psth_raw1.npy"), shank_raw_ord1)
+    np.save(os.path.join(session_res_dir, "ephys_csd_deri2.npy"), shank_raw_ord2)
+    np.save(os.path.join(session_res_dir, "ephys_csd_inv_5ch.npy"), shank_inv_csds_r5ch)
+    np.save(os.path.join(session_res_dir, "ephys_csd_inv_all.npy"), shank_inv_csds_rall)
     shank_raw_ord0 = shank_raw_ord0/1E9 # uA/m^3 to uA/mm^3
     print(shank_raw_ord0.shape)
     
@@ -322,27 +331,27 @@ if __name__ == "__main__":
 
         # 0-th order (raw ephys)
         figtitle_str0 = "RawSmoothed-These depths(um) are missing and interpolated:\n"+str(interpped_depths_by_shank[i_shank])
-        figsavepath_str0 = os.path.join(fig_dir, "shank%d_nofilt_ord0.png"%(i_shank))
+        figsavepath_str0 = os.path.join(session_res_dir, "shank%d_nofilt_ord0.png"%(i_shank))
         plot_helper(plot_t, interp_depths, this_shank_raw_ord0, xlim_seconds, stim_onset, figtitle_str0, figsavepath_str0)
 
         # 1st order (raw ephys)
         figtitle_str1 = "Bipolar-These depths(um) are missing and interpolated:\n"+str(interpped_depths_by_shank[i_shank])
-        figsavepath_str1 = os.path.join(fig_dir, "shank%d_nofilt_ord1.png"%(i_shank))
+        figsavepath_str1 = os.path.join(session_res_dir, "shank%d_nofilt_ord1.png"%(i_shank))
         plot_helper(plot_t, interp_depths[1:], this_shank_raw_ord1, xlim_seconds, stim_onset, figtitle_str1, figsavepath_str1)
 
         # 2nd order (raw ephys)
         figtitle_str2 = "Laplacian-These depths(um) are missing and interpolated:\n"+str(interpped_depths_by_shank[i_shank])
-        figsavepath_str2 = os.path.join(fig_dir, "shank%d_nofilt_ord2.png"%(i_shank))
+        figsavepath_str2 = os.path.join(session_res_dir, "shank%d_nofilt_ord2.png"%(i_shank))
         plot_helper(plot_t, interp_depths[1:-1], this_shank_raw_ord2, xlim_seconds, stim_onset, figtitle_str2, figsavepath_str2)
 
         # Inverse-method CSD (R=5x vertical spacing)
         figtitle_str3 = "CSD(R=5 x VerticalSpacing)\nThese depths(um) are missing and interpolated:\n"+str(interpped_depths_by_shank[i_shank])
-        figsavepath_str3 = os.path.join(fig_dir, "shank%d_nofilt_icsd_r5ch.png"%(i_shank))
+        figsavepath_str3 = os.path.join(session_res_dir, "shank%d_nofilt_icsd_r5ch.png"%(i_shank))
         plot_helper(plot_t, interp_depths, this_shank_inv_csd_r5ch, xlim_seconds, stim_onset, figtitle_str3, figsavepath_str3)
 
         # Inverse-method CSD (R=n_ch x vertical spacing)
         figtitle_str4 = "CSD(R=N_ch x VerticalSpacing)\nThese depths(um) are missing and interpolated:\n"+str(interpped_depths_by_shank[i_shank])
-        figsavepath_str4 = os.path.join(fig_dir, "shank%d_nofilt_icsd_rall.png"%(i_shank))
+        figsavepath_str4 = os.path.join(session_res_dir, "shank%d_nofilt_icsd_rall.png"%(i_shank))
         plot_helper(plot_t, interp_depths, this_shank_inv_csd_rall, xlim_seconds, stim_onset, figtitle_str4, figsavepath_str4)
 
     # # trials_data_bpf = trials_data
@@ -361,3 +370,17 @@ if __name__ == "__main__":
     # f, t, Sxx = signal.spectrogram(trials_data_bpf, nperseg=256, noverlap=192, fs=ephys_newfreq, axis=-1)
     # Sxx = zscore(Sxx, axis=-1)
     
+
+if __name__ == "__main__":
+    import config as cfg
+
+    # session_spk_dir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/spikesort_out/processed_data_bc7/2021-12-06"
+    # outputdir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/mytempfolder/"
+    # rel_dir = "BC7/2021-12-06"
+    # result_dir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/tmp_figs/bc7_2112006_raw_fs500hz_230310"
+    templfp_rootdir = cfg.npz_rawdir
+    for lfp_rel_dir, spk_rel_dir in zip(cfg.lfp_reldirs, cfg.spk_reldirs):
+        session_spkdir = os.path.join(cfg.spk_inpdir, spk_rel_dir)
+        session_templfp_dir = os.path.join(templfp_rootdir, lfp_rel_dir)
+        session_res_dir = os.path.join(cfg.lfp_resdir, spk_rel_dir)
+        csds_one_session(session_spkdir, session_templfp_dir, session_res_dir)

@@ -7,6 +7,7 @@
 import os, sys
 from copy import deepcopy
 import gc
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -88,6 +89,9 @@ def func_savelfp(input_rootdir, output_rootdir, rel_dir):
         reject_ch_indx = np.where(chs_native_order == np.setdiff1d(chs_native_order,TrueNativeChOrder))[0]
         print("    RHD chunk is read")
         ephys_data = data_dict['amplifier_data']
+        if notch_freq <= 1:
+            warnings.warn("RHD header says Notch Freq < 1, we'll do 60")
+            notch_freq = 60
         ephys_data = notch_filter(ephys_data, sample_freq, notch_freq, Q=20) # 60Hz notch with Q=20
         # ephys_data = ephys_data - np.mean(ephys_data, axis=0)
         print("    RHD chunk is notched")
@@ -103,7 +107,8 @@ def func_savelfp(input_rootdir, output_rootdir, rel_dir):
 
 
 if __name__ == "__main__":
-    rawdir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/data/"
-    outputdir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/mytempfolder/"
-    rel_dir = "BC7/2021-12-09"
-    func_savelfp(rawdir, outputdir, rel_dir)
+    import config as cfg
+    rawdir = cfg.rhd_rawdir
+    outputdir = cfg.npz_rawdir
+    for rel_dir in cfg.lfp_reldirs:
+        func_savelfp(rawdir, outputdir, rel_dir)
