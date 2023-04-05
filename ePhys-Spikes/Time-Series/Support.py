@@ -255,7 +255,7 @@ def interp_session_loss(data_in, day_local_axis, day_axis_ideal):
     NTERP_SESSION_LOSS Interpolate data values of missing sessions in a
     longitudinal stroke study
        The function takes as its input a 2D array with rows as sessions and
-       columns as shanks. The function does nearest neighbour interpolation 
+       columns as shanks/cell types. The function does nearest neighbour interpolation 
        for days less than 28. For days >= 28, averaging of the existing data 
        points is performed to fill the missing data points.
        

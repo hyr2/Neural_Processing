@@ -9,6 +9,7 @@ Created on Tue Nov  1 21:15:37 2022
 import scipy.io as sio # Import function to read data.
 import numpy as np
 import matplotlib.pyplot as plt
+from copy import deepcopy
 import seaborn as sns
 import os
 from natsort import natsorted
@@ -39,20 +40,20 @@ def sort_by_shank(type_local,shank_num_local):
         
     return output_main
     
-def sort_cell_type(input_arr):
+def sort_cell_type(input_arr,shank_arr):
     # Function counts the number of wide, narrow and pyramidal cells from the matlab output (.mat file called pop_celltypes.mat)
-    output_arr = np.zeros([3,],dtype = np.int16)
+    output_arr = np.zeros([3,4],dtype = np.int16)
     if not input_arr.shape:
         return output_arr
     else:
         for iter in range(input_arr.shape[1]):
             str_celltype = input_arr[0][iter]
             if str_celltype == 'Pyramidal Cell':
-                output_arr[0] += 1 
+                output_arr[0,shank_arr[iter]] += 1 
             elif str_celltype == 'Narrow Interneuron':
-                output_arr[1] += 1 
+                output_arr[1,shank_arr[iter]] += 1 
             elif str_celltype == 'Wide Interneuron':
-                output_arr[2] += 1 
+                output_arr[2,shank_arr[iter]] += 1 
         return output_arr
     
 def convert2df(T2P_allsessions):
@@ -110,7 +111,7 @@ def combine_sessions(source_dir, str_ID):
     elif (str_ID.lower() == 'RH-7'.lower()):
         linear_xaxis = np.array([-3,-2,-1,2,7,14,24,28,35,42,49,56])
     elif (str_ID.lower() == 'BC8'.lower()):
-        linear_xaxis = np.array([-3,-2,-1,2,2,7,8,14,21,54]) 
+        linear_xaxis = np.array([-3,-2,-1,2,2,7,8,15,21,54])     
     elif (str_ID.lower() == 'RH-8'.lower()):
         linear_xaxis = np.array([-2,-1,2,7,14,21,28,35,42,49])  
     elif (str_ID.lower() == 'RH-9'.lower()):
@@ -160,6 +161,7 @@ def combine_sessions(source_dir, str_ID):
     act_nclus_total = np.zeros([len(pop_stats),])
     suppressed_nclus_total = np.zeros([len(pop_stats),])
     celltype_total = np.zeros([len(pop_stats),3])
+    celltype_shank = np.zeros([len(pop_stats),3,4])
     excitatory_cell = np.zeros([len(pop_stats),4]) # by shank
     inhibitory_cell = np.zeros([len(pop_stats),4]) # by shank
     # celltype_excit = np.zeros([len(pop_stats),3])
@@ -202,8 +204,11 @@ def combine_sessions(source_dir, str_ID):
         
         # cell type extraction from dictionaries
         tmp = pop_stats_cell[iter]['celltype']
-        celltype_total[iter,:] = sort_cell_type(tmp)
-        
+        tmp_shank = pop_stats_cell[iter]['shank_num']
+        tmp_shank = np.squeeze(tmp_shank)
+        tmp_shank = tmp_shank-1
+        celltype_shank[iter,:] = sort_cell_type(tmp,tmp_shank)
+        celltype_total[iter,:] = np.sum(celltype_shank[iter,:],axis = 1)
         # excitatory and inhibitory neuron populations
         excitatory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_excit'],pop_stats_cell[iter]['shank_num'])
         inhibitory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_inhib'],pop_stats_cell[iter]['shank_num'])
@@ -232,6 +237,7 @@ def combine_sessions(source_dir, str_ID):
     full_mouse_ephys['suppressed_nclus'] = suppressed_nclus
     full_mouse_ephys['x_ticks_labels'] = x_ticks_labels
     full_mouse_ephys['celltype_total'] = celltype_total
+    full_mouse_ephys['celltype_shank'] = celltype_shank
     # full_mouse_ephys['T2P'] = T2P_allsessions
     # full_mouse_ephys['total_activity_act'] = total_activity_act
     full_mouse_ephys['FR_act'] = act_FR
