@@ -1,7 +1,8 @@
 # This script is used to create geom.csv file for the channel mapping. In addition, it is also used to generate the trial_times.mat
 
 # Some notes:
-    # 1. Only for 128 channel recordings. Some functions inherently assume this
+    # 1. Only for 128 channel recordings. Some functions inherently assume this. Can perform both 2x16 and 1x32 
+    # 2. if the file: min_chanmap_mask.npy exists in the session path, it will be applied to create a minimum channel map mask (reflected in geom.csv + converted_data.mda + native_ch_order.npy)
 
 #%%
 import os, gc, warnings, json, sys, glob, shutil
@@ -70,6 +71,8 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     SESSION_FOLDER_CSV = os.path.join(output_dir, SESSION_REL_PATH)
     SESSION_FOLDER_MDA = SESSION_FOLDER_CSV
     
+    filename_min_chan_mask = os.path.join(Raw_dir,'min_chanmap_mask.npy')
+    
     filename_trials_export = os.path.join(SESSION_FOLDER_CSV,'trials_times.mat')
     filename_trials_digIn = os.path.join(SESSION_FOLDER_CSV,'trials_digIn.png')
     source_dir_list = natsorted(os.listdir(Raw_dir))
@@ -113,6 +116,12 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         
     TrueNativeChOrder,n_ch = intersection_lists(dict_ch_nativeorder_allsessions)
     writer = DiskWriteMda(os.path.join(SESSION_FOLDER_MDA, "converted_data.mda"), (n_ch, n_samples), dt="int16")
+    
+    
+    chmap_mat = loadmat(CHANNEL_MAP_FPATH)['Ch_Map_new']
+    if np.min(chmap_mat)==1:
+        print("    Subtracted one from channel map to make sure channel index starts from 0 (Original map file NOT changed)")
+        chmap_mat -= 1
     
     chs_impedance = None
     notch_freq = None
@@ -175,6 +184,17 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         
         chs_native_order = [e['native_order'] for e in chs_info]
         reject_ch_indx = np.where(np.any(chs_native_order==(np.setdiff1d(chs_native_order,TrueNativeChOrder)[:,None]), axis=0))[0]
+        # only implement min channel map mask when the file exists 
+        # thus this addition will not affect normal spike sorting pipeline
+        if os.path.isfile(filename_min_chan_mask):          
+            arr_mask = np.load(filename_min_chan_mask)
+            arr1 = np.setdiff1d(chs_native_order,arr_mask)
+            arr2 = np.squeeze(chs_native_order)
+            indx_to_reject = np.where(np.isin(arr2,arr1))[0]
+            # andd = np.logical_and(chmap_mat ,arr_mask)
+            # linear_arr_min = chmap_mat[andd]
+            # linear_arr_min = deepcopy(np.sort(linear_arr_min,kind = 'mergesort'))
+            reject_ch_indx = np.append(reject_ch_indx,indx_to_reject)
         print("    Intan channels to reject:", reject_ch_indx)
         # print("Applying notch")
         print("    Data are read") # no need to notch since we only care about 250~5000Hz
