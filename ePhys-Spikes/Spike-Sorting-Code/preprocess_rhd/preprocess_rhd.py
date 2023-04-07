@@ -115,6 +115,10 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         dict_ch_nativeorder_allsessions[i_file] = chs_native_order_local   
         
     TrueNativeChOrder,n_ch = intersection_lists(dict_ch_nativeorder_allsessions)
+    
+    if os.path.isfile(filename_min_chan_mask):
+        arr_mask = np.load(filename_min_chan_mask)
+        n_ch = arr_mask.shape[0]
     writer = DiskWriteMda(os.path.join(SESSION_FOLDER_MDA, "converted_data.mda"), (n_ch, n_samples), dt="int16")
     
     
