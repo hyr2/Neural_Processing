@@ -2,6 +2,8 @@
 # for a single animal (all sessions). Obviously it needs one single channel 
 # map file and the input_dir : animal directory 
 
+# this is the native channel order (ie starts from 0)
+
 # It requires already processed data (preprocessing script must be run (rickshaw_preprocess.py))
 
 # input_dir
@@ -27,7 +29,7 @@ from functools import reduce
 # Finding the minimum channel map (only for 2x16 so far)
 
 ELECTRODE_2X16 = True
-input_dir = '/home/hyr2-office/Documents/Data/NVC/RH-9_REJECTED/'
+input_dir = '/home/hyr2-office/Documents/Data/NVC/RH-8/'
 channel_map_path = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_2x16_flex_Pavlo.mat'
 
 # # channel spacing 
