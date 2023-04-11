@@ -327,13 +327,18 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
                 loc = np.where(chmap_mat==native_order)
                 geom_map[i,0] = (loc[1][0]//2)*GW_BETWEEN_SHANK + (loc[1][0]%2)*GW_WITHIN_SHANK
                 geom_map[i,1] = loc[0][0]*GH
+            # geom_map_current = -1*np.ones((len(TrueNativeChOrder), 2), dtype=np.int)
+            # for i, native_order in enumerate(TrueNativeChOrder):
+            #     loc = np.where(chmap_mat==native_order)
+            #     geom_map_current[i,0] = (loc[1][0]//2)*GW_BETWEEN_SHANK + (loc[1][0]%2)*GW_WITHIN_SHANK
+            #     geom_map_current[i,1] = loc[0][0]*GH
         else:
             geom_map = -1*np.ones((len(TrueNativeChOrder), 2), dtype=np.int)
             for i, native_order in enumerate(TrueNativeChOrder):
                 loc = np.where(chmap_mat==native_order)
                 geom_map[i,0] = (loc[1][0]//2)*GW_BETWEEN_SHANK + (loc[1][0]%2)*GW_WITHIN_SHANK
                 geom_map[i,1] = loc[0][0]*GH
-                
+        # geom_map_
     
     #%%
     
