@@ -140,3 +140,5 @@ dmypy.json
 ePhys-Spikes/Spike-Sorting-Code/post_msort_processing/mono_res.cellinfo.mat
 
 ePhys-Spikes/Spike-Sorting-Code/params.json
+
+ePhys-Spikes/Connectivity Analysis/mono_res.cellinfo.mat
