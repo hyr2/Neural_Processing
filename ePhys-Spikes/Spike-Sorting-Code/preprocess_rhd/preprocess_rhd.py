@@ -71,7 +71,7 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     SESSION_FOLDER_CSV = os.path.join(output_dir, SESSION_REL_PATH)
     SESSION_FOLDER_MDA = SESSION_FOLDER_CSV
     
-    filename_min_chan_mask = os.path.join(Raw_dir,'min_chanmap_mask.npy')
+    filename_min_chan_mask = os.path.join(Raw_dir,'min_chanmap_mask_new.npy')
     
     filename_trials_export = os.path.join(SESSION_FOLDER_CSV,'trials_times.mat')
     filename_trials_digIn = os.path.join(SESSION_FOLDER_CSV,'trials_digIn.png')
@@ -116,17 +116,29 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         
     TrueNativeChOrder,n_ch = intersection_lists(dict_ch_nativeorder_allsessions)
     
-    if os.path.isfile(filename_min_chan_mask):
-        arr_mask = np.load(filename_min_chan_mask)
-        n_ch = arr_mask.shape[0]
-    writer = DiskWriteMda(os.path.join(SESSION_FOLDER_MDA, "converted_data.mda"), (n_ch, n_samples), dt="int16")
-    
-    
     chmap_mat = loadmat(CHANNEL_MAP_FPATH)['Ch_Map_new']
     if np.min(chmap_mat)==1:
         print("    Subtracted one from channel map to make sure channel index starts from 0 (Original map file NOT changed)")
         chmap_mat -= 1
     
+    if os.path.isfile(filename_min_chan_mask):
+        arr_mask = np.load(filename_min_chan_mask)
+        geom_map = -1*np.ones((len(arr_mask), 2), dtype=np.int)
+        ch_id_to_reject = []
+        for iter_localA in range(len(TrueNativeChOrder)):
+            loc_local = np.squeeze(np.argwhere(chmap_mat == TrueNativeChOrder[iter_localA]))
+            r_id = loc_local[0]
+            sh_id = loc_local[1] // 2   # floor division gets us the effective shank ID 
+            if (arr_mask[r_id,sh_id] == False):
+                ch_id_to_reject.append(TrueNativeChOrder[iter_localA])
+        indx_to_reject = np.where(np.isin(TrueNativeChOrder,ch_id_to_reject))[0]
+        TrueNativeChOrder_new = np.delete(TrueNativeChOrder,indx_to_reject)
+        # arr_mask = np.load(filename_min_chan_mask)
+        # n_ch = arr_mask.shape[0]
+        n_ch = TrueNativeChOrder_new.shape[0]
+        
+    writer = DiskWriteMda(os.path.join(SESSION_FOLDER_MDA, "converted_data.mda"), (n_ch, n_samples), dt="int16")
+        
     chs_impedance = None
     notch_freq = None
     chs_native_order = None
@@ -190,14 +202,24 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         reject_ch_indx = np.where(np.any(chs_native_order==(np.setdiff1d(chs_native_order,TrueNativeChOrder)[:,None]), axis=0))[0]
         # only implement min channel map mask when the file exists 
         # thus this addition will not affect normal spike sorting pipeline
-        if os.path.isfile(filename_min_chan_mask):          
+        if os.path.isfile(filename_min_chan_mask): 
+            ch_id_to_reject = []
             arr_mask = np.load(filename_min_chan_mask)
-            arr1 = np.setdiff1d(chs_native_order,arr_mask)
-            arr2 = np.squeeze(chs_native_order)
-            indx_to_reject = np.where(np.isin(arr2,arr1))[0]
+            for iter_localA in range(len(chs_native_order)):
+                loc_local = np.squeeze(np.argwhere(chmap_mat == chs_native_order[iter_localA]))
+                r_id = loc_local[0]
+                sh_id = loc_local[1] // 2   # floor division gets us the effective shank ID 
+                if (arr_mask[r_id,sh_id] == False):
+                    ch_id_to_reject.append(chs_native_order[iter_localA])
+                    
+            # arr1 = np.setdiff1d(chs_native_order,arr_mask)
+            # arr2 = np.squeeze(chs_native_order)
+            # indx_to_reject = np.where(np.isin(arr2,arr1))[0]
             # andd = np.logical_and(chmap_mat ,arr_mask)
             # linear_arr_min = chmap_mat[andd]
             # linear_arr_min = deepcopy(np.sort(linear_arr_min,kind = 'mergesort'))
+            
+            indx_to_reject = np.where(np.isin(chs_native_order,ch_id_to_reject))[0]
             reject_ch_indx = np.append(reject_ch_indx,indx_to_reject)
         print("    Intan channels to reject:", reject_ch_indx)
         # print("Applying notch")
@@ -292,12 +314,6 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     
     # read .mat for channel map (make sure channel index starts from 0)
     if not ELECTRODE_2X16:
-        chmap_mat = loadmat(CHANNEL_MAP_FPATH)['Ch_Map_new']
-        # print(list(chmap_mat.keys()))
-        if np.min(chmap_mat)==1:
-            print("    Subtracted one from channel map to make sure channel index starts from 0 (Original map file NOT changed)")
-            chmap_mat -= 1
-    
         print(chmap_mat.shape)
         if chmap_mat.shape!=(32,4):
             raise ValueError("Channel map is of shape %s, expected (32,4)" % (chmap_mat.shape))
@@ -310,39 +326,25 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
             geom_map[i,0] = loc[1][0]*GW_BETWEEN_SHANK
             geom_map[i,1] = loc[0][0]*GH
     else:
-        # chmap_mat = loadmat(CHANNEL_MAP_FPATH)["Maps"].squeeze().tolist()
-        # chmap_mat = np.concatenate(chmap_mat, axis=1) # should be (16, 8)
-        chmap_mat = loadmat(CHANNEL_MAP_FPATH)['Ch_Map_new']
-        if np.min(chmap_mat)==1:
-            print("    Subtracted one from channel map to make sure channel index starts from 0 (Original map file NOT changed)")
-            chmap_mat -= 1
         print(chmap_mat.shape)
         if chmap_mat.shape!=(16,8):
             raise ValueError("Channel map is of shape %s, expected (16,8)" % (chmap_mat.shape))
         # Generating the geom.csv file required by mountainsort       
         if os.path.isfile(filename_min_chan_mask):
             arr_mask = np.load(filename_min_chan_mask)
-            geom_map = -1*np.ones((len(arr_mask), 2), dtype=np.int)
-            for i, native_order in enumerate(arr_mask):
+            geom_map = -1*np.ones((len(TrueNativeChOrder_new), 2), dtype=np.int)
+            for i, native_order in enumerate(TrueNativeChOrder_new):
+                print(i)
                 loc = np.where(chmap_mat==native_order)
                 geom_map[i,0] = (loc[1][0]//2)*GW_BETWEEN_SHANK + (loc[1][0]%2)*GW_WITHIN_SHANK
                 geom_map[i,1] = loc[0][0]*GH
-            # geom_map_current = -1*np.ones((len(TrueNativeChOrder), 2), dtype=np.int)
-            # for i, native_order in enumerate(TrueNativeChOrder):
-            #     loc = np.where(chmap_mat==native_order)
-            #     geom_map_current[i,0] = (loc[1][0]//2)*GW_BETWEEN_SHANK + (loc[1][0]%2)*GW_WITHIN_SHANK
-            #     geom_map_current[i,1] = loc[0][0]*GH
         else:
             geom_map = -1*np.ones((len(TrueNativeChOrder), 2), dtype=np.int)
             for i, native_order in enumerate(TrueNativeChOrder):
                 loc = np.where(chmap_mat==native_order)
                 geom_map[i,0] = (loc[1][0]//2)*GW_BETWEEN_SHANK + (loc[1][0]%2)*GW_WITHIN_SHANK
                 geom_map[i,1] = loc[0][0]*GH
-        # geom_map_
-    
-    #%%
-    
-    
+                
     # generate .csv
     geom_map_df = pd.DataFrame(data=geom_map)
     geom_map_df.to_csv(os.path.join(SESSION_FOLDER_CSV, "geom.csv"), index=False, header=False)
