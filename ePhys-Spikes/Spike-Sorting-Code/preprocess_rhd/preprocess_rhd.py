@@ -123,12 +123,16 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     
     if os.path.isfile(filename_min_chan_mask):
         arr_mask = np.load(filename_min_chan_mask)
-        geom_map = -1*np.ones((len(arr_mask), 2), dtype=np.int)
+        # geom_map = -1*np.ones((len(arr_mask), 2), dtype=np.int)
         ch_id_to_reject = []
         for iter_localA in range(len(TrueNativeChOrder)):
             loc_local = np.squeeze(np.argwhere(chmap_mat == TrueNativeChOrder[iter_localA]))
-            r_id = loc_local[0]
-            sh_id = loc_local[1] // 2   # floor division gets us the effective shank ID 
+            if not ELECTRODE_2X16: 
+                r_id = loc_local[0]
+                sh_id = loc_local[1]
+            else:
+                r_id = loc_local[0]
+                sh_id = loc_local[1] // 2   # floor division gets us the effective shank ID 
             if (arr_mask[r_id,sh_id] == False):
                 ch_id_to_reject.append(TrueNativeChOrder[iter_localA])
         indx_to_reject = np.where(np.isin(TrueNativeChOrder,ch_id_to_reject))[0]
@@ -207,8 +211,12 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
             arr_mask = np.load(filename_min_chan_mask)
             for iter_localA in range(len(chs_native_order)):
                 loc_local = np.squeeze(np.argwhere(chmap_mat == chs_native_order[iter_localA]))
-                r_id = loc_local[0]
-                sh_id = loc_local[1] // 2   # floor division gets us the effective shank ID 
+                if not ELECTRODE_2X16: 
+                    r_id = loc_local[0]
+                    sh_id = loc_local[1]
+                else:
+                    r_id = loc_local[0]
+                    sh_id = loc_local[1] // 2   # floor division gets us the effective shank ID 
                 if (arr_mask[r_id,sh_id] == False):
                     ch_id_to_reject.append(chs_native_order[iter_localA])
                     
@@ -317,14 +325,24 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         print(chmap_mat.shape)
         if chmap_mat.shape!=(32,4):
             raise ValueError("Channel map is of shape %s, expected (32,4)" % (chmap_mat.shape))
-    
-        # find correct locations for valid chanels
-        geom_map = -1*np.ones((len(TrueNativeChOrder), 2), dtype= int)
-    
-        for i, native_order in enumerate(TrueNativeChOrder):
-            loc = np.where(chmap_mat==native_order)
-            geom_map[i,0] = loc[1][0]*GW_BETWEEN_SHANK
-            geom_map[i,1] = loc[0][0]*GH
+            
+            
+        if os.path.isfile(filename_min_chan_mask):
+            arr_mask = np.load(filename_min_chan_mask)
+            geom_map = -1*np.ones((len(TrueNativeChOrder_new), 2), dtype= int)
+            for i, native_order in enumerate(TrueNativeChOrder_new):
+                loc = np.where(chmap_mat==native_order)
+                geom_map[i,0] = loc[1][0]*GW_BETWEEN_SHANK
+                geom_map[i,1] = loc[0][0]*GH
+        else:
+            # find correct locations for valid chanels
+            geom_map = -1*np.ones((len(TrueNativeChOrder), 2), dtype= int)
+            for i, native_order in enumerate(TrueNativeChOrder):
+                loc = np.where(chmap_mat==native_order)
+                geom_map[i,0] = loc[1][0]*GW_BETWEEN_SHANK
+                geom_map[i,1] = loc[0][0]*GH
+                
+        
     else:
         print(chmap_mat.shape)
         if chmap_mat.shape!=(16,8):
@@ -334,7 +352,6 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
             arr_mask = np.load(filename_min_chan_mask)
             geom_map = -1*np.ones((len(TrueNativeChOrder_new), 2), dtype=np.int)
             for i, native_order in enumerate(TrueNativeChOrder_new):
-                print(i)
                 loc = np.where(chmap_mat==native_order)
                 geom_map[i,0] = (loc[1][0]//2)*GW_BETWEEN_SHANK + (loc[1][0]%2)*GW_WITHIN_SHANK
                 geom_map[i,1] = loc[0][0]*GH
