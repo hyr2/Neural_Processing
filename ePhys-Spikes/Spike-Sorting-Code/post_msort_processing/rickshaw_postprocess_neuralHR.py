@@ -17,7 +17,7 @@ from discard_noise_and_viz import *
 from population_analysis import *
 import os, json
 from natsort import natsorted
-# import matlab.engine
+import matlab.engine
 # Automate batch processing of the pre processing step
 
 # read parameters
@@ -29,8 +29,8 @@ CHANNEL_MAP_FPATH = params['CHANNEL_MAP_FPATH']
 source_dir_list = natsorted(os.listdir(input_dir))
 
 # Start matlab engine and change directory to code file
-# eng = matlab.engine.start_matlab()
-# eng.cd(r'../../Connectivity Analysis/', nargout=0)
+eng = matlab.engine.start_matlab()
+eng.cd(r'../../Connectivity Analysis/', nargout=0)
 
 # Iterate over all sessions
 for iter, filename in enumerate(source_dir_list):
@@ -49,17 +49,20 @@ for iter, filename in enumerate(source_dir_list):
         func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
 
         # Calling matlab scripts from python
-        # eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,CHANNEL_MAP_FPATH,nargout=0)
+        eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,CHANNEL_MAP_FPATH,nargout=0)
 
         # delete converted_data.mda and filt.mda and raw data files (.rhd) 
-        # os.remove(os.path.join(Raw_dir,'converted_data.mda'))
-        # os.remove(os.path.join(Raw_dir,'filt.mda'))
-        # test = os.listdir(Raw_dir)
-        # for item in test:
-            # if item.endswith(".rhd"):
-                # os.remove(os.path.join(Raw_dir, item))
+        os.remove(os.path.join(Raw_dir,'converted_data.mda'))
+        os.remove(os.path.join(Raw_dir,'filt.mda'))
+        test = os.listdir(Raw_dir)
+        for item in test:
+            if item.endswith(".rhd"):
+                os.remove(os.path.join(Raw_dir, item))
 
-# eng.quit()
+eng.quit()
+
+moouse_id = input_dir.split('/')[-2]
+combine_sessions(input_dir,moouse_id)
 
 # Params.json file:
 #     {
