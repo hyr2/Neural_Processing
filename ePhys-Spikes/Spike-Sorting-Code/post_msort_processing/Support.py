@@ -85,7 +85,7 @@ def filter_Savitzky_fast(input_signal):
     return signal_out
 
 def filter_Savitzky_slow(input_signal):
-    signal_out = signal.savgol_filter(input_signal,25,3)
+    signal_out = signal.savgol_filter(input_signal,19,3)
     return signal_out
 
 # 13 - 160 Hz
@@ -333,14 +333,7 @@ def plot_all_trials(input_arr,Fs,folder_path,clus_dict):
     t_start_indx = np.squeeze(np.where(t_axis >= 1.8))[0]      # stim start set to 2.45 seconds
     t_end_indx = np.squeeze(np.where(t_axis <= 6.5))[-1]        # stim end set to 5.15 seconds
     filename_save = os.path.join(folder_path,'FR_' + str(clus_dict['cluster_id']) + '.png')
-    # Plotting fonts
-    sns.set_style('darkgrid') # darkgrid, white grid, dark, white and ticks
-    plt.rc('axes', titlesize=8)     # fontsize of the axes title
-    plt.rc('axes', labelsize=10)    # fontsize of the x and y labels
-    plt.rc('xtick', labelsize=10)    # fontsize of the tick labels
-    plt.rc('ytick', labelsize=10)    # fontsize of the tick labels
-    plt.rc('legend', fontsize=10)    # legend fontsize
-    plt.rc('font', size=16)          # controls default text sizes
+
     
     f, a = plt.subplots(1,1)
     a.set_ylabel('FR/Hz')
@@ -353,8 +346,8 @@ def plot_all_trials(input_arr,Fs,folder_path,clus_dict):
     else:
         a.plot(t_axis[t_start_indx:t_end_indx+25],input_arr[t_start_indx:t_end_indx+25],'k', lw=2.0)
 
-    plt.axvline(2.4,linestyle = 'dashed', linewidth = 2.1)
-    plt.axvline(5.15,linestyle = 'dashed', linewidth = 2.1)
+    plt.axvline(2.2,linestyle = 'dashed', linewidth = 2.1)
+    plt.axvline(5,linestyle = 'dashed', linewidth = 2.1)
     # a.set_yticks([])
     f.set_size_inches((5, 3), forward=False)
     plt.savefig(filename_save,format = 'png')
