@@ -26,8 +26,7 @@ from utils.Support import read_stimtxt
 from utils.read_mda import readmda
 from Support import calc_key_metrics, calc_merge_candidates, makeSymmetric
 
-# session_folder = '/home/hyr2-office/Documents/Data/NVC/RH-7-merging-orig/10-17-22/'
-session_folder = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/spikesort_out/processed_data_bc8_new/2021-11-18/"
+session_folder = '/home/hyr2-office/Documents/Data/NVC/RH-7-merging-orig/10-27-22/'
 output_phy = os.path.join(session_folder,'phy_output')
 if not os.path.exists(output_phy):
     os.makedirs(output_phy)
