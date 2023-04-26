@@ -48,6 +48,7 @@ chmap_mat = load(Chan_map_path,'Ch_Map_new');
 chmap_mat = chmap_mat.Ch_Map_new;
 Native_orders = readNPY(fullfile(datafolder,'native_ch_order.npy'));    
 curation_mask = logical(csvread(fullfile(datafolder, 'accept_mask.csv')));
+pos_mask = not(logical(csvread(fullfile(datafolder , 'positive_mask.csv' ))));
 response_mask = csvread(fullfile(datafolder,'Processed','count_analysis','cluster_response_mask.csv'));
 clus_locations = csvread(fullfile(datafolder, 'clus_locations.csv'));
 % disp(Location(1,:))
@@ -104,8 +105,9 @@ end
 % More curation code
 curation = 1;
 if curation
+    curation_mask = and(curation_mask,pos_mask);
     % extract accepted cluster locations & their responsiveness
-    response_mask = response_mask(curation_mask,:);
+    % response_mask = response_mask(curation_mask,:);   % Update to the response mask from python script population_analysis.py
     clus_locations = clus_locations(curation_mask,:);
     shank_num = shank_num(curation_mask);
     spike_times_curated = [];
@@ -234,10 +236,14 @@ preferences.putativeCellType.acg_tau_rise_boundary=6;           % From CE websit
 cell_metrics.putativeCellType = celltype_classification.standard(cell_metrics,preferences);
 celltype = cell_metrics.putativeCellType;
 
+% Busrting and theta modulation index
+burstIndex_Royer2012 = acg_metrics.burstIndex_Royer2012;
+burstIndex_Doublets = acg_metrics.burstIndex_Doublets;
+thetaModulationIndex = acg_metrics.thetaModulationIndex;
 % Addition based on excitatory vs inhibitory (based on waveform shape which is same as CCG based)
 % values modified for Barrel cortex data from the original value of 0.55ms
-type_excit = (cell_metrics.troughToPeak > 0.475);    % Buzsaki lab (https://www.cell.com/neuron/pdfExtended/S0896-6273(18)31085-7)
-type_inhib = (cell_metrics.troughToPeak <= 0.475);
+type_excit = (cell_metrics.troughToPeak > 0.47);    % Buzsaki lab (https://www.cell.com/neuron/pdfExtended/S0896-6273(18)31085-7)
+type_inhib = (cell_metrics.troughToPeak <= 0.47);
 
 idx_act = (type_excit == 1);     
 idx_inhib = (type_inhib == 1);  
@@ -262,7 +268,7 @@ troughtopeak_inhib = cell_metrics.troughToPeak(idx_inhib);
 % filename = fullfile(plotfolder,'cell_type_analysis.png');
 % print(filename,'-dpng','-r0');
 filename = fullfile(plotfolder,'pop_celltypes.mat');
-save(filename,'type_excit','type_inhib','troughToPeak','derivative_TroughtoPeak','celltype','shank_num'); % all these quantities are only for the curated clusters
+save(filename,'type_excit','type_inhib','troughToPeak','derivative_TroughtoPeak','celltype','shank_num','burstIndex_Royer2012','burstIndex_Doublets','thetaModulationIndex'); % all these quantities are only for the curated clusters
 
 
 end
