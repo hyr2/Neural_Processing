@@ -40,7 +40,7 @@ def sort_by_shank(type_local,shank_num_local):
         
     return output_main
 
-def sort_single_shank_neuralAct_allclus(shank_num_mask,curation_mask_list,spikes_bsl,spikes_stim,input_df,shank_ID,session_ID):
+def sort_single_shank_neuralAct_allclus(shank_num_mask,curation_mask_list,spikes_bsl,spikes_stim,input_df,shank_ID,session_ID,x_ticks_labels):
     # INPUTS:
     # shank_num_mask : a 1D array (length N) containing the shank label for each cluster [0 to 3]
     # curation_mask_list : a 1D boolean array (length N) containing curation label for each cluster
@@ -120,7 +120,7 @@ def sort_single_shank_neuralAct_allclus(shank_num_mask,curation_mask_list,spikes
     output_df.I = temp_series4
     output_df.stim_E = temp_series5
     output_df.stim_I = temp_series6
-    output_df.session = pd.Series(session_ID * np.ones([len(output_df),],dtype = np.int16),dtype = np.int16)
+    output_df.session = pd.Series( x_ticks_labels[session_ID] * np.ones([len(output_df),],dtype = np.int16),dtype = np.int16)
     
     output_df.reset_index(drop =True, inplace = True)
     
@@ -420,10 +420,10 @@ def combine_sessions(source_dir, str_ID):
         mask_local_list[4] = np.logical_and(np.squeeze(pop_stats_cell[iter]['type_excit']) == 1, cluster_property == 1)
         mask_local_list[5] = np.logical_and(np.squeeze(pop_stats_cell[iter]['type_inhib']) == 1, cluster_property == 1)
         
-        df_all_clusters_A = sort_single_shank_neuralAct_allclus(shank_num, mask_local_list, N_bsl, N_stim, df_all_clusters_A,shank_ID = 0,session_ID = iter)
-        df_all_clusters_B = sort_single_shank_neuralAct_allclus(shank_num, mask_local_list, N_bsl, N_stim, df_all_clusters_B,shank_ID = 1,session_ID = iter)
-        df_all_clusters_C = sort_single_shank_neuralAct_allclus(shank_num, mask_local_list, N_bsl, N_stim, df_all_clusters_C,shank_ID = 2,session_ID = iter)
-        df_all_clusters_D = sort_single_shank_neuralAct_allclus(shank_num, mask_local_list, N_bsl, N_stim, df_all_clusters_D,shank_ID = 3,session_ID = iter)
+        df_all_clusters_A = sort_single_shank_neuralAct_allclus(shank_num, mask_local_list, N_bsl, N_stim, df_all_clusters_A,shank_ID = 0,session_ID = iter,x_ticks_labels = x_ticks_labels)
+        df_all_clusters_B = sort_single_shank_neuralAct_allclus(shank_num, mask_local_list, N_bsl, N_stim, df_all_clusters_B,shank_ID = 1,session_ID = iter,x_ticks_labels = x_ticks_labels)
+        df_all_clusters_C = sort_single_shank_neuralAct_allclus(shank_num, mask_local_list, N_bsl, N_stim, df_all_clusters_C,shank_ID = 2,session_ID = iter,x_ticks_labels = x_ticks_labels)
+        df_all_clusters_D = sort_single_shank_neuralAct_allclus(shank_num, mask_local_list, N_bsl, N_stim, df_all_clusters_D,shank_ID = 3,session_ID = iter,x_ticks_labels = x_ticks_labels)
         
         
         # number of clusters
