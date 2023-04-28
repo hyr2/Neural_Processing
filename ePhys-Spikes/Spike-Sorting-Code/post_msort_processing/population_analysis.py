@@ -1,13 +1,148 @@
 import os, json
+import sys
+sys.path.append('utils')
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.io import loadmat, savemat
 from scipy import integrate
-from scipy.stats import ttest_ind, zscore
+from scipy.stats import ttest_ind, zscore, norm
+from itertools import product
 import pandas as pd
 from utils.read_mda import readmda
 from utils.read_stimtxt import read_stimtxt
 from Support import plot_all_trials, filterSignal_lowpass, filter_Savitzky_slow, filter_Savitzky_fast, zscore_bsl
+from sklearn.preprocessing import StandardScaler,MinMaxScaler
+import seaborn as sns
+
+# Plotting fonts
+sns.set_style('darkgrid') # darkgrid, white grid, dark, white and ticks
+plt.rc('axes', titlesize=8)     # fontsize of the axes title
+plt.rc('axes', labelsize=10)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=10)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=10)    # fontsize of the tick labels
+plt.rc('legend', fontsize=10)    # legend fontsize
+plt.rc('font', size=16)          # controls default text sizes
+
+# Useful function for enumerated product for loop (itertools)
+def enumerated_product(*args):
+    yield from zip(product(*(range(len(x)) for x in args)), product(*args))
+
+def FR_classifier_classic_zscore(firing_rate_avg_zscore,t_axis,t_range,stim_range):
+    y_values = firing_rate_avg_zscore[t_range[0]:t_range[1]]
+    t_axis = t_axis[t_range[0]:t_range[1]]
+    y_values = np.reshape(y_values,[len(y_values),1])
+    # second normalization
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    scaler = scaler.fit(y_values)
+    normalized = scaler.transform(y_values)
+    
+    # template
+    bsl_template = np.mean(normalized[0:stim_range[0]-t_range[0]])
+    # template_act = bsl_template * np.ones(y_values.shape,dtype = float)
+    # template_sup = bsl_template * np.ones(y_values.shape,dtype = float)
+    # template_act[stim_range[0]-t_range[0]+1:stim_range[1]-t_range[0]] = 1 
+    # template_sup[stim_range[0]-t_range[0]+1:stim_range[1]-t_range[0]] = 0
+    
+    
+    # max_zscore_stim = np.amax(np.absolute(firing_rate_avg_zscore[stim_range[0]:stim_range[1]]))
+    max_z = np.amax(firing_rate_avg_zscore[stim_range[0]:stim_range[1]])
+    min_z = np.amin(firing_rate_avg_zscore[stim_range[0]:stim_range[1]])
+    # # Using step function template
+    # SsD = np.zeros([2,])
+    # SsD[0] = np.linalg.norm((normalized-template_act),2)
+    # SsD[1] = np.linalg.norm((normalized-template_sup),2)
+
+    
+    # Gaussian template (distance metric)
+    x1 = 1.4
+    x2 = 4.5
+    mu = 3.1        # center of peak
+    sigma = 0.6    # width of gaussian
+    z1 = (x1 - mu)/sigma
+    z2 = (x2 - mu)/sigma
+    x = np.linspace(z1,z2, len(t_axis))
+    y = norm.pdf(x,0,1)
+    y = y/np.amax(y)
+    y = np.reshape(y,[len(y),1])
+    scaler = MinMaxScaler(feature_range = (bsl_template,1))
+    scaler = scaler.fit(y)
+    template_act = scaler.transform(y)
+    y = -y + 1
+    scaler = MinMaxScaler(feature_range = (0,bsl_template))
+    scaler = scaler.fit(y)
+    template_sup = scaler.transform(y)
+    
+    SsD = np.zeros([2,])
+    SsD[0] = np.linalg.norm((normalized-template_act),2)
+    SsD[1] = np.linalg.norm((normalized-template_sup),2)
+    
+    # for idx, pair in enumerated_product(np.linspace(2.3,3.3,5), np.linspace(0.3,0.8,5)):
+    #     print(idx, pair)
+    #     mu = pair[0]
+    #     sigma = pair[1]
+    #     # calculate the z-transform
+    #     z1 = ( x1 - mu ) / sigma
+    #     z2 = ( x2 - mu ) / sigma
+    #     x = np.linspace(z1, z2, len(t_axis))
+    #     y = norm.pdf(x,0,1)
+    #     y = y/np.amax(y)
+        
+    #     loc_x = idx[0]
+    #     loc_y = idx[1]
+        
+    #     # activated neurons
+    #     SaD[0,loc_x,loc_y] = np.sum(np.abs(y - normalized))
+    #     SsD[0,loc_x,loc_y] = np.linalg.norm((y-normalized),2)
+        
+    #     # flipped (suppressed neurons)
+    #     y = -y + 1
+        
+    #     SaD[1,loc_x,loc_y] = np.sum(np.abs(y - normalized))
+    #     SsD[1,loc_x,loc_y] = np.linalg.norm((y-normalized),2)
+            
+    
+    if np.abs(SsD[0] - SsD[1]) < 0.4:   # ie the SsD are very close to each other
+        if (np.abs(max_z) > np.abs(min_z)):
+            indx = 0    # activated
+        elif (np.abs(max_z) < np.abs(min_z)):
+            indx = 1    # suppressed
+    else:
+        indx = SsD.argmin()
+    
+    # override (necassary for short burst)
+    if (np.abs(max_z) > 2.25*np.abs(min_z)): 
+        indx = 0    # activated
+    # indx = np.unravel_index(SsD.argmin(),SsD.shape)
+    
+    
+    # plt.plot(template_sup)
+    # plt.plot(template_act)
+    # plt.plot(normalized)    
+    # indx = np.unravel_index(SsD.argmin(),SsD.shape)
+    
+    # mu = np.linspace(2.3,3.3,10)[indx[1]]
+    # sigma = np.linspace(2.3,3.3,10)[indx[2]]
+    
+    # # calculate the z-transform
+    # z1 = ( x1 - mu ) / sigma
+    # z2 = ( x2 - mu ) / sigma
+    # x = np.linspace(z1, z2, len(t_axis))
+    # y = norm.pdf(x,0,1)
+    # y = y/np.amax(y) 
+    
+    # plt.plot(t_axis,normalized)
+    # plt.plot(t_axis,y)
+    # plt.plot(t_axis,-y+1)
+    
+    # plt.figure()
+    # plt.plot(t_axis,normalized)
+    # if indx == 0:
+    #     plt.plot(t_axis,template_act)
+    # else:
+    #     plt.plot(t_axis,template_sup)
+    
+    return (t_axis,y_values,normalized,indx)
+    
 
 def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
 
@@ -87,8 +222,10 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     if not os.path.exists(result_folder_FR_avg):
         os.makedirs(result_folder_FR_avg)
     geom_path = os.path.join(session_folder, "geom.csv")
-    curation_mask_path = os.path.join(session_folder, "cluster_rejection_mask.npz")
+    # curation_mask_path = os.path.join(session_folder, "cluster_rejection_mask.npz")
+    curation_mask_path = os.path.join(session_folder, 'accept_mask.csv')
     NATIVE_ORDERS = np.load(os.path.join(session_folder, "native_ch_order.npy"))
+    axonal_mask = os.path.join(session_folder,'positive_mask.csv')
 
     # macro definitions
     ANALYSIS_NOCHANGE = 0       # A better name is non-stimulus locked
@@ -96,10 +233,14 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     ANALYSIS_INHIBITORY = -1    # A better name is suppressed
 
     # read cluster rejection data
-    curation_masks = np.load(curation_mask_path, allow_pickle=True)
-    single_unit_mask = curation_masks['single_unit_mask']
-    multi_unit_mask = curation_masks['multi_unit_mask']
-
+    curation_masks = np.squeeze(pd.read_csv(curation_mask_path,header = None).to_numpy())
+    single_unit_mask = curation_masks
+    # single_unit_mask = curation_masks['single_unit_mask']
+    # multi_unit_mask = curation_masks['multi_unit_mask']
+    mask_axonal = np.squeeze(pd.read_csv(axonal_mask,header = None).to_numpy())  # axonal spikes
+    mask_axonal = np.logical_not(mask_axonal)
+    single_unit_mask = np.logical_and(mask_axonal,single_unit_mask)     # updated single unit mask
+    
     chmap_mat = loadmat(CHANNEL_MAP_FPATH)['Ch_Map_new']
     # print(list(chmap_mat.keys()))
     if np.min(chmap_mat)==1:
@@ -180,6 +321,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         n_windows_in_trial = int(np.ceil(trial_duration_in_samples/window_in_samples))
         bin_edges = np.arange(0, window_in_samples*n_windows_in_trial+1, step=window_in_samples)
         n_trials = t_trial_start.shape[0]
+        # print(n_trials,Ntrials)
         assert n_trials==Ntrials or n_trials==Ntrials+1, "%d %d" % (n_trials, Ntrials)
         if n_trials > Ntrials:
             n_trials = Ntrials
@@ -214,49 +356,64 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         
         t_axis = np.linspace(0,firing_rate_avg.shape[0]*WINDOW_LEN_IN_SEC,firing_rate_avg.shape[0])
         t_1 = np.squeeze(np.where(t_axis >= 1.4))[0]      # stim start set to 2.45 seconds
-        t_2 = np.squeeze(np.where(t_axis >= 2.1))[0]
-        t_3 = np.squeeze(np.where(t_axis <= 2.7))[-1]        # stim end set to 5.15 seconds
-        t_4 = np.squeeze(np.where(t_axis <= 4.0))[-1]
-        t_5 = np.squeeze(np.where(t_axis <= 10))[-1]        # post stim quiet period
-        t_6 = np.squeeze(np.where(t_axis <= 11))[-1]
-        
+        t_2 = np.squeeze(np.where(t_axis >= 2.0))[0]      # end of bsl region (actual value is 2.5s but FR starts to increase before. Maybe anticipatory spiking due to training)
+        t_3 = np.squeeze(np.where(t_axis <= 2.4))[-1]        # stim end set to 5.15 seconds
+        t_4 = np.squeeze(np.where(t_axis <= 4.5))[-1]
+        t_5 = np.squeeze(np.where(t_axis <= 8))[-1]        # post stim quiet period
+        t_6 = np.squeeze(np.where(t_axis <= 9.5))[-1]
+        t_7 = np.squeeze(np.where(t_axis <= 4.5))[-1]
+        t_8 = np.squeeze(np.where(t_axis <= 2.6))[-1]       # used for single trial
+        t_9 = np.squeeze(np.where(t_axis <= 0.5))[-1]       # used for single trial
         # Zscore
-        bsl_mean = np.mean(firing_rate_avg[t_1:t_2])
-        bsl_std = np.std(firing_rate_avg[t_1:t_2])
+        bsl_mean = np.mean(np.hstack((firing_rate_avg[t_1:t_2],firing_rate_avg[t_5:t_6]))) # baseline is pre and post stim
+        bsl_std = np.std(np.hstack((firing_rate_avg[t_1:t_2],firing_rate_avg[t_5:t_6])))   # baseline is pre and post stim 
         firing_rate_zscore = zscore_bsl(firing_rate_avg, bsl_mean, bsl_std)          # Zscore to classify cluster as activated or suppressed
+        
+        # FR Classify
+        (t_axis_s,firing_rate_zscore_s,normalized,indx) = FR_classifier_classic_zscore(firing_rate_zscore,t_axis,[t_1,t_7],[t_3,t_4])
+        
         max_zscore_stim = np.amax(np.absolute(firing_rate_zscore[t_3:t_4]))          # Thresholding for Z score values
         # plt.figure()
         # plt.plot(t_axis,firing_rate_zscore)
-        # firing_rate_zscore = zscore(firing_rate_avg, axis = 0)          # Zscore to classify cluster as activated or suppressed
-
-        t_stat, pval_2t = ttest_ind(
-            firing_rate_avg[:n_samples_baseline], 
-            firing_rate_avg[1+n_samples_baseline:1+n_samples_baseline+n_samples_stim], 
-            equal_var=False)
-        if t_stat > 0:
-            # suppressed
-            t_stat, pval_2t = ttest_ind(
-                np.hstack((firing_rate_avg[t_1:t_2],firing_rate_avg[t_5:t_6])), 
-                firing_rate_avg[t_3:t_4], 
-                equal_var=False,alternative = 'greater')
-            if pval_2t < 0.01 and N_spikes_local>300 and max_zscore_stim > 2:   # sparse firing neuron is rejected + peak response needs to be 2 sd higher than bsl
-                # reject null
-                clus_property = ANALYSIS_INHIBITORY
-            else:
-                clus_property = ANALYSIS_NOCHANGE
-        else:
-            # activated
-            t_stat, pval_2t = ttest_ind(
-                np.hstack((firing_rate_avg[t_1:t_2],firing_rate_avg[t_5:t_6])), 
-                firing_rate_avg[t_3:t_4], 
-                equal_var=False,alternative = 'less')                
-            if pval_2t < 0.01 and N_spikes_local>300 and max_zscore_stim > 3:   # sparse firing neuron is rejected + peak response needs to be 3 sd higher than bsl
-                # reject null
-                clus_property = ANALYSIS_EXCITATORY
-            else:
-                clus_property = ANALYSIS_NOCHANGE
-                    
-            
+        # firing_rate_zscore = zscore(firing_rate_avg, axis = 0)          # Zscore to classify cluster as activated or suppressed        
+        # t_stat, pval_2t = ttest_ind(
+        #     firing_rate_avg[t_1:t_2], 
+        #     firing_rate_avg[t_3:t_4], 
+        #     equal_var=False)
+        # if t_stat > 0:
+        #     # suppressed
+        #     t_stat, pval_2t = ttest_ind(
+        #         np.hstack((firing_rate_avg[t_1:t_2],firing_rate_avg[t_5:t_6])), 
+        #         firing_rate_avg[t_3:t_4], 
+        #         equal_var=False,alternative = 'greater')
+        #     if pval_2t < 0.01 and N_spikes_local>(Ntrials*3) and max_zscore_stim > 2:   # sparse firing neuron is rejected + peak response needs to be 2 sd higher than bsl
+        #         # reject null
+        #         clus_property = ANALYSIS_INHIBITORY
+        #     else:
+        #         clus_property = ANALYSIS_NOCHANGE
+        # else:
+        #     # activated
+        #     t_stat, pval_2t = ttest_ind(
+        #         np.hstack((firing_rate_avg[t_1:t_2],firing_rate_avg[t_5:t_6])), 
+        #         firing_rate_avg[t_3:t_4], 
+        #         equal_var=False,alternative = 'less')                
+        #     if pval_2t < 0.01 and N_spikes_local>(Ntrials*3) and max_zscore_stim > 3:   # sparse firing neuron is rejected + peak response needs to be 3 sd higher than bsl
+        #         # reject null
+        #         clus_property = ANALYSIS_EXCITATORY
+        #     else:
+        #         clus_property = ANALYSIS_NOCHANGE
+        
+        max_z = np.amax((firing_rate_zscore[t_3:t_4]))
+        min_z = np.amin((firing_rate_zscore[t_3:t_4]))
+        clus_property_1 = 0
+        if max_zscore_stim > 2.5:
+            if indx == 0 and N_spikes_local>(Ntrials*3) and (np.abs(max_z) > np.abs(min_z)):
+                print('activated neuron')
+                clus_property_1 = 1
+            elif indx == 1 and N_spikes_local>(Ntrials*3) and (np.abs(max_z) < np.abs(min_z)):
+                print('suppressed neuron')
+                clus_property_1 = -1
+        # print(clus_property)
         # if pval_2t > .01:
         #     clus_property = ANALYSIS_NOCHANGE
         # elif t_stat < 0:
@@ -264,8 +421,16 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         # else:
         #     clus_property = ANALYSIS_INHIBITORY
         # print(clus_property)
+        
+        # Computing number of spikes
+        firing_rate_series = firing_rate_series * WINDOW_LEN_IN_SEC
+        firing_rate_series_avg = np.sum(firing_rate_series,axis = 0)
+        Spikes_stim = np.sum(firing_rate_series_avg[t_8:t_4])
+        Spikes_bsl = np.sum(firing_rate_series_avg[t_9:t_3])
+        Spikes_num = np.array([Spikes_bsl,Spikes_stim])
+        
 
-        return (clus_property, t_stat, pval_2t), firing_rate_avg, firing_rate_sum
+        return clus_property_1, firing_rate_avg, firing_rate_sum, Spikes_num
 
 
     total_nclus_by_shank = np.zeros(4)
@@ -275,71 +440,88 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     inh_nclus_by_shank = np.zeros(4)
     nor_nclus_by_shank = np.zeros(4)
 
-    clus_response_mask = np.zeros(n_clus, dtype=int)
+    clus_response_mask = np.zeros(np.sum(single_unit_mask), dtype=int)
 
-    FR_series_all_clusters = [ [] for i in range(n_clus) ]  # create a list of empty lists in a loop
+    FR_series_all_clusters = [ [] for i in range(np.sum(single_unit_mask)) ]   # create empty list 
     Avg_FR_byshank = np.zeros([4,])
     FR_list_byshank_act =  [ [] for i in range(4) ]  # create empty list
     FR_list_byshank_inh =  [ [] for i in range(4) ]  # create empty list
-    
+    list_all_clus = []
+    iter_local = 0
     for i_clus in range(n_clus):
         
-        # Need to add facilitating cell vs adapting cell vs no change cell
-        (clus_property, t_stat, pval_2t), firing_rate_avg, firing_rate_sum = single_cluster_main(i_clus)
-        # creating a dictionary for this cluster
-        firing_stamp = spike_times_by_clus[i_clus]
-        N_spikes_local = spike_times_by_clus[i_clus].size 
-        prim_ch = pri_ch_lut[i_clus]
-        # Get shank ID from primary channel for the cluster
-        shank_num = get_shanknum_from_msort_id(prim_ch)
-        i_clus_dict  = {}
-        i_clus_dict['cluster_id'] = i_clus + 1 # to align with the discard_noise_viz.py code cluster order [folder: figs_allclus_waveforms]
-        i_clus_dict['total_spike_count'] = firing_stamp.shape
-        i_clus_dict['prim_ch_coord'] = geom[prim_ch, :]
-        i_clus_dict['shank_num'] = shank_num
-        i_clus_dict['clus_prop'] = clus_property
-        i_clus_dict['N_spikes'] = N_spikes_local
-        
-        FR_series_all_clusters[i_clus].append(np.array(firing_rate_avg,dtype = float))
-        failed = (single_unit_mask[i_clus]==False and multi_unit_mask[i_clus]==False)                       # included MUA as well
-        print(i_clus)
-        if not(failed): 
-            plot_all_trials(firing_rate_avg,1/WINDOW_LEN_IN_SEC,result_folder_FR_avg,i_clus_dict)           # Plotting function
-
-        if clus_property==ANALYSIS_EXCITATORY:
-            clus_response_mask[i_clus] = 1
-        elif clus_property==ANALYSIS_INHIBITORY:
-            clus_response_mask[i_clus] = -1
-        else:
-            clus_response_mask[i_clus] = 0
+        if single_unit_mask[i_clus] == True:
+            # Need to add facilitating cell vs adapting cell vs no change cell
+            clus_property, firing_rate_avg, firing_rate_sum, Spikes_num = single_cluster_main(i_clus)
+            # creating a dictionary for this cluster
+            firing_stamp = spike_times_by_clus[i_clus]
+            N_spikes_local = spike_times_by_clus[i_clus].size 
+            prim_ch = pri_ch_lut[i_clus]
+            # Get shank ID from primary channel for the cluster
+            shank_num = get_shanknum_from_msort_id(prim_ch)
+            i_clus_dict  = {}
+            i_clus_dict['cluster_id'] = i_clus + 1 # to align with the discard_noise_viz.py code cluster order [folder: figs_allclus_waveforms]
+            i_clus_dict['total_spike_count'] = firing_stamp.shape
+            i_clus_dict['prim_ch_coord'] = geom[prim_ch, :]
+            i_clus_dict['shank_num'] = shank_num
+            i_clus_dict['clus_prop'] = clus_property
+            i_clus_dict['N_spikes'] = N_spikes_local
+            i_clus_dict['N_spikes_stim'] =  Spikes_num[1]
+            i_clus_dict['N_spikes_bsl'] = Spikes_num[0]
+            list_all_clus.append(i_clus_dict)
+            FR_series_all_clusters[iter_local].append(np.array(firing_rate_avg,dtype = float))
+            # temporary
+            # firing_rate_avg = 
+            failed = (single_unit_mask[i_clus]==False)                       # SUA as well
+            print(i_clus)
+            if not(failed): 
+                plot_all_trials(firing_rate_avg,1/WINDOW_LEN_IN_SEC,result_folder_FR_avg,i_clus_dict)           # Plotting function
             
-        if not(failed) and clus_property==ANALYSIS_EXCITATORY:          # Extracting FR of only activated neurons
-            FR_list_byshank_act[shank_num].append(np.array(FR_series_all_clusters[i_clus],dtype = float))
-        elif not(failed) and clus_property==ANALYSIS_INHIBITORY:
-            FR_list_byshank_inh[shank_num].append(np.array(FR_series_all_clusters[i_clus],dtype = float))
-
-        if clus_property != ANALYSIS_NOCHANGE:
-            print("t=%.2f, p=%.4f"%(t_stat, pval_2t))
-            if failed:
-                print("    NOTE---- bad cluster with significant response to stim")
-        if failed:
-            continue
-    
-        
-        if clus_property==ANALYSIS_EXCITATORY:
-            act_nclus_by_shank[shank_num] += 1
-        elif clus_property==ANALYSIS_INHIBITORY:
-            inh_nclus_by_shank[shank_num] += 1
-        else:
-            nor_nclus_by_shank[shank_num] += 1
-        
-        if clus_property != ANALYSIS_NOCHANGE:
-            if single_unit_mask[i_clus]:
-                single_nclus_by_shank[shank_num] += 1
+            if clus_property==ANALYSIS_EXCITATORY:
+                clus_response_mask[iter_local] = 1
+            elif clus_property==ANALYSIS_INHIBITORY:
+                clus_response_mask[iter_local] = -1
             else:
-                multi_nclus_by_shank[shank_num] += 1
+                clus_response_mask[iter_local] = 0
+                
+            if not(failed) and clus_property==ANALYSIS_EXCITATORY:          # Extracting FR of only activated neurons
+                FR_list_byshank_act[shank_num].append(np.array(FR_series_all_clusters[iter_local],dtype = float))
+            elif not(failed) and clus_property==ANALYSIS_INHIBITORY:
+                FR_list_byshank_inh[shank_num].append(np.array(FR_series_all_clusters[iter_local],dtype = float))
+            total_nclus_by_shank[shank_num] += 1
+            if clus_property != ANALYSIS_NOCHANGE:
+                # print("t=%.2f, p=%.4f"%(t_stat, pval_2t))
+                if failed:
+                    print("NOTE---- bad cluster with significant response to stim")
+            if failed:
+                continue
+        
+            
+            if clus_property==ANALYSIS_EXCITATORY:
+                act_nclus_by_shank[shank_num] += 1
+            elif clus_property==ANALYSIS_INHIBITORY:
+                inh_nclus_by_shank[shank_num] += 1
+            else:
+                nor_nclus_by_shank[shank_num] += 1
+            
+            if clus_property != ANALYSIS_NOCHANGE:
+                if single_unit_mask[i_clus]:
+                    single_nclus_by_shank[shank_num] += 1
+                else:
+                    multi_nclus_by_shank[shank_num] += 1
+            iter_local = iter_local+1
 
-        total_nclus_by_shank[shank_num] += 1
+    # plt.figure()
+    # # clus_response_mask  = np.squeeze(clus_response_mask.to_numpy())
+    # clus_response_mask = np.squeeze(clus_response_mask)
+    # for i_clus in range(n_clus):
+    #     if single_unit_mask[i_clus] == True and clus_response_mask[i_clus] == 1 :
+    #         firing_stamp = spike_times_by_clus[i_clus]/Fs
+            
+    #         firing_raster = firing_stamp[np.logical_and(firing_stamp>173.36,firing_stamp<186.86)]
+    #         y1 = (i_clus+1)*np.ones(firing_raster.shape)
+    #         plt.plot(firing_raster,y1,color = 'black',marker = ".",linestyle = 'None')
+        
 
     # savemat(
     #     os.path.join(session_folder, "clusters_response_mask.mat"),
@@ -363,22 +545,22 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     # A mask for SUA and MUA
     FR_series_all_clusters = np.squeeze(np.array(FR_series_all_clusters))
     # accept_mask_local = np.logical_or(single_unit_mask == True, multi_unit_mask == True)
-    FR_series_all_clusters = FR_series_all_clusters[single_unit_mask]  # Only save the accepted clusters
+    # FR_series_all_clusters = FR_series_all_clusters[single_unit_mask]  # Only save the accepted clusters
     
     # Firing rate computation
-    Time_vec = np.linspace(0,13.5,FR_series_all_clusters.shape[1])
+    Time_vec = np.linspace(0,13.5,FR_series_all_clusters[1].shape[0])
     stim_start_idx = int(stim_start_time/WINDOW_LEN_IN_SEC)
     doi_end_idx = int((stim_start_time+DURATION_OF_INTEREST)/WINDOW_LEN_IN_SEC)
     stim_end_idx = int((stim_start_time+float(data_pre_ms['StimulationTime']))/WINDOW_LEN_IN_SEC)
     # activated neurons
     shankA_act = np.squeeze(FR_list_byshank_act[0])
-    shankA_act = np.reshape(shankA_act,[int(shankA_act.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]]) 
+    shankA_act = np.reshape(shankA_act,[int(shankA_act.size/Time_vec.shape[0]),Time_vec.shape[0]]) 
     shankB_act = np.squeeze(FR_list_byshank_act[1])
-    shankB_act = np.reshape(shankB_act,[int(shankB_act.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]]) 
+    shankB_act = np.reshape(shankB_act,[int(shankB_act.size/Time_vec.shape[0]),Time_vec.shape[0]]) 
     shankC_act = np.squeeze(FR_list_byshank_act[2])
-    shankC_act = np.reshape(shankC_act,[int(shankC_act.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]]) 
+    shankC_act = np.reshape(shankC_act,[int(shankC_act.size/Time_vec.shape[0]),Time_vec.shape[0]]) 
     shankD_act = np.squeeze(FR_list_byshank_act[3])
-    shankD_act = np.reshape(shankD_act,[int(shankD_act.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]]) 
+    shankD_act = np.reshape(shankD_act,[int(shankD_act.size/Time_vec.shape[0]),Time_vec.shape[0]]) 
     # compute bsl FR
     # shankA_act_bsl = np.mean(shankA_act[:,:stim_start_idx],axis = 1) if np.size(shankA_act) != 0 else np.nan
     # shankB_act_bsl = np.mean(shankB_act[:,:stim_start_idx],axis = 1) if np.size(shankB_act) != 0 else np.nan
@@ -403,13 +585,13 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     # supressed neurons
     # supressed neurons
     shankA_inh = np.squeeze(FR_list_byshank_inh[0])
-    shankA_inh = np.reshape(shankA_inh,[int(shankA_inh.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]]) 
+    shankA_inh = np.reshape(shankA_inh,[int(shankA_inh.size/Time_vec.shape[0]),Time_vec.shape[0]]) 
     shankB_inh = np.squeeze(FR_list_byshank_inh[1])
-    shankB_inh = np.reshape(shankB_inh,[int(shankB_inh.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]])
+    shankB_inh = np.reshape(shankB_inh,[int(shankB_inh.size/Time_vec.shape[0]),Time_vec.shape[0]])
     shankC_inh= np.squeeze(FR_list_byshank_inh[2])
-    shankC_inh = np.reshape(shankC_inh,[int(shankC_inh.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]]) 
+    shankC_inh = np.reshape(shankC_inh,[int(shankC_inh.size/Time_vec.shape[0]),Time_vec.shape[0]]) 
     shankD_inh= np.squeeze(FR_list_byshank_inh[3])
-    shankD_inh = np.reshape(shankD_inh,[int(shankD_inh.size/FR_series_all_clusters.shape[1]),FR_series_all_clusters.shape[1]]) 
+    shankD_inh = np.reshape(shankD_inh,[int(shankD_inh.size/Time_vec.shape[0]),Time_vec.shape[0]]) 
     # compute bsl FR
     # shankA_inh_bsl = np.mean(shankA_inh[:,:stim_start_idx],axis = 1) if np.size(shankA_inh) != 0 else np.nan
     # shankB_inh_bsl = np.mean(shankB_inh[:,:stim_start_idx],axis = 1) if np.size(shankB_inh) != 0 else np.nan
@@ -448,3 +630,4 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         "numChan_perShank": num_channels_perShank           
     }
     savemat(os.path.join(result_folder, "population_stat_responsive_only.mat"), data_dict)
+    np.save(os.path.join(result_folder,'all_clus_property.npy'),list_all_clus)
