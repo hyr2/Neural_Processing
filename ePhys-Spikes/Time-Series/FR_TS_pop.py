@@ -386,25 +386,30 @@ def combine_sessions(source_dir, str_ID):
         (activity_nor_local,activity_non_local,activity_non_abs_local) = sort_by_shank_neuralAct(shank_num,np.squeeze(cluster_property == 1),N_bsl,N_stim)
         activity_nor[iter,1,:] = activity_nor_local   # Normlaized neural activty (activated)
         activity_non[iter,1,:] = activity_non_local   # Non-normlaized neural activty activated
+        activity_non_abs[iter,1,:] = activity_non_abs_local # number of spikes fired during the stimulation period by the suppressed neuron
         # FR by E and I
         mask_local = np.squeeze(pop_stats_cell[iter]['type_excit']) == 1
         (activity_nor_local,activity_non_local,activity_non_abs_local) = sort_by_shank_neuralAct(shank_num,mask_local,N_bsl,N_stim)
         activity_nor[iter,2,:] = activity_nor_local   # Normlaized neural activty (E cells)
         activity_non[iter,2,:] = activity_non_local   # Non-normlaized neural activty E cells
+        activity_non_abs[iter,2,:] = activity_non_abs_local # number of spikes fired during the stimulation period by the suppressed neuron
         mask_local = np.squeeze(pop_stats_cell[iter]['type_inhib']) == 1
         (activity_nor_local,activity_non_local,activity_non_abs_local) = sort_by_shank_neuralAct(shank_num,mask_local,N_bsl,N_stim)
         activity_nor[iter,3,:] = activity_nor_local   # Normlaized neural activty (I cells)
         activity_non[iter,3,:] = activity_non_local   # Non-normlaized neural activty I cells
+        activity_non_abs[iter,3,:] = activity_non_abs_local # number of spikes fired during the stimulation period by the suppressed neuron
         # FR of stimulus locked E cells 
         mask_local = np.logical_and(np.squeeze(pop_stats_cell[iter]['type_excit']) == 1, cluster_property == 1)
         (activity_nor_local,activity_non_local,activity_non_abs_local) = sort_by_shank_neuralAct(shank_num,mask_local,N_bsl,N_stim)
         activity_nor[iter,4,:] = activity_nor_local   # Normlaized neural activty (I cells)
         activity_non[iter,4,:] = activity_non_local   # Non-normlaized neural activty I cells
+        activity_non_abs[iter,4,:] = activity_non_abs_local # number of spikes fired during the stimulation period by the suppressed neuron
         # FR of stimulus locked I cells 
         mask_local = np.logical_and(np.squeeze(pop_stats_cell[iter]['type_inhib']) == 1, cluster_property == 1)
         (activity_nor_local,activity_non_local,activity_non_abs_local) = sort_by_shank_neuralAct(shank_num,mask_local,N_bsl,N_stim)
         activity_nor[iter,5,:] = activity_nor_local   # Normlaized neural activty (I cells)
         activity_non[iter,5,:] = activity_non_local   # Non-normlaized neural activty I cells
+        activity_non_abs[iter,5,:] = activity_non_abs_local # number of spikes fired during the stimulation period by the suppressed neuron
         
         # Spike analysis (neural activity) [each cluster has an equal footing ie data is prepared for averaging over clusters irrespective of animals]
         mask_local_list = [None for _ in range(6)]
@@ -493,6 +498,7 @@ def combine_sessions(source_dir, str_ID):
     full_mouse_ephys['clus_N'] = clus_N
     full_mouse_ephys['activity_nor'] = activity_nor
     full_mouse_ephys['activity_non'] = activity_non
+    full_mouse_ephys['activity_non_abs'] = activity_non_abs
     full_mouse_ephys['all_clusters'] = all_clusters
     # full_mouse_ephys['T2P'] = T2P_allsessions
     # full_mouse_ephys['total_activity_act'] = total_activity_act
