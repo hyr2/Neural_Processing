@@ -39,6 +39,118 @@ def sort_by_shank(type_local,shank_num_local):
         output_main[iter] = np.sum(output_local)
         
     return output_main
+
+def sort_single_shank_neuralAct_allclus(shank_num_mask,curation_mask_list,spikes_bsl,spikes_stim,input_df,shank_ID,session_ID):
+    # INPUTS:
+    # shank_num_mask : a 1D array (length N) containing the shank label for each cluster [0 to 3]
+    # curation_mask_list : a 1D boolean array (length N) containing curation label for each cluster
+    # spikes_bsl : a 1D array (length N) containing the number of spikes pre-stimulation for each cluster
+    # spikes_stim : a 1D array (length N) containing the number of spikes post-stimulation for each cluster
+    # input_df : the input dataframe of type df_all_clusters (search code)
+    # shank_ID : Data of this shank will be extracted
+    
+    output_df = pd.DataFrame(
+        {
+            "session" : [],
+            "act" : [],
+            "sup" : [],
+            "E" : [],
+            "I" : [],
+            "stim_E" : [],
+            "stim_I" : []
+        }
+    )
+    
+    temp_series1 = pd.Series([],dtype = 'float')
+    temp_series2 = pd.Series([],dtype = 'float')
+    temp_series3 = pd.Series([],dtype = 'float')
+    temp_series4 = pd.Series([],dtype = 'float')
+    temp_series5 = pd.Series([],dtype = 'float')
+    temp_series6 = pd.Series([],dtype = 'float')
+    
+    tmp_bsl1 = spikes_bsl[curation_mask_list[0]]
+    tmp_stim1 = spikes_stim[curation_mask_list[0]]   
+    tmp_shank1 = shank_num_mask[curation_mask_list[0]]       # extracting the shank info of each cluster    
+    tmp_bsl2 = spikes_bsl[curation_mask_list[1]]
+    tmp_stim2 = spikes_stim[curation_mask_list[1]]
+    tmp_shank2 = shank_num_mask[curation_mask_list[1]]
+    tmp_bsl3 = spikes_bsl[curation_mask_list[2]]
+    tmp_stim3 = spikes_stim[curation_mask_list[2]]  
+    tmp_shank3 = shank_num_mask[curation_mask_list[2]]
+    tmp_bsl4 = spikes_bsl[curation_mask_list[3]]
+    tmp_stim4 = spikes_stim[curation_mask_list[3]]  
+    tmp_shank4 = shank_num_mask[curation_mask_list[3]]
+    tmp_bsl5 = spikes_bsl[curation_mask_list[4]]
+    tmp_stim5 = spikes_stim[curation_mask_list[4]]  
+    tmp_shank5 = shank_num_mask[curation_mask_list[4]]
+    tmp_bsl6 = spikes_bsl[curation_mask_list[5]]
+    tmp_stim6 = spikes_stim[curation_mask_list[5]]  
+    tmp_shank6 = shank_num_mask[curation_mask_list[5]]
+    
+    iter_local = shank_ID
+    
+    tmp_bsl_local = tmp_bsl1[tmp_shank1 == iter_local]
+    tmp_stim_local = tmp_stim1[tmp_shank1 == iter_local]
+    if tmp_bsl_local.size != 0:                                               # check if empty array
+        temp_series1 = pd.Series(np.squeeze( tmp_stim_local - tmp_bsl_local  ))
+    tmp_bsl_local = tmp_bsl2[tmp_shank2 == iter_local]
+    tmp_stim_local = tmp_stim2[tmp_shank2 == iter_local]
+    if tmp_bsl_local.size != 0:                                               # check if empty array
+        temp_series2 = pd.Series(np.squeeze( tmp_stim_local - tmp_bsl_local)  )
+    tmp_bsl_local = tmp_bsl3[tmp_shank3 == iter_local]
+    tmp_stim_local = tmp_stim3[tmp_shank3 == iter_local]
+    if tmp_bsl_local.size != 0:                                               # check if empty array
+        temp_series3 = pd.Series(np.squeeze( tmp_stim_local - tmp_bsl_local)  )
+    tmp_bsl_local = tmp_bsl4[tmp_shank4 == iter_local]
+    tmp_stim_local = tmp_stim4[tmp_shank4 == iter_local]
+    if tmp_bsl_local.size != 0:                                               # check if empty array
+        temp_series4 = pd.Series(np.squeeze( tmp_stim_local - tmp_bsl_local)  )
+    tmp_bsl_local = tmp_bsl5[tmp_shank5 == iter_local]
+    tmp_stim_local = tmp_stim5[tmp_shank5 == iter_local]
+    if tmp_bsl_local.size != 0:                                               # check if empty array
+        temp_series5 = pd.Series(np.squeeze( tmp_stim_local - tmp_bsl_local)  )
+    tmp_bsl_local = tmp_bsl6[tmp_shank6 == iter_local]
+    tmp_stim_local = tmp_stim6[tmp_shank6 == iter_local]
+    if tmp_bsl_local.size != 0:                                               # check if empty array
+        temp_series6 = pd.Series(np.squeeze( tmp_stim_local - tmp_bsl_local)  )
+
+    output_df.act = temp_series2
+    output_df.sup = temp_series1
+    output_df.E = temp_series3
+    output_df.I = temp_series4
+    output_df.stim_E = temp_series5
+    output_df.stim_I = temp_series6
+    output_df.session = pd.Series(session_ID * np.ones([len(output_df),],dtype = np.int16),dtype = np.int16)
+    
+    output_df.reset_index(drop =True, inplace = True)
+    
+    output_df = pd.concat([output_df,input_df],ignore_index=True)
+    
+    output_df.reset_index(drop = True, inplace = True)
+    
+    return output_df
+
+def sort_by_shank_neuralAct(shank_num_mask,curation_mask,spikes_bsl,spikes_stim):
+    # INPUTS:
+    # shank_num_mask : a 1D array (length N) containing the shank label for each cluster [0 to 3]
+    # curation_mask : a 1D boolean array (length N) containing curation label for each cluster
+    # spikes_bsl : a 1D array (length N) containing the number of spikes pre-stimulation for each cluster
+    # spikes_stim : a 1D array (length N) containing the number of spikes post-stimulation for each cluster
+    tmp_bsl = spikes_bsl[curation_mask]
+    tmp_stim = spikes_stim[curation_mask]
+    tmp_shank = shank_num_mask[curation_mask]
+    activity_nor = np.zeros([4,],dtype=float)
+    activity_non = np.zeros([4,],dtype=float)
+    activity_non_abs = np.zeros([4,],dtype=float)
+    for iter_local in range(4):   # 4 shanks
+        tmp_bsl_local = tmp_bsl[tmp_shank == iter_local]
+        tmp_stim_local = tmp_stim[tmp_shank == iter_local]
+        if tmp_bsl_local.size != 0:                                               # check if empty array
+            activity_nor[iter_local] = np.mean(tmp_stim_local/tmp_bsl_local - 1)    # Normlaized neural activty 
+            activity_non[iter_local] = np.mean(tmp_stim_local - tmp_bsl_local)      # Non-normlaized neural activty (subtracting the baseline activity)
+            activity_non_abs[iter_local] = np.mean(tmp_stim_local)                  # Non-normalized neural activity (only the spikes during the stim duration)
+    
+    return (activity_nor, activity_non, activity_non_abs)
     
 def sort_cell_type(input_arr,shank_arr):
     # Function counts the number of wide, narrow and pyramidal cells from the matlab output (.mat file called pop_celltypes.mat)
@@ -55,6 +167,20 @@ def sort_cell_type(input_arr,shank_arr):
             elif str_celltype == 'Wide Interneuron':
                 output_arr[2,shank_arr[iter]] += 1 
         return output_arr
+    
+def sort_cell_type_2(shank_num_mask,curation_mask):
+    # Function sorts (into shanks) the number of Activated and Suppressed E and I cells from the matlab output
+    output_arr = np.zeros([4,],dtype = np.int32)
+    tmp_shank = shank_num_mask[curation_mask]
+    
+    for iter_local in range(4):
+        sst_junk = tmp_shank[tmp_shank == iter_local]
+        if sst_junk.size != 0:
+            output_arr[iter_local] = sst_junk.size
+        else:
+            output_arr[iter_local] = 0
+        
+    return output_arr
     
 def convert2df(T2P_allsessions):
     # Function is being used to organize the array for trough to peak time (ms) 
@@ -77,13 +203,26 @@ def convert2df(T2P_allsessions):
     for iter_local in range(len(T2P_allsessions)):
         T2P = pd.concat([T2P,pd.Series(np.squeeze(T2P_allsessions[iter_local]))])
     
-    tmp_bool = np.array(T2P > 0.55)
+    tmp_bool = np.array(T2P > 0.47)
     df_excit.T2P = T2P[tmp_bool]
     df_excit.index = np.linspace(0,df_excit.T2P.shape[0]-1,df_excit.T2P.shape[0])
-    tmp_bool = np.array(T2P <= 0.55)
+    tmp_bool = np.array(T2P <= 0.47)
     df_inhib.T2P = T2P[tmp_bool]
     df_inhib.index = np.linspace(0,df_inhib.T2P.shape[0]-1,df_inhib.T2P.shape[0])
     return df_excit,df_inhib
+
+def extract_spikes(clus_property_local):
+    N_stim = np.zeros([len(clus_property_local),],dtype = np.int32)
+    N_bsl = np.zeros([len(clus_property_local),],dtype = np.int32)
+    cluster_propery = np.zeros([len(clus_property_local),],dtype = np.int8)
+    shank_num = np.ones([len(clus_property_local),],dtype = np.int8)
+    for itr in range(len(clus_property_local)):
+        N_stim[itr] = clus_property_local[itr]['N_spikes_stim']
+        N_bsl[itr] = clus_property_local[itr]['N_spikes_bsl']
+        cluster_propery[itr] = clus_property_local[itr]['clus_prop']
+        shank_num[itr] = clus_property_local[itr]['shank_num']
+    return (cluster_propery,N_stim,N_bsl,shank_num)
+    
 
 def combine_sessions(source_dir, str_ID):
     # source_dir : source directory global (ie for mouse instead of a single session)
@@ -113,9 +252,9 @@ def combine_sessions(source_dir, str_ID):
     elif (str_ID.lower() == 'BC8'.lower()):
         linear_xaxis = np.array([-3,-2,-1,2,2,7,8,15,21,54])     
     elif (str_ID.lower() == 'RH-8'.lower()):
-        linear_xaxis = np.array([-2,-1,2,7,14,21,28,35,42,49])  
+        linear_xaxis = np.array([-2,-1,2,7,14,21,28,35,42,49,56])  
     elif (str_ID.lower() == 'RH-9'.lower()):
-        linear_xaxis = np.array([-3,-2,-1,2,7,14,21,28,35,42,49])
+        linear_xaxis = np.array([-2,-1,2,7,14,21,28,35,42,49])
     else:
         sys.exit('No string matched with: ' + str_ID)
             
@@ -140,6 +279,7 @@ def combine_sessions(source_dir, str_ID):
 
     pop_stats = {}
     pop_stats_cell = {}
+    clus_property = {}
     names_datasets = []
     iter = 0
     # Loading all longitudinal data into dictionaries 
@@ -148,11 +288,14 @@ def combine_sessions(source_dir, str_ID):
             folder_loc_mat = os.path.join(source_dir,name)
             if os.path.isdir(folder_loc_mat):
                 pop_stats[iter] = sio.loadmat(os.path.join(folder_loc_mat,'Processed/count_analysis/population_stat_responsive_only.mat'))
+                clus_property[iter] = np.load(os.path.join(folder_loc_mat,'Processed/count_analysis/all_clus_property.npy'),allow_pickle=True)
                 pop_stats_cell[iter] = sio.loadmat(os.path.join(folder_loc_mat,'Processed/cell_type/pop_celltypes.mat'))
                 names_datasets.append(name)
                 iter += 1
             
     act_nclus = np.zeros([len(pop_stats),4])
+    act_E_nclus = np.zeros([len(pop_stats),4])
+    act_I_nclus = np.zeros([len(pop_stats),4])
     act_FR = np.zeros([len(pop_stats),4])
     suppressed_nclus = np.zeros([len(pop_stats),4])
     inh_FR = np.zeros([len(pop_stats),4])
@@ -164,6 +307,26 @@ def combine_sessions(source_dir, str_ID):
     celltype_shank = np.zeros([len(pop_stats),3,4])
     excitatory_cell = np.zeros([len(pop_stats),4]) # by shank
     inhibitory_cell = np.zeros([len(pop_stats),4]) # by shank
+    activity_nor = np.zeros([len(pop_stats),6,4])    # lots of FR by cluster/response type  Normalized to baseline
+    activity_non = np.zeros([len(pop_stats),6,4])    # lots of FR by cluster/response type  Non normalized
+    activity_non_abs = np.zeros([len(pop_stats),6,4])  # lots of FR by cluster/response type  Non normalized. Count of number of spikes during stim
+    clus_N = np.zeros([len(pop_stats),6])
+    df_all_clusters = pd.DataFrame(
+        {
+            "session": [],
+            "act" : [],
+            "sup" : [],
+            "E" : [],
+            "I" : [],
+            "stim_E" : [],
+            "stim_I" : []
+        }
+    )
+    df_all_clusters_A = deepcopy(df_all_clusters)
+    df_all_clusters_B = deepcopy(df_all_clusters)
+    df_all_clusters_C = deepcopy(df_all_clusters)
+    df_all_clusters_D = deepcopy(df_all_clusters)
+    # FR_new = np.zeros([len(pop_stats),3,3])     
     # celltype_excit = np.zeros([len(pop_stats),3])
     # celltype_inhib = np.zeros([len(pop_stats),3])
     T2P_allsessions = []    # list of 1D numpy arrays
@@ -212,12 +375,99 @@ def combine_sessions(source_dir, str_ID):
         # excitatory and inhibitory neuron populations
         excitatory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_excit'],pop_stats_cell[iter]['shank_num'])
         inhibitory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_inhib'],pop_stats_cell[iter]['shank_num'])
+        # Saving spike counts
+        (cluster_property,N_stim,N_bsl,shank_num) = extract_spikes(clus_property[iter])
         
+        # Spike analysis (neural activity) [each animal has an equal footing ie data is prepared for averaging over animals]
+        (activity_nor_local,activity_non_local,activity_non_abs_local) = sort_by_shank_neuralAct(shank_num,np.squeeze(cluster_property == -1),N_bsl,N_stim)
+        activity_nor[iter,0,:] = activity_nor_local   # Normlaized neural activty (suppressed)
+        activity_non[iter,0,:] = activity_non_local   # Non-normlaized neural activty suppressed
+        activity_non_abs[iter,0,:] = activity_non_abs_local # number of spikes fired during the stimulation period by the suppressed neuron
+        (activity_nor_local,activity_non_local,activity_non_abs_local) = sort_by_shank_neuralAct(shank_num,np.squeeze(cluster_property == 1),N_bsl,N_stim)
+        activity_nor[iter,1,:] = activity_nor_local   # Normlaized neural activty (activated)
+        activity_non[iter,1,:] = activity_non_local   # Non-normlaized neural activty activated
+        # FR by E and I
+        mask_local = np.squeeze(pop_stats_cell[iter]['type_excit']) == 1
+        (activity_nor_local,activity_non_local,activity_non_abs_local) = sort_by_shank_neuralAct(shank_num,mask_local,N_bsl,N_stim)
+        activity_nor[iter,2,:] = activity_nor_local   # Normlaized neural activty (E cells)
+        activity_non[iter,2,:] = activity_non_local   # Non-normlaized neural activty E cells
+        mask_local = np.squeeze(pop_stats_cell[iter]['type_inhib']) == 1
+        (activity_nor_local,activity_non_local,activity_non_abs_local) = sort_by_shank_neuralAct(shank_num,mask_local,N_bsl,N_stim)
+        activity_nor[iter,3,:] = activity_nor_local   # Normlaized neural activty (I cells)
+        activity_non[iter,3,:] = activity_non_local   # Non-normlaized neural activty I cells
+        # FR of stimulus locked E cells 
+        mask_local = np.logical_and(np.squeeze(pop_stats_cell[iter]['type_excit']) == 1, cluster_property == 1)
+        (activity_nor_local,activity_non_local,activity_non_abs_local) = sort_by_shank_neuralAct(shank_num,mask_local,N_bsl,N_stim)
+        activity_nor[iter,4,:] = activity_nor_local   # Normlaized neural activty (I cells)
+        activity_non[iter,4,:] = activity_non_local   # Non-normlaized neural activty I cells
+        # FR of stimulus locked I cells 
+        mask_local = np.logical_and(np.squeeze(pop_stats_cell[iter]['type_inhib']) == 1, cluster_property == 1)
+        (activity_nor_local,activity_non_local,activity_non_abs_local) = sort_by_shank_neuralAct(shank_num,mask_local,N_bsl,N_stim)
+        activity_nor[iter,5,:] = activity_nor_local   # Normlaized neural activty (I cells)
+        activity_non[iter,5,:] = activity_non_local   # Non-normlaized neural activty I cells
+        
+        # Spike analysis (neural activity) [each cluster has an equal footing ie data is prepared for averaging over clusters irrespective of animals]
+        mask_local_list = [None for _ in range(6)]
+        mask_local_list[0] =  np.squeeze(cluster_property == -1)
+        mask_local_list[1] = np.squeeze(cluster_property == 1)
+        mask_local_list[2] = np.squeeze(pop_stats_cell[iter]['type_excit']) == 1
+        mask_local_list[3] = np.squeeze(pop_stats_cell[iter]['type_inhib']) == 1
+        mask_local_list[4] = np.logical_and(np.squeeze(pop_stats_cell[iter]['type_excit']) == 1, cluster_property == 1)
+        mask_local_list[5] = np.logical_and(np.squeeze(pop_stats_cell[iter]['type_inhib']) == 1, cluster_property == 1)
+        
+        df_all_clusters_A = sort_single_shank_neuralAct_allclus(shank_num, mask_local_list, N_bsl, N_stim, df_all_clusters_A,shank_ID = 0,session_ID = iter)
+        df_all_clusters_B = sort_single_shank_neuralAct_allclus(shank_num, mask_local_list, N_bsl, N_stim, df_all_clusters_B,shank_ID = 1,session_ID = iter)
+        df_all_clusters_C = sort_single_shank_neuralAct_allclus(shank_num, mask_local_list, N_bsl, N_stim, df_all_clusters_C,shank_ID = 2,session_ID = iter)
+        df_all_clusters_D = sort_single_shank_neuralAct_allclus(shank_num, mask_local_list, N_bsl, N_stim, df_all_clusters_D,shank_ID = 3,session_ID = iter)
+        
+        
+        # number of clusters
+        clus_N[iter,0] = (cluster_property == -1).sum()     # number of suppressed clusters
+        clus_N[iter,1] = (cluster_property == 1).sum()      # number of activated clusters
+        clus_N[iter,2] = (np.squeeze(pop_stats_cell[iter]['type_excit']) == 1).sum()
+        clus_N[iter,3] = (np.squeeze(pop_stats_cell[iter]['type_inhib']) == 1).sum()
+        clus_N[iter,4] = (np.logical_and( np.squeeze(pop_stats_cell[iter]['type_excit']) == 1, cluster_property == 1)).sum()
+        clus_N[iter,5] = (np.logical_and( np.squeeze(pop_stats_cell[iter]['type_inhib']) == 1, cluster_property == 1)).sum()
+        mask_local = np.logical_and( np.squeeze(pop_stats_cell[iter]['type_excit']) == 1, cluster_property == 1)
+        act_E_nclus[iter,:] = sort_cell_type_2(shank_num, mask_local)
+        mask_local = np.logical_and( np.squeeze(pop_stats_cell[iter]['type_inhib']) == 1, cluster_property == 1)
+        act_I_nclus[iter,:] = sort_cell_type_2(shank_num, mask_local)
         # Saving T2P for global histogram
         str_local = 'session_' + str(iter)
         T2P_allsessions.append(np.squeeze(pop_stats_cell[iter]['troughToPeak']))
         
-        
+    # combining     
+    all_clusters_A = np.squeeze(df_all_clusters_A.to_numpy(dtype = float))
+    all_clusters_B = np.squeeze(df_all_clusters_B.to_numpy(dtype = float))
+    all_clusters_C = np.squeeze(df_all_clusters_C.to_numpy(dtype = float))
+    all_clusters_D = np.squeeze(df_all_clusters_D.to_numpy(dtype = float))
+    
+    max_clus_in_shank = np.max(np.array([all_clusters_A.shape[0],all_clusters_B.shape[0],all_clusters_C.shape[0],all_clusters_D.shape[0]]))
+    
+    for iter in range(4): # loop over shanks
+        if iter == 0:
+            tmp_append = np.empty([max_clus_in_shank - all_clusters_A.shape[0],7],dtype = float)
+            tmp_append[:] = np.nan
+            if tmp_append.shape[0] != 0:
+                all_clusters_A = deepcopy(np.append(all_clusters_A,tmp_append,axis = 0))
+        elif iter == 1:
+            tmp_append = np.empty([max_clus_in_shank - all_clusters_B.shape[0],7],dtype = float)
+            tmp_append[:] = np.nan
+            if tmp_append.shape[0] != 0:
+                all_clusters_B = deepcopy(np.append(all_clusters_B,tmp_append,axis = 0))
+        elif iter == 2:
+            tmp_append = np.empty([max_clus_in_shank - all_clusters_C.shape[0],7],dtype = float)
+            tmp_append[:] = np.nan
+            if tmp_append.shape[0] != 0:
+                all_clusters_C = deepcopy(np.append(all_clusters_C,tmp_append,axis = 0))
+        elif iter == 3:
+            tmp_append = np.empty([max_clus_in_shank - all_clusters_D.shape[0],7],dtype = float)
+            tmp_append[:] = np.nan
+            if tmp_append.shape[0] != 0:
+                all_clusters_D = deepcopy(np.append(all_clusters_D,tmp_append,axis = 0))
+    
+    # Concatenating (all cluster )
+    all_clusters = np.stack((all_clusters_A,all_clusters_B,all_clusters_C,all_clusters_D),axis = 2)
     # total neurons by cell type
     # celltype_total = celltype_excit + celltype_inhib
     # total_activity_act = act_FR
@@ -234,10 +484,16 @@ def combine_sessions(source_dir, str_ID):
     full_mouse_ephys['excitatory_cell'] = excitatory_cell
     full_mouse_ephys['inhibitory_cell'] = inhibitory_cell
     full_mouse_ephys['act_nclus'] = act_nclus
+    full_mouse_ephys['act_E_nclus'] = act_E_nclus
+    full_mouse_ephys['act_I_nclus'] = act_I_nclus
     full_mouse_ephys['suppressed_nclus'] = suppressed_nclus
     full_mouse_ephys['x_ticks_labels'] = x_ticks_labels
     full_mouse_ephys['celltype_total'] = celltype_total
     full_mouse_ephys['celltype_shank'] = celltype_shank
+    full_mouse_ephys['clus_N'] = clus_N
+    full_mouse_ephys['activity_nor'] = activity_nor
+    full_mouse_ephys['activity_non'] = activity_non
+    full_mouse_ephys['all_clusters'] = all_clusters
     # full_mouse_ephys['T2P'] = T2P_allsessions
     # full_mouse_ephys['total_activity_act'] = total_activity_act
     full_mouse_ephys['FR_act'] = act_FR
@@ -294,6 +550,101 @@ def combine_sessions(source_dir, str_ID):
     plt.savefig(filename_save,format = 'png')
     plt.close(f)
 
+    # Population Analysis Figure2 (not by shank but global)
+    filename_save = os.path.join(source_dir,'Population_analysis_cell_2.png')
+    f, a = plt.subplots(1,3)
+    a[0].set_ylabel('Pop. Count')
+    # a[0,].set_ylabel('Pop. Count')
+    a[0].set_xlabel('Days')
+    a[1].set_xlabel('Days')
+    a[2].set_xlabel('Days')
+    len_str = 'Population Analysis'
+    f.suptitle(len_str)
+    a[0].set_title("All Populations (this mouse)")
+    a[0].plot(x_ticks_labels,clus_N[:,0],'r', lw=1.5)
+    a[0].plot(x_ticks_labels,clus_N[:,1],'b', lw=1.5)
+    a[0].legend(['Suppressed','Activated'])
+    a[1].set_title("All Populations (this mouse)")
+    a[1].plot(x_ticks_labels,clus_N[:,2],'r', lw=1.5)
+    a[1].plot(x_ticks_labels,clus_N[:,3],'b', lw=1.5)
+    a[1].legend(['Excitatory','Inhibitory'])
+    a[2].set_title("All Populations (this mouse)")
+    a[2].plot(x_ticks_labels,clus_N[:,4],'r', lw=1.5)
+    a[2].plot(x_ticks_labels,clus_N[:,5],'b', lw=1.5)
+    a[2].legend(['Stim-locked E Cells','Stim-locked I Cells'])
+    f.set_size_inches((20, 8), forward=False)
+    plt.savefig(filename_save,format = 'png')
+    plt.close(f)
+    # Neural Activity (Spikes)
+    filename_save = os.path.join(source_dir,'Neural_Activity_Spikes.png')
+    f, a = plt.subplots(2,3)
+    a[0,0].set_ylabel(r"$\Delta$ $S_n$")
+    a[1,0].set_ylabel(r"$\Delta$ $S$")
+    a[1,0].set_xlabel('Days')
+    a[1,1].set_xlabel('Days')
+    a[1,2].set_xlabel('Days')
+    len_str = 'Tracking Neural Activity Post Stroke'
+    f.suptitle(len_str)
+    a[0,0].set_title("All Activity (this mouse)")
+    a[0,0].plot(x_ticks_labels,np.sum(activity_nor[:,0,:],axis = 1),'r', lw=1.5)
+    a[0,0].plot(x_ticks_labels,np.sum(activity_nor[:,1,:],axis = 1),'b', lw=1.5)
+    a[0,0].legend(['Suppressed','Activated'])
+    a[0,1].set_title("All Activity (this mouse)")
+    a[0,1].plot(x_ticks_labels,np.sum(activity_nor[:,2,:],axis = 1),'r', lw=1.5)
+    a[0,1].plot(x_ticks_labels,np.sum(activity_nor[:,3,:],axis = 1),'b', lw=1.5)
+    a[0,1].legend(['Excitatory','Inhibitory'])
+    a[0,2].set_title("All Activity (this mouse)")
+    a[0,2].plot(x_ticks_labels,np.sum(activity_nor[:,4,:],axis = 1),'r', lw=1.5)
+    a[0,2].plot(x_ticks_labels,np.sum(activity_nor[:,5,:],axis = 1),'b', lw=1.5)
+    a[0,2].legend(['Activated E Cells','Activated I Cells'])
+    a[1,0].set_title("All Activity (this mouse)")
+    a[1,0].plot(x_ticks_labels,np.sum(activity_non[:,0,:],axis = 1),'r', lw=1.5)
+    a[1,0].plot(x_ticks_labels,np.sum(activity_non[:,1,:],axis = 1),'b', lw=1.5)
+    a[1,0].legend(['Suppressed','Activated'])
+    a[1,1].set_title("All Activity (this mouse)")
+    a[1,1].plot(x_ticks_labels,np.sum(activity_non[:,2,:],axis = 1),'r', lw=1.5)
+    a[1,1].plot(x_ticks_labels,np.sum(activity_non[:,3,:],axis = 1),'b', lw=1.5)
+    a[1,1].legend(['Excitatory','Inhibitory'])
+    a[1,2].set_title("All Activity (this mouse)")
+    a[1,2].plot(x_ticks_labels,np.sum(activity_non[:,4,:],axis = 1),'r', lw=1.5)
+    a[1,2].plot(x_ticks_labels,np.sum(activity_non[:,5,:],axis = 1),'b', lw=1.5)
+    a[1,2].legend(['Stim-locked E Cells','Stim-locked I Cells'])
+    f.set_size_inches((20, 8), forward=False)
+    plt.savefig(filename_save,format = 'png')
+    plt.close(f)
+    # Neural Activity (Spikes) by shank
+    filename_save = os.path.join(source_dir,'Neural_Activity_Spikes-shank.png')
+    f, a = plt.subplots(2,3)
+    a[0,0].set_ylabel(r"$\Delta$ $S$")
+    a[1,0].set_ylabel(r"$\Delta$ $S$")
+    a[1,0].set_xlabel('Days')
+    a[1,1].set_xlabel('Days')
+    a[1,2].set_xlabel('Days')
+    len_str = 'Tracking Neural Activity Post Stroke'
+    f.suptitle(len_str)
+    a[0,0].set_title("Activity by Shank (suppressed)")
+    a[0,0].plot(x_ticks_labels,activity_non[:,0,:], lw=1.5)
+    a[0,0].legend(['A','B','C','D'])
+    a[0,1].set_title("Activity by Shank (activated)")
+    a[0,1].plot(x_ticks_labels,activity_non[:,1,:], lw=1.5)
+    a[0,1].legend(['A','B','C','D'])
+    a[0,2].set_title("Activity by Shank (E cell)")
+    a[0,2].plot(x_ticks_labels,activity_non[:,2,:], lw=1.5)
+    a[0,2].legend(['A','B','C','D'])
+    a[1,0].set_title("Activity by Shank (I cell)")
+    a[1,0].plot(x_ticks_labels,activity_non[:,3,:], lw=1.5)
+    a[1,0].legend(['A','B','C','D'])
+    a[1,1].set_title("Stimulus Locked E cell")
+    a[1,1].plot(x_ticks_labels,activity_non[:,4,:], lw=1.5)
+    a[1,1].legend(['A','B','C','D'])
+    a[1,2].set_title("Stimulus Locked I cell")
+    a[1,2].plot(x_ticks_labels,activity_non[:,5,:], lw=1.5)
+    a[1,2].legend(['A','B','C','D'])
+    f.set_size_inches((20, 8), forward=False)
+    plt.savefig(filename_save,format = 'png')
+    plt.close(f)
+    # Neural Activity (Bursting)
+    
     # Plot for Trough2Peak latency (in ms)
     tmp_str = source_dir.split('/')[-2:]
     tmp_str = ' '.join(tmp_str)
@@ -304,7 +655,8 @@ def combine_sessions(source_dir, str_ID):
     ax1 = sns.histplot(data=df_excit, x="T2P", color="red", label="Trough to Peak", kde=True)
     sns.histplot(data=df_inhib, x="T2P", color="skyblue", label="Trough to Peak", kde=True, ax = ax1)
     ax1.set_xlabel('Trough to Peak (ms)')
-    f = plt.gcf()
+    f = plt.figure() 
+    # f = plt.gcf()
     f.set_size_inches((12, 6), forward=False)
     plt.savefig(filename_save,format = 'png')
     plt.close(f)
