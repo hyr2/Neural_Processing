@@ -11,6 +11,7 @@ import pandas as pd
 from scipy import signal, interpolate
 from matplotlib import pyplot as plt
 import numpy as np
+import copy
 
 def ShowFFT(input_signal,Fs, fig_flag = 1):
     N = len(input_signal)
@@ -491,6 +492,7 @@ def bsl_norm(time_series):
         
     return time_series_out
 
+
 def bsl_norm_df(input_df):
     [x,y] = input_df.shape
     # bsl_mean_arr_s = pd.Series([],index=['activated','suppressed','excitatory','inhibitory','nor'],dtype = 'float')
@@ -502,8 +504,92 @@ def bsl_norm_df(input_df):
     output_df = output_df.div(bsl_mean_arr_s,axis = 1)
     return output_df
     
-    
-    
+def combine_bsl(input_dict):
+    # input the full dict_dict for all animals
+    # This will combine the animals with multiple baselines into a single value
+    for anima_ID in input_dict:      # loop over animals
+        x_axis_local = input_dict[anima_ID]['x_ticks_labels']
+        loc_bsl_indx = np.squeeze(np.where(np.squeeze(np.isin(x_axis_local, np.array([-3,-2,-1])))))
+        
+        # Stimulus Locked Activated Neurons
+        tmp_arr = input_dict[anima_ID]['act_nclus']                         # Get dictionary of animal
+        bsl_avg = np.mean(tmp_arr[loc_bsl_indx,:],axis = 0)                 # get avg baseline
+        tmp_arr = copy.deepcopy(np.delete(tmp_arr,loc_bsl_indx,axis = 0))   # delete all baselines
+        tmp_arr = copy.deepcopy(np.insert(tmp_arr,0,bsl_avg,axis = 0))      # insert averaged baseline 
+        input_dict[anima_ID]['act_nclus'] = tmp_arr
+        # Stimulus Locked Suppressed Neurons
+        tmp_arr = input_dict[anima_ID]['suppressed_nclus']                         # Get dictionary of animal
+        bsl_avg = np.mean(tmp_arr[loc_bsl_indx,:],axis = 0)                 # get avg baseline
+        tmp_arr = copy.deepcopy(np.delete(tmp_arr,loc_bsl_indx,axis = 0))   # delete all baselines
+        tmp_arr = copy.deepcopy(np.insert(tmp_arr,0,bsl_avg,axis = 0))      # insert averaged baseline 
+        input_dict[anima_ID]['suppressed_nclus'] = tmp_arr
+        # Stimulus Locked E Cell
+        tmp_arr = input_dict[anima_ID]['act_E_nclus']                         # Get dictionary of animal
+        bsl_avg = np.mean(tmp_arr[loc_bsl_indx,:],axis = 0)                 # get avg baseline
+        tmp_arr = copy.deepcopy(np.delete(tmp_arr,loc_bsl_indx,axis = 0))   # delete all baselines
+        tmp_arr = copy.deepcopy(np.insert(tmp_arr,0,bsl_avg,axis = 0))      # insert averaged baseline 
+        input_dict[anima_ID]['act_E_nclus'] = tmp_arr
+        # Stimulus Locked I Cell
+        tmp_arr = input_dict[anima_ID]['act_I_nclus']                         # Get dictionary of animal
+        bsl_avg = np.mean(tmp_arr[loc_bsl_indx,:],axis = 0)                 # get avg baseline
+        tmp_arr = copy.deepcopy(np.delete(tmp_arr,loc_bsl_indx,axis = 0))   # delete all baselines
+        tmp_arr = copy.deepcopy(np.insert(tmp_arr,0,bsl_avg,axis = 0))      # insert averaged baseline 
+        input_dict[anima_ID]['act_I_nclus'] = tmp_arr
+        # Excitatory Neurons
+        tmp_arr = input_dict[anima_ID]['excitatory_cell']                         # Get dictionary of animal
+        bsl_avg = np.mean(tmp_arr[loc_bsl_indx,:],axis = 0)                 # get avg baseline
+        tmp_arr = copy.deepcopy(np.delete(tmp_arr,loc_bsl_indx,axis = 0))   # delete all baselines
+        tmp_arr = copy.deepcopy(np.insert(tmp_arr,0,bsl_avg,axis = 0))      # insert averaged baseline 
+        input_dict[anima_ID]['excitatory_cell'] = tmp_arr
+        # Inhibitory Neurons
+        tmp_arr = input_dict[anima_ID]['inhibitory_cell']                         # Get dictionary of animal
+        bsl_avg = np.mean(tmp_arr[loc_bsl_indx,:],axis = 0)                 # get avg baseline
+        tmp_arr = copy.deepcopy(np.delete(tmp_arr,loc_bsl_indx,axis = 0))   # delete all baselines
+        tmp_arr = copy.deepcopy(np.insert(tmp_arr,0,bsl_avg,axis = 0))      # insert averaged baseline 
+        input_dict[anima_ID]['inhibitory_cell'] = tmp_arr
+        # Stimulus Locked Activated Neurons
+        tmp_arr = input_dict[anima_ID]['nor_nclus_total']                         # Get dictionary of animal
+        bsl_avg = np.mean(tmp_arr[loc_bsl_indx,:],axis = 0)                 # get avg baseline
+        tmp_arr = copy.deepcopy(np.delete(tmp_arr,loc_bsl_indx,axis = 0))   # delete all baselines
+        tmp_arr = copy.deepcopy(np.insert(tmp_arr,0,bsl_avg,axis = 0))      # insert averaged baseline 
+        input_dict[anima_ID]['nor_nclus_total'] = tmp_arr
+        # Celltype Total
+        tmp_arr = input_dict[anima_ID]['celltype_total']                         # Get dictionary of animal
+        bsl_avg = np.mean(tmp_arr[loc_bsl_indx,:],axis = 0)                 # get avg baseline
+        tmp_arr = copy.deepcopy(np.delete(tmp_arr,loc_bsl_indx,axis = 0))   # delete all baselines
+        tmp_arr = copy.deepcopy(np.insert(tmp_arr,0,bsl_avg,axis = 0))      # insert averaged baseline 
+        input_dict[anima_ID]['celltype_total'] = tmp_arr
+        # Celltype by shank
+        tmp_arr = input_dict[anima_ID]['celltype_shank']                         # Get dictionary of animal
+        bsl_avg = np.mean(tmp_arr[loc_bsl_indx,:,:],axis = 0)                 # get avg baseline
+        tmp_arr = copy.deepcopy(np.delete(tmp_arr,loc_bsl_indx,axis = 0))   # delete all baselines
+        tmp_arr = copy.deepcopy(np.insert(tmp_arr,0,bsl_avg,axis = 0))      # insert averaged baseline 
+        input_dict[anima_ID]['celltype_shank'] = tmp_arr
+        # Activity NoN (non normalized neural activty above baseline)
+        tmp_arr = input_dict[anima_ID]['activity_non']                         # Get dictionary of animal
+        bsl_avg = np.mean(tmp_arr[loc_bsl_indx,:,:],axis = 0)                 # get avg baseline
+        tmp_arr = copy.deepcopy(np.delete(tmp_arr,loc_bsl_indx,axis = 0))   # delete all baselines
+        tmp_arr = copy.deepcopy(np.insert(tmp_arr,0,bsl_avg,axis = 0))      # insert averaged baseline 
+        input_dict[anima_ID]['activity_non'] = tmp_arr
+        # Activity Nor (bsl normalized neural activty)
+        tmp_arr = input_dict[anima_ID]['activity_nor']                         # Get dictionary of animal
+        bsl_avg = np.mean(tmp_arr[loc_bsl_indx,:,:],axis = 0)                 # get avg baseline
+        tmp_arr = copy.deepcopy(np.delete(tmp_arr,loc_bsl_indx,axis = 0))   # delete all baselines
+        tmp_arr = copy.deepcopy(np.insert(tmp_arr,0,bsl_avg,axis = 0))      # insert averaged baseline 
+        input_dict[anima_ID]['activity_nor'] = tmp_arr
+        # Activity NoN Abs (non normalized absolute neural activty during stim)
+        tmp_arr = input_dict[anima_ID]['activity_non_abs']                         # Get dictionary of animal
+        bsl_avg = np.mean(tmp_arr[loc_bsl_indx,:,:],axis = 0)                 # get avg baseline
+        tmp_arr = copy.deepcopy(np.delete(tmp_arr,loc_bsl_indx,axis = 0))   # delete all baselines
+        tmp_arr = copy.deepcopy(np.insert(tmp_arr,0,bsl_avg,axis = 0))      # insert averaged baseline 
+        input_dict[anima_ID]['activity_non_abs'] = tmp_arr
+        
+        tmp_x = np.delete(x_axis_local,loc_bsl_indx)
+        x_axis_local = np.insert(tmp_x,0,-2)
+        input_dict[anima_ID]['x_ticks_labels'] = x_axis_local
+        
+    output_dict = copy.deepcopy(input_dict)
+    return output_dict
         
     
     
