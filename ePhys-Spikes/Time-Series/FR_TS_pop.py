@@ -413,10 +413,10 @@ def combine_sessions(source_dir, str_ID):
         
         # Spike analysis (neural activity) [each cluster has an equal footing ie data is prepared for averaging over clusters irrespective of animals]
         mask_local_list = [None for _ in range(6)]
-        mask_local_list[0] =  np.squeeze(cluster_property == -1)
-        mask_local_list[1] = np.squeeze(cluster_property == 1)
-        mask_local_list[2] = np.squeeze(pop_stats_cell[iter]['type_excit']) == 1
-        mask_local_list[3] = np.squeeze(pop_stats_cell[iter]['type_inhib']) == 1
+        mask_local_list[0] =  np.squeeze(cluster_property == -1)    # suppressed
+        mask_local_list[1] = np.squeeze(cluster_property == 1)      # activated
+        mask_local_list[2] = np.squeeze(pop_stats_cell[iter]['type_excit']) == 1    # excitatory cells
+        mask_local_list[3] = np.squeeze(pop_stats_cell[iter]['type_inhib']) == 1    # inhibitory cells
         mask_local_list[4] = np.logical_and(np.squeeze(pop_stats_cell[iter]['type_excit']) == 1, cluster_property == 1)
         mask_local_list[5] = np.logical_and(np.squeeze(pop_stats_cell[iter]['type_inhib']) == 1, cluster_property == 1)
         

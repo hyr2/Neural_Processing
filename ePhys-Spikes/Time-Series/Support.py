@@ -270,8 +270,8 @@ def interp_session_loss(data_in, day_local_axis, day_axis_ideal):
     YY_dim = data_in.shape[1]
     
     # day_local_axis changed to include all three baselines
-    if not any(np.isin(day_local_axis,-3)):
-        day_local_axis = np.insert(day_local_axis,0,-3)
+    # if not any(np.isin(day_local_axis,-3)):
+        # day_local_axis = np.insert(day_local_axis,0,-3)
         
     local_indx = np.squeeze(np.where(day_local_axis < 28 ))
     # if before day 28 (performing nearest neighbour)    
@@ -283,14 +283,14 @@ def interp_session_loss(data_in, day_local_axis, day_axis_ideal):
     local_indx = np.squeeze(np.where(day_local_axis >= 28 ))
     avg_local = np.rint(np.nanmean(np.reshape(data_in[local_indx,:],[local_indx.size,YY_dim]),axis = 0))
     tmp_indx = np.isin(day_axis_ideal,day_local_axis[local_indx])
-    tmp_indx = ~tmp_indx[7:]    # day 28 is a hard coded (requested by Dr.Lan)
+    tmp_indx = ~tmp_indx[5:]    # day 28 is a hard coded (requested by Dr.Lan)
     out_arr_28 = np.zeros([tmp_indx.size,YY_dim])
     out_arr_28[tmp_indx,:] = avg_local
     
     # merging two
     merged_arr = np.vstack((out_arr,out_arr_28))
     local_indx = ~np.isin(day_axis_ideal,day_local_axis)
-    local_indx[:7] = True
+    local_indx[:5] = True
     local_indx = ~local_indx
     
     local_indx_tmp = np.squeeze(np.where(day_local_axis >= 28 ))
@@ -483,8 +483,8 @@ def append_df_to_excel(filename, df, sheet_name='Sheet1', startrow=None,
     writer.save()
     
 def bsl_norm(time_series):
-    # 1D timeseries (baeline is the first three data points by default)
-    bsl_mean = np.mean(time_series[0:3])
+    # 1D timeseries (baeline is the first data point by default)
+    bsl_mean = time_series[0]
     if bsl_mean == 0:
         time_series_out = np.nan * np.ones(time_series.shape) 
     else:

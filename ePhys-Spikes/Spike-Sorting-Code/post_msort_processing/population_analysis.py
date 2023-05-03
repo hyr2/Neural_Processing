@@ -403,6 +403,8 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         #     else:
         #         clus_property = ANALYSIS_NOCHANGE
         
+        # Add t-test + add spike count difference as two new metrics for "activated" and "suppressed" neurons
+        
         max_z = np.amax((firing_rate_zscore[t_3:t_4]))
         min_z = np.amin((firing_rate_zscore[t_3:t_4]))
         clus_property_1 = 0
