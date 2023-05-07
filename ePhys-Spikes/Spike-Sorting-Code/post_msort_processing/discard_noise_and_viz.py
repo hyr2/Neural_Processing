@@ -508,7 +508,7 @@ def postprocess_one_session(SESSION_FOLDER, session_newsavefolder, PARAMS, COMMO
         if (polarity>0):
             positive_mask[i_clus] = True
             suspicious_mask[i_clus] = True
-        if (trough2peak_duration<0.2 or trough2peak_duration>1.3):
+        if (trough2peak_duration<0.18 or trough2peak_duration>1.35):
             suspicious_mask[i_clus] = True
 
     pd.DataFrame(data=positive_mask.astype(int)).to_csv(os.path.join(session_folder_load, "positive_mask.csv"), index=False, header=False)
