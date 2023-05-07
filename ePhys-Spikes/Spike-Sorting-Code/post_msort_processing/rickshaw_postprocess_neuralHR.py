@@ -18,6 +18,8 @@ from population_analysis import *
 import os, json
 from natsort import natsorted
 import matlab.engine
+sys.path.append(r'../../Time-Series/')
+from FR_TS_pop import *
 # Automate batch processing of the pre processing step
 
 # read parameters
