@@ -14,12 +14,14 @@ from FR_TS_pop import *
 import os, json
 from natsort import natsorted
 
-Raw_dir = '/home/hyr2-office/Documents/Data/NVC/RH-8/22-12-3/'
+Raw_dir = '/home/hyr2-office/Documents/Data/NVC/RH-7/12-16-22/'
 CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_2x16_flex_Pavlo.mat'
-input_dir = '/home/hyr2-office/Documents/Data/NVC/RH-9/'
+input_dir = '/home/hyr2-office/Documents/Data/NVC/RH-7/'
 
 
 moouse_id = input_dir.split('/')[-2]
+
+# func_discard_noise_and_viz(Raw_dir)
 
 # func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
 combine_sessions(input_dir,moouse_id)
