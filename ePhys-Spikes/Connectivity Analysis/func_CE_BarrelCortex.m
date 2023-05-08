@@ -178,7 +178,7 @@ mono_res = ce_MonoSynConvClick(spikes); %,'includeInhibitoryConnections',false);
 toc
 %% Copied from ProcessCellMetrics ,section Putative MonoSynaptic connections
 
-save('mono_res.cellinfo.mat','mono_res','-v7.3','-nocompression');
+% save('mono_res.cellinfo.mat','mono_res','-v7.3','-nocompression');
 spkExclu=1;
 cell_metrics.putativeConnections.excitatory = mono_res.sig_con_excitatory; % Vectors with cell pairs
 cell_metrics.general.cellCount=size(mono_res.completeIndex,1);
@@ -231,7 +231,7 @@ acg_metrics = calc_ACG_metrics(spikes,Fs,'showFigures',false);
 fit_params = fit_ACG(acg_metrics.acg_narrow,false);
 cell_metrics.acg_tau_rise = fit_params.acg_tau_rise;
 
-preferences.putativeCellType.troughToPeak_boundary=0.425;       % From CE website
+preferences.putativeCellType.troughToPeak_boundary=0.47;       % From CE website (edited for Barrel Cortex)
 preferences.putativeCellType.acg_tau_rise_boundary=6;           % From CE website
 cell_metrics.putativeCellType = celltype_classification.standard(cell_metrics,preferences);
 celltype = cell_metrics.putativeCellType;
@@ -269,7 +269,10 @@ troughtopeak_inhib = cell_metrics.troughToPeak(idx_inhib);
 % print(filename,'-dpng','-r0');
 filename = fullfile(plotfolder,'pop_celltypes.mat');
 save(filename,'type_excit','type_inhib','troughToPeak','derivative_TroughtoPeak','celltype','shank_num','burstIndex_Royer2012','burstIndex_Doublets','thetaModulationIndex'); % all these quantities are only for the curated clusters
+% type_err = (cell_metrics.troughToPeak <= 0.2);
 
+disp(datafolder);
+disp(sum(type_err));
 
 end
 
