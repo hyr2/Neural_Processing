@@ -656,12 +656,12 @@ def combine_sessions(source_dir, str_ID):
     tmp_str = ' '.join(tmp_str)
     if tmp_str[-1] == ' ':
         tmp_str = tmp_str[:-1]
+    f, ax1 = plt.subplots(1,1)
     filename_save = os.path.join(source_dir,'TP_latency_histogram_' + tmp_str + '.png')
     df_excit,df_inhib = convert2df(T2P_allsessions)
-    ax1 = sns.histplot(data=df_excit, x="T2P", color="red", label="Trough to Peak", kde=True)
-    sns.histplot(data=df_inhib, x="T2P", color="skyblue", label="Trough to Peak", kde=True, ax = ax1)
+    sns.histplot(data=df_excit, x="T2P", color="red", label="Trough to Peak", kde=True, ax = ax1, kde_kws = {'bw_adjust' : 1.3},binwidth = 0.05)
+    sns.histplot(data=df_inhib, x="T2P", color="skyblue", label="Trough to Peak", kde=True, ax = ax1,kde_kws = {'bw_adjust' : 1.7},binwidth = 0.05 )
     ax1.set_xlabel('Trough to Peak (ms)')
-    f = plt.figure() 
     # f = plt.gcf()
     f.set_size_inches((12, 6), forward=False)
     plt.savefig(filename_save,format = 'png')
