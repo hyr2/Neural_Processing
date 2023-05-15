@@ -485,11 +485,13 @@ def append_df_to_excel(filename, df, sheet_name='Sheet1', startrow=None,
 def bsl_norm(time_series):
     # 1D timeseries (baeline is the first data point by default)
     bsl_mean = time_series[0]
-    if bsl_mean == 0:
-        time_series_out = np.nan * np.ones(time_series.shape) 
-    else:
-        time_series_out = (time_series - bsl_mean)/bsl_mean
+    # if bsl_mean == 0:
+    #     time_series_out = np.nan * np.ones(time_series.shape) 
+    # else:
+    #     time_series_out = 100*(time_series - bsl_mean)/bsl_mean
         
+    time_series_out = time_series - bsl_mean
+    
     return time_series_out
 
 
