@@ -1,16 +1,16 @@
-function [] = process_single_segment(foldername, Fs)
+function [] = process_single_segment(foldername, Fs, cellexp_path)
     % calculate connectivity
     % Hanlin's CellExplorer hecking codes
     % Fs : seconds
     % Assumes that the working directory is where this matlab file is
-    addpath(genpath("./CellExplorer-master"))
+    addpath(genpath(cellexp_path))
     results_tmp_matpath = [foldername '/mono_res.cellinfo.mat'];
     templates = readmda([foldername '/templates_clean.mda']);
     firings = readmda([foldername '/firings_clean.mda']);
     ch2shank = readmatrix([foldername '/ch2shank.csv']);
     [spikes, spike_times_all, n_ch, present_unit_ids] = construct_spikes(firings, templates, Fs, ch2shank);
     tic
-    mono_res = ce_MonoSynConvClick(spikes, 'includeInhibitoryConnections', true); 
+    mono_res = ce_MonoSynConvClick(spikes, 'includeInhibitoryConnections', true, 'binSize', 0.001); 
     toc
     save(results_tmp_matpath,'mono_res');
 

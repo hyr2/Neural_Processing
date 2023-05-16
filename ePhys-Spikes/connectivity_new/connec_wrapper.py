@@ -1,4 +1,4 @@
-""" 
+"""
 Calls CellExplorer connectivity function from Python. The input format fits barrel-stroke project
 3/29/2023 jiaaoZ
 """
@@ -16,8 +16,8 @@ sys.path.append("../Spike-Sorting-Code/preprocess_rhd")
 from utils.mdaio import readmda, writemda64
 
 
-def connec_wrapper_main(spk_dir_root, mda_tempdir_root, connec_outputdir_root, spk_reldirs, mda_reldirs):
-    
+def connec_wrapper_main(spk_dir_root, mda_tempdir_root, connec_outputdir_root, spk_reldirs, mda_reldirs, cellexp_path):
+
     # prepare inputs for each given session
     list_fs = []
     for spk_reldir, mda_reldir in zip(spk_reldirs, mda_reldirs):
@@ -37,7 +37,7 @@ def connec_wrapper_main(spk_dir_root, mda_tempdir_root, connec_outputdir_root, s
             GW_BETWEENSHANK = 300
         ch2shank = np.array([(geom[ch_id, 0]//GW_BETWEENSHANK) for ch_id in range(geom.shape[0])])
         pd.DataFrame(data=ch2shank).to_csv(
-            os.path.join(session_mda_tempdir, "ch2shank.csv"), 
+            os.path.join(session_mda_tempdir, "ch2shank.csv"),
             index=False, header=False
         )
 
@@ -51,10 +51,10 @@ def connec_wrapper_main(spk_dir_root, mda_tempdir_root, connec_outputdir_root, s
         matlab_argin2 += "%.1f, " % (fs_)
     matlab_argin1 += "}"
     matlab_argin2 += "}"
-    
+
     matlab_args = ["matlab", "-nodisplay", "-nosplash", "-nodesktop", "-r"]
     matlab_cmd = "cd utils_matlab; "
-    matlab_cmd += "process_segs_batch(%s, %s); exit;" % (matlab_argin1, matlab_argin2)
+    matlab_cmd += "process_segs_batch(%s, %s, \"%s\"); exit;" % (matlab_argin1, matlab_argin2, cellexp_path)
     matlab_args.append(matlab_cmd)
     print(matlab_args)
     # run MATLAB
@@ -76,5 +76,6 @@ connec_wrapper_main(
     cfg.mda_tempdir,
     cfg.con_resdir,
     cfg.spk_reldirs,
-    cfg.mda_reldirs
+    cfg.mda_reldirs,
+    cfg.cellexp_path
 )
