@@ -69,7 +69,7 @@ def clean_mdas(msort_path, postproc_path, mda_savepath):
     """
     
     ### read clustering metrics file 
-    const_SEGMENT_LEN = 3600 # seconds
+    # const_SEGMENT_LEN = 3600 # seconds
     with open(os.path.join(msort_path, "combine_metrics_new.json"), 'r') as f:
         x = json.load(f)
     # read firing stamps, template and continuous waveforms from MountainSort outputs and some processing
@@ -86,9 +86,11 @@ def clean_mdas(msort_path, postproc_path, mda_savepath):
     peak_snr[clus_labels-1] = peak_snr_short
     spiking_mask = (peak_snr>=0)
     # read rejection mask
-    accept_mask = np.load(os.path.join(postproc_path, "cluster_rejection_mask.npz"))['single_unit_mask']
+    accept_mask = np.load(os.path.join(postproc_path, "cluster_rejection_mask.npz"))['single_unit_mask'].astype(bool)
+    positive_mask = pd.read_csv(os.path.join(postproc_path, "positive_mask.csv"), header=None).values.squeeze().astype(bool)
     # clusters to keep: both (1) spiking and (2) accepted by curation criteria
     clean_mask = np.logical_and(spiking_mask, accept_mask)
+    clean_mask = np.logical_and(clean_mask, np.logical_not(positive_mask))
     # get primayr channel; channel index starts from 0 here
     pri_ch_lut = -1 * np.ones(n_clus, dtype=int)
     template_peaks_single_sided = np.max(np.abs(template_waveforms), axis=1) # (n_ch, n_clus)
