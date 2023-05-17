@@ -272,7 +272,7 @@ save(filename,'type_excit','type_inhib','troughToPeak','derivative_TroughtoPeak'
 % type_err = (cell_metrics.troughToPeak <= 0.2);
 
 disp(datafolder);
-disp(sum(type_err));
+% disp(sum(type_err));
 
 end
 

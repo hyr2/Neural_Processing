@@ -455,6 +455,9 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         if single_unit_mask[i_clus] == True:
             # Need to add facilitating cell vs adapting cell vs no change cell
             clus_property, firing_rate_avg, firing_rate_sum, Spikes_num = single_cluster_main(i_clus)
+            t_axis = np.linspace(0,total_time,firing_rate_avg.shape[0])
+            t_1 = np.squeeze(np.where(t_axis >= 8.5))[0]
+            t_2 = np.squeeze(np.where(t_axis >= 12.5))[0]
             # creating a dictionary for this cluster
             firing_stamp = spike_times_by_clus[i_clus]
             N_spikes_local = spike_times_by_clus[i_clus].size 
@@ -470,6 +473,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             i_clus_dict['N_spikes'] = N_spikes_local
             i_clus_dict['N_spikes_stim'] =  Spikes_num[1]
             i_clus_dict['N_spikes_bsl'] = Spikes_num[0]
+            i_clus_dict['spont_FR'] = np.mean(firing_rate_avg[t_1:t_2])
             list_all_clus.append(i_clus_dict)
             FR_series_all_clusters[iter_local].append(np.array(firing_rate_avg,dtype = float))
             # temporary
