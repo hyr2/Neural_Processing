@@ -248,9 +248,9 @@ def combine_sessions(source_dir, str_ID):
     elif (str_ID.lower() == 'B-BC5'.lower()):
         linear_xaxis = np.array([-2,-1,2,7,14,21,47]) 
     elif (str_ID.lower() == 'RH-7'.lower()):
-        linear_xaxis = np.array([-3,-2,-1,2,7,14,24,28,35,42,49,56])
+        linear_xaxis = np.array([-2,-1,2,7,14,24,28,35,42,49,56])
     elif (str_ID.lower() == 'BC8'.lower()):
-        linear_xaxis = np.array([-3,-2,-1,2,2,7,8,15,21,54])     
+        linear_xaxis = np.array([-2,-1,2,2,7,8,15,21,54])     
     elif (str_ID.lower() == 'RH-8'.lower()):
         linear_xaxis = np.array([-2,-1,2,7,14,21,28,35,42,49,56])  
     elif (str_ID.lower() == 'RH-9'.lower()):
