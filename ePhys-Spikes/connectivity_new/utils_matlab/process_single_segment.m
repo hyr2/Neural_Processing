@@ -10,7 +10,7 @@ function [] = process_single_segment(foldername, Fs, cellexp_path)
     ch2shank = readmatrix([foldername '/ch2shank.csv']);
     [spikes, spike_times_all, n_ch, present_unit_ids] = construct_spikes(firings, templates, Fs, ch2shank);
     tic
-    mono_res = ce_MonoSynConvClick(spikes, 'includeInhibitoryConnections', true, 'binSize', 0.001); 
+    mono_res = ce_MonoSynConvClick(spikes, 'includeInhibitoryConnections', true, 'binSize', 0.0004); 
     toc
     save(results_tmp_matpath,'mono_res');
 
