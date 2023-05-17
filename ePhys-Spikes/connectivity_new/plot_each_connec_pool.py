@@ -26,19 +26,21 @@ plt.rcParams["font.weight"] = "bold"
 plt.rcParams["axes.labelweight"] = "bold"
 plt.rcParams['font.size']=30
 
-SHANK_SPACING = 300
+# SHANK_SPACING = 300
+
+N_THREADS = 7
 
 
-CELLTYPE_PYRAMIDAL = 0
-CELLTYPE_NARROW_INTER = 1
-CELLTYPE_WIDE_INTER = 2
-CELLTYPES = {
-    CELLTYPE_PYRAMIDAL: "Pyramidal",
-    CELLTYPE_NARROW_INTER: "Narrow Inter",
-    CELLTYPE_WIDE_INTER: "Wide Inter"
-}
+# CELLTYPE_PYRAMIDAL = 0
+# CELLTYPE_NARROW_INTER = 1
+# CELLTYPE_WIDE_INTER = 2
+# CELLTYPES = {
+#     CELLTYPE_PYRAMIDAL: "Pyramidal",
+#     CELLTYPE_NARROW_INTER: "Narrow Inter",
+#     CELLTYPE_WIDE_INTER: "Wide Inter"
+# }
 
-SHANK_SWAP_BC = False
+# SHANK_SWAP_BC = False
 
 # def get_segment_index(segment_name: str) -> int:
 #     return int(re.search("seg([0-9]+)", segment_name)[1])
@@ -46,7 +48,7 @@ SHANK_SWAP_BC = False
 def read_postproc_data(session_spk_dir: str, mdaclean_temp_dir, session_connec_dir: bool) -> dict:
     """ read post processed data
     read_connec : whether to read connectivity info
-    Returns dict: 
+    Returns dict:
     ret['spike_count']
     ret['peak_amplitudes']
     ret['accpet_mask'] : single units
@@ -56,14 +58,14 @@ def read_postproc_data(session_spk_dir: str, mdaclean_temp_dir, session_connec_d
     Process one entire session.
     Assumes the 'label' field in combine_metrics_new.json is 1..n_clus_uncurated
     """
-    
-    ### read clustering metrics file 
+
+    ### read clustering metrics file
     with open(os.path.join(session_spk_dir, "combine_metrics_new.json"), 'r') as f:
         x = json.load(f)
     ret = {}
     with open(os.path.join(session_spk_dir, "pre_MS.json"), "r") as f:
             session_info = json.load(f)
-    
+
     geom = pd.read_csv(os.path.join(session_spk_dir, "geom.csv"), header=None).values
     ret["geom"] = geom
     if session_info['ELECTRODE_2X16']:
@@ -102,7 +104,7 @@ def read_postproc_data(session_spk_dir: str, mdaclean_temp_dir, session_connec_d
     ret["template_waveforms"] = template_waveforms
     ret["abs_amplitudes"] = np.max(template_peaks_single_sided, axis=0) # (n_clus,)
     ret["sample_freq"] = session_info["SampleRate"]
-    
+
     return ret
 
 def helper_plotwaveforms(i_unit_, chs_, ax_array_, template_waveforms_, geom_, gh_, gw_bwshank_, fs_, color_, max_amp_):
@@ -152,7 +154,7 @@ def plot_one_connec_(pp_dict_, figsavedir, i_connec):
     src_chs = list(filter(lambda c: ch2shank[c]==src_shank, list(range(n_chs))))
     snk_chs = list(filter(lambda c: ch2shank[c]==snk_shank, list(range(n_chs))))
     max_amp = max(template_abs_amps[src_id_cur], template_abs_amps[snk_id_cur])
-    
+
     fig = plt.figure(figsize=(24, 32))
     gs_ovr = GridSpec(nrows=32, ncols=12)
 
@@ -174,7 +176,7 @@ def plot_one_connec_(pp_dict_, figsavedir, i_connec):
         gh = 25
     else:
         raise NotImplementedError("Bad Shank Layout")
-    
+
     # plot neuron waveform distribution
     helper_plotwaveforms(src_id_cur, src_chs, waveform_axes, template_waveforms, geom, gh, gw_bwshank, f_sample, "k", max_amp)
     helper_plotwaveforms(snk_id_cur, snk_chs, waveform_axes, template_waveforms, geom, gh, gw_bwshank, f_sample, ("red" if con_type=="EXCITATORY" else "blue"), max_amp)
@@ -229,7 +231,7 @@ def proc_main(spk_dir_root, mda_tempdir_root, connec_dir_root, spk_reldirs, mda_
         for i_c in range(pp_dict["connecs"].shape[0]):
             parallel_args.append((pp_dict, session_con_dir, i_c))
 
-    with multiprocessing.Pool(64) as pool:
+    with multiprocessing.Pool(N_THREADS) as pool:
         pool.starmap(plot_one_connec_, parallel_args)
 
 import config as cfg

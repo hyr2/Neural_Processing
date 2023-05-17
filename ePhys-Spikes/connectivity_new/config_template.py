@@ -1,3 +1,5 @@
+from enum import IntEnum
+
 cellexp_path = "/home/xlruut/jiaao_workspace/stuff/CellExplorer/CellExplorer"
 mda_tempdir = "/storage/SSD_2T/barrel_tempfolder/"
 spk_inpdir  = "/storage/SSD_2T/barrel_data_proc/"
@@ -105,3 +107,31 @@ spk_reldirs = [
 
 ]
 mda_reldirs = spk_reldirs
+
+class ShankLoc(IntEnum):
+    LT300 = 0
+    GT300 = 1
+    S2    = 2
+    BAD   = 3
+
+shank_defs = {}
+shank_defs["rh3"] = [ShankLoc.LT300, ShankLoc.GT300, ShankLoc.GT300, ShankLoc.BAD]
+shank_defs["rh7"] = [ShankLoc.GT300, ShankLoc.LT300, ShankLoc.LT300, ShankLoc.S2]
+shank_defs["rh8"] = [ShankLoc.LT300, ShankLoc.LT300, ShankLoc.GT300, ShankLoc.S2]
+shank_defs["rh9"] = [ShankLoc.LT300, ShankLoc.LT300, ShankLoc.GT300, ShankLoc.BAD]
+shank_defs["bc7"] = [ShankLoc.LT300, ShankLoc.GT300, ShankLoc.S2,    ShankLoc.S2]
+
+days_standard = [-2, -1, 2, 7, 14, 21, 28, 42, 56]
+strokedays = {}
+strokedays["rh3"] = "2022-10-05"
+strokedays["rh7"] = "2022-10-28"
+strokedays["rh8"] = "2022-12-06"
+strokedays["rh9"] = "2022-12-21"
+strokedays["bc7"] = "2021-12-10"
+
+curate_params = {
+    "PARAM_SPK_COUNT_TH": 300, # for rejection of sparse spikes
+    "PARAM_CCG_COUNT_TH": 300,  # for rejection of sparse CCGs
+    "PARAM_ACG_CONTRAST_TH": 8.0,   # for rejection of double counted units
+    "PARAM_CCG_CONTRAST_TH": 30.0    # for rejection of duplicate unit pairs
+}
