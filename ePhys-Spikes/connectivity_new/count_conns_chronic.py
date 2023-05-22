@@ -200,11 +200,17 @@ def plot_conns_for_each_animal(animal_days_dict, animal_conn_mats_dict, days_sta
             snk_region = regions[j]
             ax = axes_flat[k]
             k += 1
-            for animal_id in animal_days_dict.keys():
+            for i_animal_id, animal_id in enumerate(animal_days_dict.keys()):
                 days = animal_days_dict[animal_id]["days"]
                 session_ids = animal_days_dict[animal_id]["session_ids"]
                 dataset = [animal_conn_mats_dict[animal_id][session_id][src_region][snk_region] for session_id in session_ids]
                 ax.plot(days, dataset, marker='x', markersize=2.0, linewidth=1.0, label=animal_id)
+                # save data points to Numpy file
+                np.savez(
+                    os.path.join(fig_folder, "%d_%s_%s_%s.npz"%(i_animal_id, animal_id, src_region.name, snk_region.name)),
+                    days=days,
+                    dataset=dataset
+                )
             ax.set_xticks(days_standard)
             ax.legend()
             ax.set_xlabel("Day")
