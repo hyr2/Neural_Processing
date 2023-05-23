@@ -130,7 +130,7 @@ def sort_single_shank_neuralAct_allclus(shank_num_mask,curation_mask_list,spikes
     
     return output_df
 
-def sort_by_shank_neuralAct(shank_num_mask,curation_mask,spikes_bsl,spikes_stim,spont_FR):
+def sort_by_shank_neuralAct(shank_num_mask,curation_mask,spikes_bsl,spikes_stim,spont_FR,event_FR):
     # INPUTS:
     # shank_num_mask : a 1D array (length N) containing the shank label for each cluster [0 to 3]
     # curation_mask : a 1D boolean array (length N) containing curation label for each cluster
@@ -139,21 +139,25 @@ def sort_by_shank_neuralAct(shank_num_mask,curation_mask,spikes_bsl,spikes_stim,
     tmp_bsl = spikes_bsl[curation_mask]
     tmp_stim = spikes_stim[curation_mask]
     tmp_spont = spont_FR[curation_mask]
+    tmp_event = event_FR[curation_mask]
     tmp_shank = shank_num_mask[curation_mask]
     activity_nor = np.zeros([4,],dtype=float)
     activity_non = np.zeros([4,],dtype=float)
     activity_non_abs = np.zeros([4,],dtype=float)
-    activity_spont = np.zeros([4,],dtype=float)
+    activity_spont = np.zeros([4,],dtype=float)     # avg baseline FR non-stimulus
+    activity_event = np.zeros([4,],dtype=float)     # peak FR during stimulus 
     for iter_local in range(4):   # 4 shanks
         tmp_bsl_local = tmp_bsl[tmp_shank == iter_local]
         tmp_stim_local = tmp_stim[tmp_shank == iter_local]
         tmp_spont_local = tmp_spont[tmp_shank == iter_local]
+        tmp_event_local = tmp_event[tmp_shank == iter_local]
         if tmp_bsl_local.size != 0:                                               # check if empty array
             activity_nor[iter_local] = np.mean(tmp_stim_local/tmp_bsl_local - 1)    # Normlaized neural activty 
             activity_non[iter_local] = np.mean(tmp_stim_local - tmp_bsl_local)      # Non-normlaized neural activty (subtracting the baseline activity)
             activity_non_abs[iter_local] = np.mean(tmp_stim_local)                  # Non-normalized neural activity (only the spikes during the stim duration)
-            activity_spont[iter_local] = np.mean(tmp_spont_local)
-    return (activity_nor, activity_non, activity_non_abs,activity_spont)
+            activity_spont[iter_local] = np.mean(tmp_spont_local)                   # avg baseline FR non-stimulus
+            activity_event[iter_local] = np.nanmean(tmp_event_local)             # peak FR during stimulus 
+    return (activity_nor, activity_non, activity_non_abs,activity_spont,activity_event)
     
 def sort_cell_type(input_arr,shank_arr):
     # Function counts the number of wide, narrow and pyramidal cells from the matlab output (.mat file called pop_celltypes.mat)
@@ -220,13 +224,15 @@ def extract_spikes(clus_property_local):
     cluster_propery = np.zeros([len(clus_property_local),],dtype = np.int8)
     shank_num = np.ones([len(clus_property_local),],dtype = np.int8)
     spont_FR = np.zeros([len(clus_property_local),],dtype = float)
+    event_FR = np.zeros([len(clus_property_local),],dtype = float)
     for itr in range(len(clus_property_local)):
         N_stim[itr] = clus_property_local[itr]['N_spikes_stim']
         N_bsl[itr] = clus_property_local[itr]['N_spikes_bsl']
         cluster_propery[itr] = clus_property_local[itr]['clus_prop']
         shank_num[itr] = clus_property_local[itr]['shank_num']
         spont_FR[itr] = clus_property_local[itr]['spont_FR']    # in Hz
-    return (cluster_propery,N_stim,N_bsl,shank_num,spont_FR)
+        event_FR[itr] = clus_property_local[itr]['EventRelatedFR']    # in Hz
+    return (cluster_propery,N_stim,N_bsl,shank_num,spont_FR,event_FR)
     
 
 def combine_sessions(source_dir, str_ID):
@@ -315,6 +321,7 @@ def combine_sessions(source_dir, str_ID):
     activity_nor = np.zeros([len(pop_stats),6,4])    # lots of FR by cluster/response type  Normalized to baseline
     activity_non = np.zeros([len(pop_stats),6,4])    # lots of FR by cluster/response type  Non normalized
     activity_spont = np.zeros([len(pop_stats),6,4])    # lots of FR by cluster/response type  Non normalized (spontaneous ie outside of the stimulation period)
+    activity_event = np.zeros([len(pop_stats),6,4])    # lots of FR by cluster/response type  Non normalized (spontaneous ie outside of the stimulation period)
     activity_non_abs = np.zeros([len(pop_stats),6,4])  # lots of FR by cluster/response type  Non normalized. Count of number of spikes during stim
     clus_N = np.zeros([len(pop_stats),6])
     df_all_clusters = pd.DataFrame(
@@ -382,47 +389,52 @@ def combine_sessions(source_dir, str_ID):
         excitatory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_excit'],pop_stats_cell[iter]['shank_num'])
         inhibitory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_inhib'],pop_stats_cell[iter]['shank_num'])
         # Saving spike counts
-        (cluster_property,N_stim,N_bsl,shank_num,spont_FR) = extract_spikes(clus_property[iter])
+        (cluster_property,N_stim,N_bsl,shank_num,spont_FR,event_FR) = extract_spikes(clus_property[iter])
         
         # Spike analysis (neural activity) [each animal has an equal footing ie data is prepared for averaging over animals]
-        (activity_nor_local,activity_non_local,activity_non_abs_local,activity_spont_local) = sort_by_shank_neuralAct(shank_num,np.squeeze(cluster_property == -1),N_bsl,N_stim,spont_FR)
+        (activity_nor_local,activity_non_local,activity_non_abs_local,activity_spont_local,activity_event_local) = sort_by_shank_neuralAct(shank_num,np.squeeze(cluster_property == -1),N_bsl,N_stim,spont_FR,event_FR)
         activity_nor[iter,0,:] = activity_nor_local   # Normlaized neural activty (suppressed)
         activity_non[iter,0,:] = activity_non_local   # Non-normlaized neural activty suppressed
         activity_non_abs[iter,0,:] = activity_non_abs_local # number of spikes fired during the stimulation period by the suppressed neuron
         activity_spont[iter,0,:] = activity_spont_local     # spontaneous FR outside of stimulation
-        (activity_nor_local,activity_non_local,activity_non_abs_local,activity_spont_local) = sort_by_shank_neuralAct(shank_num,np.squeeze(cluster_property == 1),N_bsl,N_stim,spont_FR)
+        activity_event[iter,0,:] = activity_event_local     # event related peak firing rate (averaged over clusters of course)
+        (activity_nor_local,activity_non_local,activity_non_abs_local,activity_spont_local,activity_event_local) = sort_by_shank_neuralAct(shank_num,np.squeeze(cluster_property == 1),N_bsl,N_stim,spont_FR,event_FR)
         activity_nor[iter,1,:] = activity_nor_local   # Normlaized neural activty (activated)
         activity_non[iter,1,:] = activity_non_local   # Non-normlaized neural activty activated
         activity_non_abs[iter,1,:] = activity_non_abs_local # number of spikes fired during the stimulation period by the suppressed neuron
         activity_spont[iter,1,:] = activity_spont_local     # spontaneous FR outside of stimulation
+        activity_event[iter,1,:] = activity_event_local     # event related peak firing rate (averaged over clusters of course)
         # FR by E and I
         mask_local = np.squeeze(pop_stats_cell[iter]['type_excit']) == 1
-        (activity_nor_local,activity_non_local,activity_non_abs_local,activity_spont_local) = sort_by_shank_neuralAct(shank_num,mask_local,N_bsl,N_stim,spont_FR)
+        (activity_nor_local,activity_non_local,activity_non_abs_local,activity_spont_local,activity_event_local) = sort_by_shank_neuralAct(shank_num,mask_local,N_bsl,N_stim,spont_FR,event_FR)
         activity_nor[iter,2,:] = activity_nor_local   # Normlaized neural activty (E cells)
         activity_non[iter,2,:] = activity_non_local   # Non-normlaized neural activty E cells
         activity_non_abs[iter,2,:] = activity_non_abs_local # number of spikes fired during the stimulation period by the suppressed neuron
         activity_spont[iter,2,:] = activity_spont_local     # spontaneous FR outside of stimulation
+        activity_event[iter,2,:] = activity_event_local     # event related peak firing rate (averaged over clusters of course)
         mask_local = np.squeeze(pop_stats_cell[iter]['type_inhib']) == 1
-        (activity_nor_local,activity_non_local,activity_non_abs_local,activity_spont_local) = sort_by_shank_neuralAct(shank_num,mask_local,N_bsl,N_stim,spont_FR)
+        (activity_nor_local,activity_non_local,activity_non_abs_local,activity_spont_local,activity_event_local) = sort_by_shank_neuralAct(shank_num,mask_local,N_bsl,N_stim,spont_FR,event_FR)
         activity_nor[iter,3,:] = activity_nor_local   # Normlaized neural activty (I cells)
         activity_non[iter,3,:] = activity_non_local   # Non-normlaized neural activty I cells
         activity_non_abs[iter,3,:] = activity_non_abs_local # number of spikes fired during the stimulation period by the suppressed neuron
         activity_spont[iter,3,:] = activity_spont_local     # spontaneous FR outside of stimulation
+        activity_event[iter,3,:] = activity_event_local     # event related peak firing rate (averaged over clusters of course)
         # FR of stimulus locked E cells 
         mask_local = np.logical_and(np.squeeze(pop_stats_cell[iter]['type_excit']) == 1, cluster_property == 1)
-        (activity_nor_local,activity_non_local,activity_non_abs_local,activity_spont_local) = sort_by_shank_neuralAct(shank_num,mask_local,N_bsl,N_stim,spont_FR)
+        (activity_nor_local,activity_non_local,activity_non_abs_local,activity_spont_local,activity_event_local) = sort_by_shank_neuralAct(shank_num,mask_local,N_bsl,N_stim,spont_FR,event_FR)
         activity_nor[iter,4,:] = activity_nor_local   # Normlaized neural activty (I cells)
         activity_non[iter,4,:] = activity_non_local   # Non-normlaized neural activty I cells
         activity_non_abs[iter,4,:] = activity_non_abs_local # number of spikes fired during the stimulation period by the suppressed neuron
         activity_spont[iter,4,:] = activity_spont_local     # spontaneous FR outside of stimulation
+        activity_event[iter,4,:] = activity_event_local     # event related peak firing rate (averaged over clusters of course)
         # FR of stimulus locked I cells 
         mask_local = np.logical_and(np.squeeze(pop_stats_cell[iter]['type_inhib']) == 1, cluster_property == 1)
-        (activity_nor_local,activity_non_local,activity_non_abs_local,activity_spont_local) = sort_by_shank_neuralAct(shank_num,mask_local,N_bsl,N_stim,spont_FR)
+        (activity_nor_local,activity_non_local,activity_non_abs_local,activity_spont_local,activity_event_local) = sort_by_shank_neuralAct(shank_num,mask_local,N_bsl,N_stim,spont_FR,event_FR)
         activity_nor[iter,5,:] = activity_nor_local   # Normlaized neural activty (I cells)
         activity_non[iter,5,:] = activity_non_local   # Non-normlaized neural activty I cells
         activity_non_abs[iter,5,:] = activity_non_abs_local # number of spikes fired during the stimulation period by the suppressed neuron
         activity_spont[iter,5,:] = activity_spont_local     # spontaneous FR outside of stimulation
-        
+        activity_event[iter,5,:] = activity_event_local     # event related peak firing rate (averaged over clusters of course)
         # Spike analysis (neural activity) [each cluster has an equal footing ie data is prepared for averaging over clusters irrespective of animals]
         mask_local_list = [None for _ in range(6)]
         mask_local_list[0] =  np.squeeze(cluster_property == -1)    # suppressed
@@ -512,6 +524,7 @@ def combine_sessions(source_dir, str_ID):
     full_mouse_ephys['activity_non'] = activity_non
     full_mouse_ephys['activity_non_abs'] = activity_non_abs
     full_mouse_ephys['activity_spont'] = activity_spont
+    full_mouse_ephys['activity_event'] = activity_event
     full_mouse_ephys['all_clusters'] = all_clusters
     # full_mouse_ephys['T2P'] = T2P_allsessions
     # full_mouse_ephys['total_activity_act'] = total_activity_act
