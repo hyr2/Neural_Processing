@@ -222,8 +222,10 @@ end
 waveform_metrics = calc_waveform_metrics(spikes,Fs,'showFigures',false);
 cell_metrics.troughToPeak = waveform_metrics.troughtoPeak;
 cell_metrics.derivative_TroughToPeak = waveform_metrics.derivative_TroughtoPeak;
+cell_metrics.assymetry = waveform_metrics.ab_ratio;
 troughToPeak = cell_metrics.troughToPeak;
 derivative_TroughtoPeak = cell_metrics.derivative_TroughToPeak;
+assymetry = cell_metrics.assymetry;
 
 spikes.numcells=numel(spikes.cluID);
 spikes.total=mono_res.n;
@@ -238,8 +240,10 @@ celltype = cell_metrics.putativeCellType;
 
 % Busrting and theta modulation index
 burstIndex_Royer2012 = acg_metrics.burstIndex_Royer2012;
-burstIndex_Doublets = acg_metrics.burstIndex_Doublets;
+% burstIndex_Doublets = acg_metrics.burstIndex_Doublets;
 thetaModulationIndex = acg_metrics.thetaModulationIndex;
+% Tau rise time
+tau_rise = fit_params.acg_tau_rise;
 % Addition based on excitatory vs inhibitory (based on waveform shape which is same as CCG based)
 % values modified for Barrel cortex data from the original value of 0.55ms
 type_excit = (cell_metrics.troughToPeak > 0.47);    % Buzsaki lab (https://www.cell.com/neuron/pdfExtended/S0896-6273(18)31085-7)
@@ -268,7 +272,7 @@ troughtopeak_inhib = cell_metrics.troughToPeak(idx_inhib);
 % filename = fullfile(plotfolder,'cell_type_analysis.png');
 % print(filename,'-dpng','-r0');
 filename = fullfile(plotfolder,'pop_celltypes.mat');
-save(filename,'type_excit','type_inhib','troughToPeak','derivative_TroughtoPeak','celltype','shank_num','burstIndex_Royer2012','burstIndex_Doublets','thetaModulationIndex'); % all these quantities are only for the curated clusters
+save(filename,'type_excit','type_inhib','troughToPeak','assymetry','celltype','shank_num','burstIndex_Royer2012','tau_rise','thetaModulationIndex'); % all these quantities are only for the curated clusters
 % type_err = (cell_metrics.troughToPeak <= 0.2);
 
 disp(datafolder);
