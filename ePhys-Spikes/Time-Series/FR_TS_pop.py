@@ -349,9 +349,9 @@ def combine_sessions(source_dir, str_ID):
             "T2P": [],
             "spont_FR": [],
             "event_FR": [],
-            # "feature2": [],
-            # "feature3": [],
-            # "feature4": []
+            "burst_i": [],
+            "tau_r": [],
+            "wav_assym": []
         }
     )
     
@@ -485,7 +485,10 @@ def combine_sessions(source_dir, str_ID):
         # Saving T2P for global histogram
         str_local = 'session_' + str(iter)
         T2P_allsessions.append(np.squeeze(pop_stats_cell[iter]['troughToPeak']))
-        T2P_arr = np.squeeze(pop_stats_cell[iter]['troughToPeak'])
+        T2P_arr = np.squeeze(pop_stats_cell[iter]['troughToPeak'])  # trough to peak width
+        wv_asym_arr = np.squeeze(pop_stats_cell[iter]['assymetry'])                 # The AB ratio (waveform assymetry following Destexhe's paper: https://www.sciencedirect.com/science/article/pii/S0969996118307605)
+        tau_refractory_arr = np.squeeze(pop_stats_cell[iter]['tau_rise'])           # tau rise time (the fit of the triple exponential by Cell Explorer. This is the ACG refractory period of the cluster)
+        burst_I_arr = np.squeeze(pop_stats_cell[iter]['burstIndex_Royer2012'])      # burst index (following Buzsaki 2017 paper definition: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5293146/pdf/nihms836070.pdf)
         # Dataframe for all clusters
         # tmp_df = df_all_clusters_main
         
@@ -499,9 +502,9 @@ def combine_sessions(source_dir, str_ID):
                 "T2P": T2P_arr,
                 "spont_FR": spont_FR,
                 "event_FR": event_FR,
-                # "feature2": [],
-                # "feature3": [],
-                # "feature4": []
+                "burst_i": burst_I_arr,
+                "tau_r": tau_refractory_arr,
+                "wav_assym": wv_asym_arr
             }
         )
         
