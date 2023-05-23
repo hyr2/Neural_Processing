@@ -162,18 +162,22 @@ def sort_by_shank_neuralAct(shank_num_mask,curation_mask,spikes_bsl,spikes_stim,
 def sort_cell_type(input_arr,shank_arr):
     # Function counts the number of wide, narrow and pyramidal cells from the matlab output (.mat file called pop_celltypes.mat)
     output_arr = np.zeros([3,4],dtype = np.int16)
+    output_list_string = []
     if not input_arr.shape:
-        return output_arr
+        return (output_arr,output_list_string)
     else:
         for iter in range(input_arr.shape[1]):
             str_celltype = input_arr[0][iter]
             if str_celltype == 'Pyramidal Cell':
                 output_arr[0,shank_arr[iter]] += 1 
+                output_list_string.append('P')
             elif str_celltype == 'Narrow Interneuron':
                 output_arr[1,shank_arr[iter]] += 1 
+                output_list_string.append('NI')
             elif str_celltype == 'Wide Interneuron':
                 output_arr[2,shank_arr[iter]] += 1 
-        return output_arr
+                output_list_string.append('WI')
+        return (output_arr,output_list_string)
     
 def sort_cell_type_2(shank_num_mask,curation_mask):
     # Function sorts (into shanks) the number of Activated and Suppressed E and I cells from the matlab output
@@ -335,6 +339,22 @@ def combine_sessions(source_dir, str_ID):
             "stim_I" : []
         }
     )
+    df_all_clusters_main = pd.DataFrame(
+        {
+            "animal_ID":[],
+            "day": [],
+            "shank": [],
+            "celltype": [],
+            "response": [],
+            "T2P": [],
+            "spont_FR": [],
+            "event_FR": [],
+            # "feature2": [],
+            # "feature3": [],
+            # "feature4": []
+        }
+    )
+    
     df_all_clusters_A = deepcopy(df_all_clusters)
     df_all_clusters_B = deepcopy(df_all_clusters)
     df_all_clusters_C = deepcopy(df_all_clusters)
@@ -343,6 +363,7 @@ def combine_sessions(source_dir, str_ID):
     # celltype_excit = np.zeros([len(pop_stats),3])
     # celltype_inhib = np.zeros([len(pop_stats),3])
     T2P_allsessions = []    # list of 1D numpy arrays
+    main_df = deepcopy(df_all_clusters_main)
     for iter in range(len(pop_stats)):
         # population extraction from dictionaries
         
@@ -382,8 +403,8 @@ def combine_sessions(source_dir, str_ID):
         tmp = pop_stats_cell[iter]['celltype']
         tmp_shank = pop_stats_cell[iter]['shank_num']
         tmp_shank = np.squeeze(tmp_shank)
-        tmp_shank = tmp_shank-1
-        celltype_shank[iter,:] = sort_cell_type(tmp,tmp_shank)
+        tmp_shank = tmp_shank-1             # starts from 0 (consistent with python)
+        (celltype_shank[iter,:],list_celltype) = sort_cell_type(tmp,tmp_shank)
         celltype_total[iter,:] = np.sum(celltype_shank[iter,:],axis = 1)
         # excitatory and inhibitory neuron populations
         excitatory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_excit'],pop_stats_cell[iter]['shank_num'])
@@ -464,6 +485,29 @@ def combine_sessions(source_dir, str_ID):
         # Saving T2P for global histogram
         str_local = 'session_' + str(iter)
         T2P_allsessions.append(np.squeeze(pop_stats_cell[iter]['troughToPeak']))
+        T2P_arr = np.squeeze(pop_stats_cell[iter]['troughToPeak'])
+        # Dataframe for all clusters
+        # tmp_df = df_all_clusters_main
+        
+        tmp_df = pd.DataFrame(
+            {
+                "animal_ID":[str_ID] * T2P_arr.shape[0],
+                "day": linear_xaxis[iter] * np.ones(T2P_arr.shape[0],dtype = np.int16),
+                "shank": shank_num,
+                "celltype": list_celltype,
+                "response": cluster_property,
+                "T2P": T2P_arr,
+                "spont_FR": spont_FR,
+                "event_FR": event_FR,
+                # "feature2": [],
+                # "feature3": [],
+                # "feature4": []
+            }
+        )
+        
+        main_df = pd.concat([main_df,tmp_df],axis = 0)
+        
+        
         
     # combining     
     all_clusters_A = np.squeeze(df_all_clusters_A.to_numpy(dtype = float))
@@ -531,6 +575,7 @@ def combine_sessions(source_dir, str_ID):
     full_mouse_ephys['FR_act'] = act_FR
     sio.savemat(os.path.join(source_dir,'full_mouse_ephys.mat'), full_mouse_ephys)
     np.savez(os.path.join(source_dir,'full_mouse_T2P.npz'),T2P = np.array(T2P_allsessions,dtype = object))        # saving as object
+    main_df.to_pickle(os.path.join(source_dir,'all_cluster.pkl'))           # info for all clusters in this mouse (all sessions). A complete dataframe. No extra info needed
     # sio.savemat(os.path.join(source_dir,'full_mouse_T2P.mat'), T2P_allsessions)
     # np.save(os.path.join(source_dir,'full_mouse_T2P.npy'), T2P_allsessions)     
     # sio.savemat(os.path.join(source_dir,'full_mouse_T2P.mat'), {'T2P_allsessions' : T2P_allsessions})
