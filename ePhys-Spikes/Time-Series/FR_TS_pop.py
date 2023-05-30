@@ -270,6 +270,10 @@ def combine_sessions(source_dir, str_ID):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,35,42,49,56])  
     elif (str_ID.lower() == 'RH-9'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,35,42,49])
+    elif (str_ID.lower() == 'B-BC8'.lower()):
+        linear_xaxis = np.array([-4,-3,-2,-1,3,7])
+    elif (str_ID.lower() == 'BHC-7'.lower()):
+        linear_xaxis = np.array([-3,-2,-1,7,14])
     else:
         sys.exit('No string matched with: ' + str_ID)
             
