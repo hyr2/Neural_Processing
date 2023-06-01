@@ -152,17 +152,32 @@ plt.ylim(0,1.5)
 plt.savefig(os.path.join(filename_save,'rh7-10-17-22-cluster184_FR.svg'),format = 'svg')
 # filename_save = '/home/hyr2-office/Documents/Paper/Single-Figures-SVG/Fig2/subfigures/'
 
-# ss = np.load('/home/hyr2-office/Documents/Data/NVC/RH-7/10-17-22/all_waveforms_by_cluster.npz', allow_pickle=True)
-# y1 = ss['clus351']
-# y11 = np.mean(y1, axis=0)
-# x_axis = np.linspace(0, 3.33e-3, num=100)
-# plt.plot(x_axis*1000, y11, 'r-', linewidth=2.9)
-# plt.axis('off')
-# # plt.figure()
-# ss = np.load('/home/hyr2-office/Documents/Data/NVC/RH-7/12-23-22/all_waveforms_by_cluster.npz', allow_pickle=True)
-# y1 = ss['clus361']
-# y11 = np.mean(y1, axis=0)
-# x_axis = np.linspace(0, 3.33e-3, num=100)
-# plt.plot(x_axis*1000, y11, 'r--', linewidth=2.9)
-# plt.axis('off')
+# Here plotting the waveforms of these clusters
+ss = np.load('/home/hyr2-office/Documents/Data/NVC/RH-7/10-17-22/all_waveforms_by_cluster.npz',allow_pickle = True)
+y1 = ss['clus10']
+y11 = np.mean(y1,axis = 0)
+x_axis = np.linspace(0,3.33e-3,num = 100)
+plt.figure()
+plt.plot(x_axis*1000,y11,'b',linewidth = 2.9)
+plt.axis('off')
+plt.savefig(os.path.join(filename_save,'rh7-10-17-23_10.svg'),format = 'svg')
 
+# Here plotting the waveforms of these clusters
+ss = np.load('/home/hyr2-office/Documents/Data/NVC/RH-7/10-17-22/all_waveforms_by_cluster.npz',allow_pickle = True)
+y1 = ss['clus184']
+y11 = np.mean(y1,axis = 0)
+x_axis = np.linspace(0,3.33e-3,num = 100)
+plt.figure()
+plt.plot(x_axis*1000,y11,'b',linewidth = 2.9)
+plt.axis('off')
+plt.savefig(os.path.join(filename_save,'rh7-10-17-23_184.svg'),format = 'svg')
+
+# Here plotting the waveforms of these clusters
+ss = np.load('/home/hyr2-office/Documents/Data/NVC/RH-7/10-17-22/all_waveforms_by_cluster.npz',allow_pickle = True)
+y1 = ss['clus351']
+y11 = np.mean(y1,axis = 0)
+x_axis = np.linspace(0,3.33e-3,num = 100)
+plt.figure()
+plt.plot(x_axis*1000,y11,'r',linewidth = 2.9)
+plt.axis('off')
+plt.savefig(os.path.join(filename_save,'rh7-10-17-23_351.svg'),format = 'svg')
