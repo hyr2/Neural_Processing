@@ -53,9 +53,11 @@ N_THREADS = 7
 @numba.jit(nopython=True, parallel=True, fastmath=True)
 def _get_curate_mask(
     spk_counts: np.ndarray, acg_contrast: np.ndarray,
-    ccg_counts: np.ndarray, ccg_contrast: np.ndarray, conns: np.ndarray,
+    ccg_counts: np.ndarray, ccg_contrast: np.ndarray,
+    template_simmat: np.ndarray, conns: np.ndarray,
     param_spk_count_th: int, param_acg_contrast_th: float, 
     param_ccg_count_th: int, param_ccg_contrast_th: float,
+    param_template_sim_th: float
     ):
     curation_mask = np.empty(conns.shape[0], dtype=np.bool_)
     n_units = spk_counts.shape[0]
@@ -77,7 +79,9 @@ def _get_curate_mask(
             (acg_contrast[src]>=param_acg_contrast_th) or
             (acg_contrast[snk]>=param_acg_contrast_th) or
             # reject connections with large CCG bin max
-            (ccg_contrast[src, snk]>=param_ccg_contrast_th)
+            (ccg_contrast[src, snk]>=param_ccg_contrast_th) or 
+            # reject connections with two templates too similar to each other
+            (template_simmat[src, snk] >= param_template_sim_th)
         )
         # same directed pair cannot be both excitatory and inhibitory
         # if so then this pair is rejected.
@@ -100,8 +104,11 @@ def _get_curate_mask(
 def curate_one_session(
     conns: np.ndarray, ccgs: np.ndarray,
     spike_counts: np.ndarray, templates: np.ndarray,
+    pri_ch_lut: np.ndarray,
     param_acg_count_th: int, param_ccg_count_th: int,
-    param_acg_contrast_th: int, param_ccg_contrast_th: int):
+    param_acg_contrast_th: int, param_ccg_contrast_th: int,
+    param_template_sim_th: float
+    ):
     """
     Curate the connections detected by CellExplorer for one session.
     Parameters
@@ -112,6 +119,9 @@ def curate_one_session(
     templates: (n_channels, len_waveform, n_units) templates of the units
     """
     n_units = templates.shape[2]
+    templates_vecs = templates[pri_ch_lut, :, np.arange(n_units)] # (N_features, N_units)
+    templates_vecs_norms = np.sqrt(np.sum(templates_vecs**2, axis=0)) # (n_units)
+    template_similarities = np.dot(templates_vecs.T, templates_vecs) /  np.dot(templates_vecs_norms[:,None], templates_vecs_norms[None,:])# (n_units, n_units)
     assert ccgs.shape[0]==ccgs.shape[1] and ccgs.shape[0]==n_units
     
     diag_ids_tmp = np.arange(n_units, dtype=np.int64)
@@ -130,9 +140,10 @@ def curate_one_session(
     ccg_binhom = np.max(ccgs, axis=2) / ccg_binmed # (n_units, n_units)
     
     curation_mask, exc_out_degrees, inh_out_degrees = _get_curate_mask(
-        spike_counts, acg_binhom, ccg_counts, ccg_binhom, conns,
+        spike_counts, acg_binhom, ccg_counts, ccg_binhom, 
+        template_similarities, conns,
         param_acg_count_th, param_acg_contrast_th, param_ccg_count_th,
-        param_ccg_contrast_th
+        param_ccg_contrast_th, param_template_sim_th
     )
     
     return curation_mask, acg_counts, acg_binhom, ccg_counts, ccg_binhom, \
@@ -204,11 +215,12 @@ def process_postproc_data(session_spk_dir: str, mdaclean_temp_dir: str, session_
     ret["sample_freq"] = session_info["SampleRate"]
     # conn_curate_mask, acg_counts, acg_binmax, ccg_counts, ccg_binmax = \
     curate_outputs = curate_one_session(
-        connecs, ret["ccg"], ret["spike_counts"], template_waveforms,
+        connecs, ret["ccg"], ret["spike_counts"], template_waveforms, pri_ch_lut,
         cfg.curate_params["PARAM_SPK_COUNT_TH"],
         cfg.curate_params["PARAM_CCG_COUNT_TH"],
         cfg.curate_params["PARAM_ACG_CONTRAST_TH"],
-        cfg.curate_params["PARAM_CCG_CONTRAST_TH"]
+        cfg.curate_params["PARAM_CCG_CONTRAST_TH"],
+        cfg.curate_params["PARAM_TEMPLATE_SIMILARITY_TH"]
     )
     ret["conn_keep_mask"] = curate_outputs[0] # (n_connecs,)
     ret["acg_counts"]     = curate_outputs[1] # (n_units,)
