@@ -357,22 +357,22 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         t_axis = np.linspace(0,firing_rate_avg.shape[0]*WINDOW_LEN_IN_SEC,firing_rate_avg.shape[0])
         t_1 = np.squeeze(np.where(t_axis >= 1.4))[0]      # stim start set to 2.45 seconds
         t_2 = np.squeeze(np.where(t_axis >= 2.0))[0]      # end of bsl region (actual value is 2.5s but FR starts to increase before. Maybe anticipatory spiking due to training)
-        t_3 = np.squeeze(np.where(t_axis <= 2.4))[-1]        # stim end set to 5.15 seconds
-        t_4 = np.squeeze(np.where(t_axis <= 4.5))[-1]
+        t_3 = np.squeeze(np.where(t_axis <= 2.1))[-1]        # stim end set to 5.15 seconds
+        t_4 = np.squeeze(np.where(t_axis <= 3.55))[-1]
         t_5 = np.squeeze(np.where(t_axis <= 8))[-1]        # post stim quiet period
         t_6 = np.squeeze(np.where(t_axis <= 9.5))[-1]
         t_7 = np.squeeze(np.where(t_axis <= 4.5))[-1]
-        t_8 = np.squeeze(np.where(t_axis <= 2.6))[-1]       # used for single trial
-        t_9 = np.squeeze(np.where(t_axis <= 0.5))[-1]       # used for single trial
+        t_8 = np.squeeze(np.where(t_axis <= 2.45))[-1]       
+        t_9 = np.squeeze(np.where(t_axis <= 1))[-1]       
         # Zscore
         bsl_mean = np.mean(np.hstack((firing_rate_avg[t_1:t_2],firing_rate_avg[t_5:t_6]))) # baseline is pre and post stim
         bsl_std = np.std(np.hstack((firing_rate_avg[t_1:t_2],firing_rate_avg[t_5:t_6])))   # baseline is pre and post stim 
         firing_rate_zscore = zscore_bsl(firing_rate_avg, bsl_mean, bsl_std)          # Zscore to classify cluster as activated or suppressed
         
         # FR Classify
-        (t_axis_s,firing_rate_zscore_s,normalized,indx) = FR_classifier_classic_zscore(firing_rate_zscore,t_axis,[t_1,t_7],[t_3,t_4])
+        (t_axis_s,firing_rate_zscore_s,normalized,indx) = FR_classifier_classic_zscore(firing_rate_zscore,t_axis,[t_1,t_7],[t_8,t_7])
         
-        max_zscore_stim = np.amax(np.absolute(firing_rate_zscore[t_3:t_4]))          # Thresholding for Z score values
+        max_zscore_stim = np.amax(np.absolute(firing_rate_zscore[t_8:t_7]))          # Thresholding for Z score values
         # plt.figure()
         # plt.plot(t_axis,firing_rate_zscore)
         # firing_rate_zscore = zscore(firing_rate_avg, axis = 0)          # Zscore to classify cluster as activated or suppressed        
@@ -405,8 +405,8 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         
         # Add t-test + add spike count difference as two new metrics for "activated" and "suppressed" neurons
         
-        max_z = np.amax((firing_rate_zscore[t_3:t_4]))
-        min_z = np.amin((firing_rate_zscore[t_3:t_4]))
+        max_z = np.amax((firing_rate_zscore[t_8:t_7]))
+        min_z = np.amin((firing_rate_zscore[t_8:t_7]))
         clus_property_1 = 0
         if max_zscore_stim > 2.5:
             if indx == 0 and N_spikes_local>(Ntrials*3) and (np.abs(max_z) > np.abs(min_z)):
@@ -425,12 +425,11 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         # print(clus_property)
         
         # Computing number of spikes
-        firing_rate_series = firing_rate_series * WINDOW_LEN_IN_SEC
-        firing_rate_series_avg = np.sum(firing_rate_series,axis = 0)
+        firing_rate_series = firing_rate_series * WINDOW_LEN_IN_SEC # this is the number of spikes (not firing rate)
+        firing_rate_series_avg = np.sum(firing_rate_series[TRIAL_KEEP_MASK, :],axis = 0) # sum over accepted trials
         Spikes_stim = np.sum(firing_rate_series_avg[t_8:t_4])
         Spikes_bsl = np.sum(firing_rate_series_avg[t_9:t_3])
         Spikes_num = np.array([Spikes_bsl,Spikes_stim])
-        
 
         return clus_property_1, firing_rate_avg, firing_rate_sum, Spikes_num
 
@@ -458,6 +457,9 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             t_axis = np.linspace(0,total_time,firing_rate_avg.shape[0])
             t_1 = np.squeeze(np.where(t_axis >= 8.5))[0]
             t_2 = np.squeeze(np.where(t_axis >= 12.5))[0]
+            t_3 = np.squeeze(np.where(t_axis >= 2.35))[0]
+            t_4 = np.squeeze(np.where(t_axis >= 3.75))[0]
+
             # creating a dictionary for this cluster
             firing_stamp = spike_times_by_clus[i_clus]
             N_spikes_local = spike_times_by_clus[i_clus].size 
@@ -471,9 +473,17 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             i_clus_dict['shank_num'] = shank_num
             i_clus_dict['clus_prop'] = clus_property
             i_clus_dict['N_spikes'] = N_spikes_local
-            i_clus_dict['N_spikes_stim'] =  Spikes_num[1]
-            i_clus_dict['N_spikes_bsl'] = Spikes_num[0]
+            i_clus_dict['N_spikes_stim'] =  Spikes_num[1]   # avg number of spikes over trials
+            i_clus_dict['N_spikes_bsl'] = Spikes_num[0]     # avg number of spikes over trials
             i_clus_dict['spont_FR'] = np.mean(firing_rate_avg[t_1:t_2])
+            
+            if clus_property == 1:
+                i_clus_dict['EventRelatedFR'] = np.amax(firing_rate_avg[t_3:t_4])
+            elif clus_property == -1:
+                i_clus_dict['EventRelatedFR'] = np.amin(firing_rate_avg[t_3:t_4])
+            else: 
+                i_clus_dict['EventRelatedFR'] = np.nan
+            
             list_all_clus.append(i_clus_dict)
             FR_series_all_clusters[iter_local].append(np.array(firing_rate_avg,dtype = float))
             # temporary
