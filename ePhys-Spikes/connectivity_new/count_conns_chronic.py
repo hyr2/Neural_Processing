@@ -17,9 +17,9 @@ import networkx.algorithms.community as nx_comm
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
 
-sys.path.append("../Spike-Sorting-Code/preprocess_rhd")
+sys.path.insert(0, "../Spike-Sorting-Code/preprocess_rhd")
 from utils.read_mda import readmda
-sys.path.append("../Spike-Sorting-Code/post_msort_processing/utils")
+sys.path.insert(0, "../Spike-Sorting-Code/post_msort_processing/utils")
 from waveform_metrics import calc_t2p
 import config as CFG
 
@@ -46,6 +46,7 @@ def read_postproc_data(session_spk_dir: str, mdaclean_temp_dir: str, session_con
     map_clean2original = pd.read_csv(os.path.join(mdaclean_temp_dir, "map_clean2original_labels.csv"), header=None).values
     template_peaks_single_sided = np.max(np.abs(template_waveforms), axis=1) # (n_ch, n_clus)
     pri_ch_lut = np.argmax(template_peaks_single_sided, axis=0) # (n_clus)
+    n_units = pri_ch_lut.shape[0]
     spikewidths = [calc_t2p(template_waveforms[pri_ch_lut[i_], :, i_], session_info["SampleRate"]) for i_ in range(pri_ch_lut.shape[0])]
     spikewidths = np.array([k[0] for k in spikewidths])
     # read putative connectivity
@@ -58,6 +59,9 @@ def read_postproc_data(session_spk_dir: str, mdaclean_temp_dir: str, session_con
     ret["connecs"] = connecs
     ret["conn_cnt_mat"] = np.zeros((4,4), dtype=int)
     ret["conn_cnt_types"] = list(CFG.ShankLoc) # NOTE this assumes the ShankLoc enum type has values from 0 and increments by 1.
+    ret["templates_clean"] = template_waveforms
+    unit_shanks = ch2shank[pri_ch_lut[np.arange(n_units)]]
+    unit_regions = np.array([shank_def[sk_] for sk_ in unit_shanks])
 
     if not(apply_curation):
         print("  ====%s" % (session_connec_dir))
@@ -70,13 +74,37 @@ def read_postproc_data(session_spk_dir: str, mdaclean_temp_dir: str, session_con
         snk_shanknum    = ch2shank[pri_ch_lut[snk]]
         src_region      = shank_def[src_shanknum] # IntEnum instance
         snk_region      = shank_def[snk_shanknum] # IntEnum instance
-        ret["conn_cnt_mat"][src_region][snk_region] += 1
+        assert src_region==unit_regions[src] and snk_region==unit_regions[snk]
+        if src_region == snk_region:
+            # for connections whose source and target are in the same region, we only consider them if they are in the same shank
+            if src_shanknum == snk_shanknum:
+                ret["conn_cnt_mat"][src_region][snk_region] += 1
+        else:
+            ret["conn_cnt_mat"][src_region][snk_region] += 1
+        
+        # print cross-shank connection
         if not(apply_curation) and src_shanknum != snk_shanknum:
             print("    ====i_connec:%3d, Source: %d, Sink: %d" % (i_connec, src, snk))
-
-
+    # noramlize by number of edges maximum possible
+    mat_max_edges = np.ones((4,4), dtype=int)
+    for i_r_, src_region_ in enumerate(ret["conn_cnt_types"]):
+        n_i_ = np.sum(unit_regions==src_region_)
+        for j_r_, snk_region_ in enumerate(ret["conn_cnt_types"]):
+            if i_r_==j_r_:
+                # remember we only consider within-shank for within-region connections
+                temp = 0
+                shanks_oi_ = list(filter(lambda x: shank_def[x]==src_region_, range(4)))
+                for sh_ in shanks_oi_:
+                    n_units_in_shank_ = np.sum(unit_shanks==sh_)
+                    temp += n_units_in_shank_ * (n_units_in_shank_-1)
+                # mat_max_edges[i_r_, j_r_] = n_i_ * (n_i_ - 1)
+                mat_max_edges[i_r_, j_r_] = temp
+            else:
+                n_j_ = np.sum(unit_regions==snk_region_)
+                mat_max_edges[i_r_, j_r_] = n_i_ * n_j_
+    mat_max_edges = np.clip(mat_max_edges, 1, None)
+    ret["conn_density_mat"] = ret["conn_cnt_mat"].astype(float) / mat_max_edges.astype(float)
     ret["spikewidths"] = spikewidths
-
     return ret
 
 
@@ -88,7 +116,8 @@ def get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_m
         mdaclean_temp_dir_ = os.path.join(cfg_module.mda_tempdir, session_reldir)
         monosyn_conn_dir_  = os.path.join(cfg_module.con_resdir, session_reldir)
         data_dict = read_postproc_data(session_spk_dir_, mdaclean_temp_dir_, monosyn_conn_dir_, cfg_module.shank_defs[animal_id], apply_curation, count_type)
-        conn_mat_sym = data_dict["conn_cnt_mat"] + data_dict["conn_cnt_mat"].T - np.diag(np.diag(data_dict["conn_cnt_mat"]))
+        # conn_mat_sym = data_dict["conn_cnt_mat"] + data_dict["conn_cnt_mat"].T - np.diag(np.diag(data_dict["conn_cnt_mat"]))
+        conn_mat_sym = (data_dict["conn_density_mat"] + data_dict["conn_density_mat"].T) / 2#  - np.diag(np.diag(data_dict["conn_cnt_mat"]))
         region_conn_mats_dict[session_ids[i_session]] = conn_mat_sym
     return region_conn_mats_dict
 
@@ -217,7 +246,7 @@ def plot_conns_for_each_animal(animal_days_dict, animal_conn_mats_dict, days_sta
             ax.set_ylabel("#Conns")
             ax.set_title("%s<-->%s"% (src_region.name, snk_region.name))
     os.makedirs(fig_folder, exist_ok=True)
-    plt.savefig(os.path.join(fig_folder, "raw.png"))
+    plt.savefig(os.path.join(fig_folder, "conn_normalized.png"))
     plt.close()
 
 
@@ -232,6 +261,7 @@ if __name__ == "__main__":
     parser.add_argument('--noplot', action="store_true", default=False)
     parser.add_argument('--exc_only', action="store_true", default=False)
     parser.add_argument('--inh_only', action="store_true", default=False)
+    # parser.add_argument('--no_normalize', action="store_true", default=False)
     args = parser.parse_args()
     assert not(args.exc_only and args.inh_only)
     if args.exc_only:

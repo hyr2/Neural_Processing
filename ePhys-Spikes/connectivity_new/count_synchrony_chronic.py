@@ -51,6 +51,7 @@ def process_postproc_data(session_spk_dir: str, mdaclean_temp_dir: str, session_
     map_clean2original_labels = pd.read_csv(os.path.join(mdaclean_temp_dir, "map_clean2original_labels.csv"), header=None).values.squeeze()
     template_peaks_single_sided = np.max(np.abs(template_waveforms), axis=1) # (n_ch, n_clus)
     pri_ch_lut = np.argmax(template_peaks_single_sided, axis=0) # (n_clus)
+    n_units = pri_ch_lut.shape[0]
     spike_counts = spike_counts[map_clean2original_labels-1].astype(np.int64)
     ret["spike_counts"] = spike_counts
 
@@ -94,13 +95,35 @@ def process_postproc_data(session_spk_dir: str, mdaclean_temp_dir: str, session_
         ret["synchrony_phi_matrix"] = tmp["synchrony_phi_matrix"]
         ret["synchrony_plo_matrix"] = tmp["synchrony_plo_matrix"]
     # TODO 1. bucket the synchrony values by shank regions
-    # TODO 2. get masked array of only the significant synchronies
+    # TODO (LATER) 2. get masked array of only the significant synchronies 
     # TODO 3. get average synchrony matrix of (n_regions, n_regions)
     unit_shanks = ch2shank[pri_ch_lut] # (n_units,)
-    n_units = len(unit_shanks)
+    unit_regions = np.array([shank_def[sk_] for sk_ in unit_shanks])
     region_synchronies = np.zeros((3,3))
-    # for (shankname, units_set) in groupby(sorted(np.arange(n_units), key=shank_def.__getitem__), key=shank_def.__getitem__):
-    #     units_ = list(units_set)
+    regions = list(CFG.ShankLoc)[:-1] # Each element is type IntEnum; not counting the bad ones
+    # assert len(regions)==3
+    for i_r_, region_i_ in enumerate(regions):
+        unit_mask_in_region_i = (unit_regions==region_i_)
+        if np.sum(unit_mask_in_region_i)==0:
+            continue
+        tmp_synmat_i_ = ret["synchrony_val_matrix"][unit_mask_in_region_i, :]
+        for j_r_, region_j_ in enumerate(regions[i_r_:], i_r_):
+            # TODO if `region_i_==region_j_` then only select non-diagonal values
+            if i_r_==j_r_:
+                tmp_synmat_j_ = tmp_synmat_i_[:, unit_mask_in_region_i]
+                nt = tmp_synmat_j_.shape[0]
+                if nt<=1:
+                    continue
+                region_synchronies[i_r_, i_r_] = np.sum(np.tril(tmp_synmat_j_, k=-1)) * 2 / (nt * (nt-1))
+            else:
+                unit_mask_in_region_j = (unit_regions==region_j_)
+                if np.sum(unit_mask_in_region_j)==0:
+                    continue
+                tmp_synmat_j_ = tmp_synmat_i_[:, unit_mask_in_region_j]
+                region_synchronies[i_r_, j_r_] = np.mean(tmp_synmat_j_)
+                region_synchronies[j_r_, i_r_] = region_synchronies[i_r_, j_r_]
+    ret['region_avg_synchrony_mat'] = region_synchronies
+    ret['regions'] = regions
 
     return ret
 
@@ -114,7 +137,7 @@ def get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_m
         monosyn_conn_dir_  = os.path.join(cfg_module.con_resdir, session_reldir)
         data_dict = process_postproc_data(session_spk_dir_, mdaclean_temp_dir_, monosyn_conn_dir_, cfg_module.shank_defs[animal_id], apply_curation)
 
-        region_conn_mats_dict[session_ids[i_session]] = data_dict["synchrony_val_matrix"]
+        region_conn_mats_dict[session_ids[i_session]] = data_dict["region_avg_synchrony_mat"]
     return region_conn_mats_dict
 
 def get_connec_data_all_animal(animal_session_id_dict, animal_session_reldir_dict, cfg_module, apply_curation):
@@ -233,10 +256,10 @@ def plot_conns_for_each_animal(animal_days_dict, animal_conn_mats_dict, days_sta
             ax.set_xticks(days_standard)
             ax.legend()
             ax.set_xlabel("Day")
-            ax.set_ylabel("#Conns")
+            ax.set_ylabel("Avg synchrony")
             ax.set_title("%s<-->%s"% (src_region.name, snk_region.name))
     os.makedirs(fig_folder, exist_ok=True)
-    plt.savefig(os.path.join(fig_folder, "raw.png"))
+    plt.savefig(os.path.join(fig_folder, "region_avg_synchrony_chronic.png"))
     plt.close()
 
 
