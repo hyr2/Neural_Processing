@@ -41,23 +41,26 @@ def read_postproc_data(session_spk_dir: str, mdaclean_temp_dir: str, session_con
     else:
         GW_BETWEENSHANK = 300
     # ch2shank is the map of each channel to corresponding shank. Each entry is in {0,1,2,3}.
-    ch2shank = pd.read_csv(os.path.join(mdaclean_temp_dir, "ch2shank.csv"), header=None).values.squeeze()
-    template_waveforms = readmda(os.path.join(mdaclean_temp_dir, "templates_clean.mda")).astype(np.int64)
-    map_clean2original = pd.read_csv(os.path.join(mdaclean_temp_dir, "map_clean2original_labels.csv"), header=None).values
+    ch2shank = pd.read_csv(os.path.join(mdaclean_temp_dir,'Processed','connectomes', "ch2shank.csv"), header=None).values.squeeze()
+    template_waveforms = readmda(os.path.join(mdaclean_temp_dir,'Processed','connectomes', "templates_clean.mda")).astype(np.int64)
+    map_clean2original = pd.read_csv(os.path.join(mdaclean_temp_dir,'Processed','connectomes', "map_clean2original_labels.csv"), header=None).values
     template_peaks_single_sided = np.max(np.abs(template_waveforms), axis=1) # (n_ch, n_clus)
-    pri_ch_lut = np.argmax(template_peaks_single_sided, axis=0) # (n_clus)
+    pri_ch_lut = np.argmax(template_peaks_single_sided, axis=0) # (n_clus)                          # *** why pri_ch_lut not read from firings.mda? (ans: b/c reduced number of clusters and cluster IDs are updated)
     n_units = pri_ch_lut.shape[0]
     spikewidths = [calc_t2p(template_waveforms[pri_ch_lut[i_], :, i_], session_info["SampleRate"]) for i_ in range(pri_ch_lut.shape[0])]
     spikewidths = np.array([k[0] for k in spikewidths])
     # read putative connectivity
-    connecs = pd.read_csv(os.path.join(session_connec_dir, "connecs.csv"), header=None).values
+    connecs = pd.read_csv(os.path.join(session_connec_dir,'Processed','connectomes', "connecs.csv"), header=None).values
     if apply_curation:
-        curate_mask = pd.read_csv(os.path.join(session_connec_dir, "conn_keep_mask.csv"), header=None).values.squeeze()
+        curate_mask = pd.read_csv(os.path.join(session_connec_dir,'Processed','connectomes' ,"conn_keep_mask.csv"), header=None).values.squeeze()
         curate_mask = (curate_mask>0).astype(bool)
         connecs = connecs[curate_mask, :]
     connecs[:, :2] = connecs[:,:2]-1
     ret["connecs"] = connecs
     ret["conn_cnt_mat"] = np.zeros((4,4), dtype=int)
+    ret["conn_cnt_within_shank_excit"] = np.zeros([4,],dtype = np.int16)     # rows are LT300, GT300, S2
+    ret["conn_cnt_within_shank_inhib"] = np.zeros([4,],dtype = np.int16)     # columns are shank number (A,B,C,D) most of them will be empty
+    ret["conn_norm"] = np.zeros([4,],dtype = np.int16)
     ret["conn_cnt_types"] = list(CFG.ShankLoc) # NOTE this assumes the ShankLoc enum type has values from 0 and increments by 1.
     ret["templates_clean"] = template_waveforms
     unit_shanks = ch2shank[pri_ch_lut[np.arange(n_units)]]
@@ -79,6 +82,11 @@ def read_postproc_data(session_spk_dir: str, mdaclean_temp_dir: str, session_con
             # for connections whose source and target are in the same region, we only consider them if they are in the same shank
             if src_shanknum == snk_shanknum:
                 ret["conn_cnt_mat"][src_region][snk_region] += 1
+                # if "LT300" in str(src_shanknum):
+                if contype == 1:
+                    ret["conn_cnt_within_shank_excit"][src_shanknum] += 1
+                elif contype == -1:
+                    ret["conn_cnt_within_shank_inhib"][src_shanknum] += 1
         else:
             ret["conn_cnt_mat"][src_region][snk_region] += 1
         
@@ -96,13 +104,14 @@ def read_postproc_data(session_spk_dir: str, mdaclean_temp_dir: str, session_con
                 shanks_oi_ = list(filter(lambda x: shank_def[x]==src_region_, range(4)))
                 for sh_ in shanks_oi_:
                     n_units_in_shank_ = np.sum(unit_shanks==sh_)
-                    temp += n_units_in_shank_ * (n_units_in_shank_-1)
+                    temp += n_units_in_shank_ * (n_units_in_shank_-1)       # NP2 possible connections
                 # mat_max_edges[i_r_, j_r_] = n_i_ * (n_i_ - 1)
                 mat_max_edges[i_r_, j_r_] = temp
             else:
                 n_j_ = np.sum(unit_regions==snk_region_)
                 mat_max_edges[i_r_, j_r_] = n_i_ * n_j_
     mat_max_edges = np.clip(mat_max_edges, 1, None)
+    ret["conn_norm"] = np.diagonal(mat_max_edges)
     ret["conn_density_mat"] = ret["conn_cnt_mat"].astype(float) / mat_max_edges.astype(float)
     ret["spikewidths"] = spikewidths
     return ret
@@ -111,6 +120,10 @@ def read_postproc_data(session_spk_dir: str, mdaclean_temp_dir: str, session_con
 def get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_module, apply_curation, count_type):
     # data_dicts = []
     region_conn_mats_dict = OrderedDict()
+    dict_all_sessions = {}
+    tmp_conn_cnt_within_shank_excit = np.zeros([len(session_reldirs),4],dtype = np.int16)
+    tmp_conn_cnt_within_shank_inhib = np.zeros([len(session_reldirs),4],dtype = np.int16)
+    tmp_conn_norm = np.zeros([len(session_reldirs),4],dtype = np.int16)
     for i_session, session_reldir in enumerate(session_reldirs):
         session_spk_dir_   = os.path.join(cfg_module.spk_inpdir, session_reldir)
         mdaclean_temp_dir_ = os.path.join(cfg_module.mda_tempdir, session_reldir)
@@ -119,18 +132,33 @@ def get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_m
         # conn_mat_sym = data_dict["conn_cnt_mat"] + data_dict["conn_cnt_mat"].T - np.diag(np.diag(data_dict["conn_cnt_mat"]))
         conn_mat_sym = (data_dict["conn_density_mat"] + data_dict["conn_density_mat"].T) / 2#  - np.diag(np.diag(data_dict["conn_cnt_mat"]))
         region_conn_mats_dict[session_ids[i_session]] = conn_mat_sym
-    return region_conn_mats_dict
+        # tmp_conn_cnt_within_shank_excit = np.insert(tmp_conn_cnt_within_shank_excit,i_session,data_dict['conn_cnt_within_shank_excit'],axis = 0)
+        tmp_conn_cnt_within_shank_excit[i_session,:] = data_dict['conn_cnt_within_shank_excit']
+        tmp_conn_cnt_within_shank_inhib[i_session,:] = data_dict['conn_cnt_within_shank_inhib']
+        tmp_conn_norm[i_session,:] = data_dict['conn_norm']
+        # tmp_conn_cnt_within_shank_inhib = np.insert(tmp_conn_cnt_within_shank_inhib,i_session,data_dict['conn_cnt_within_shank_inhib'],axis = 0)
+        # tmp_conn_norm = np.insert(tmp_conn_norm,i_session,data_dict['conn_norm'],axis = 0)
+    dict_all_sessions['conn_cnt_within_shank_excit'] = tmp_conn_cnt_within_shank_excit
+    dict_all_sessions['conn_cnt_within_shank_inhib'] = tmp_conn_cnt_within_shank_inhib
+    dict_all_sessions['conn_norm'] = tmp_conn_norm
+    
+    return region_conn_mats_dict, dict_all_sessions
 
 def get_connec_data_all_animal(animal_session_id_dict, animal_session_reldir_dict, cfg_module, apply_curation, count_type):
     animal_conn_mats_dict = OrderedDict()
-    for animal_id in animal_session_id_dict.keys():
+    list_folders = os.listdir(cfg_module.spk_inpdir)
+    for iter_,animal_id in enumerate(animal_session_id_dict.keys()):
         session_ids = animal_session_id_dict[animal_id]
         session_reldirs = animal_session_reldir_dict[animal_id]
-        animal_conn_mats_dict[animal_id] = get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_module, apply_curation, count_type)
+        animal_conn_mats_dict[animal_id],animal_conn_mats_dict2_local = get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_module, apply_curation, count_type)
+        # saving for the animal
+        for filename_local in list_folders:
+            if animal_id in filename_local:
+                filename_save = os.path.join(cfg_module.spk_inpdir,filename_local,'jiaao_connect_out.npz')
+                np.savez(filename_save,conn_cnt_within_shank_excit = animal_conn_mats_dict2_local['conn_cnt_within_shank_excit'], 
+                         conn_cnt_within_shank_inhib = animal_conn_mats_dict2_local['conn_cnt_within_shank_inhib'],
+                         conn_norm = animal_conn_mats_dict2_local['conn_norm'])
     return animal_conn_mats_dict
-
-
-
 
 def get_datetime(x: str):
     tmp = re.match(r"([0-9]+-[0-9]+-[0-9]+)", x)
@@ -258,7 +286,7 @@ if __name__ == "__main__":
     #     data_dicts.append(read_postproc_data(data_folder, temp_folder, temp_folder))
     parser = argparse.ArgumentParser()
     parser.add_argument('--nocurate', action="store_true", default=False)
-    parser.add_argument('--noplot', action="store_true", default=False)
+    parser.add_argument('--noplot', action="store_true", default=True)  # defaults to skip plots
     parser.add_argument('--exc_only', action="store_true", default=False)
     parser.add_argument('--inh_only', action="store_true", default=False)
     # parser.add_argument('--no_normalize', action="store_true", default=False)
@@ -288,4 +316,3 @@ if __name__ == "__main__":
     animal_conn_mats_dict = get_connec_data_all_animal(animal_session_id_dict, animal_session_reldir_dict, CFG, arg_apply_curation, count_type)
     if not(args.noplot):
         plot_conns_for_each_animal(animal_days_dict, animal_conn_mats_dict, CFG.days_standard, CFG.con_resdir)
-
