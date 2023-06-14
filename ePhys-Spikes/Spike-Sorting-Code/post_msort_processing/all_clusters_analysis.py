@@ -47,14 +47,14 @@ df_all_clusters_main = pd.DataFrame(
 )
 
 
-mouse_rh3 = os.path.join('/home/hyr2-office/Documents/Data/NVC/RH-3/','all_cluster.pkl')
-mouse_bc7 = os.path.join('/home/hyr2-office/Documents/Data/NVC/BC7/','all_cluster.pkl')
+mouse_rh3 = os.path.join('/home/hyr2-office/Documents/Data/NVC/Main-Animals/processed_data_rh3/','all_cluster.pkl')
+mouse_bc7 = os.path.join('/home/hyr2-office/Documents/Data/NVC/Main-Animals/processed_data_bc7/','all_cluster.pkl')
 # mouse_bc6 = os.path.join('/home/hyr2-office/Documents/Data/NVC/BC6/','all_cluster.pkl')
-mouse_rh7 = os.path.join('/home/hyr2-office/Documents/Data/NVC/RH-7/','all_cluster.pkl')
-mouse_bbc5 = os.path.join('/home/hyr2-office/Documents/Data/NVC/B-BC5/','all_cluster.pkl')
+mouse_rh7 = os.path.join('/home/hyr2-office/Documents/Data/NVC/Main-Animals/processed_data_rh7/','all_cluster.pkl')
+mouse_bbc5 = os.path.join('/home/hyr2-office/Documents/Data/NVC/Main-Animals/processed_data_bbc5/','all_cluster.pkl')
 # mouse_bc8 = os.path.join('/home/hyr2-office/Documents/Data/NVC/BC8/','all_cluster.pkl')
-mouse_rh8 = os.path.join('/home/hyr2-office/Documents/Data/NVC/RH-8/','all_cluster.pkl')
-mouse_rh9 = os.path.join('/home/hyr2-office/Documents/Data/NVC/RH-9/','all_cluster.pkl')
+mouse_rh8 = os.path.join('/home/hyr2-office/Documents/Data/NVC/Main-Animals/processed_data_rh8/','all_cluster.pkl')
+mouse_rh9 = os.path.join('/home/hyr2-office/Documents/Data/NVC/Main-Animals/processed_data_rh9/','all_cluster.pkl')
 
 t = time.localtime()
 current_time = time.strftime("%m_%d_%Y_%H_%M", t)
@@ -87,17 +87,17 @@ sns.scatterplot(df_I,x = 'spont_FR',y = 'event_FR',c = '#0032ff',ax = axes[0])
 axes[0].set_aspect('equal','box')
 axes[0].set_xlim(0,30)
 axes[0].set_ylim(0,46)
-df_I = df_celltype.get_group('P')                  # All cells by type
-sns.scatterplot(df_I,x = 'spont_FR',y = 'event_FR',c = '#fa3232',ax = axes[1])
+df_E = df_celltype.get_group('P')                  # All cells by type
+sns.scatterplot(df_E,x = 'spont_FR',y = 'event_FR',c = '#fa3232',ax = axes[1])
 axes[1].set_aspect('equal','box')
 axes[1].set_xlim(0,30)
 axes[1].set_ylim(0,45)
-df_I = df_celltype.get_group('WI')                  # All cells by type
-sns.scatterplot(df_I,x = 'spont_FR',y = 'event_FR',c = '#64c864',ax = axes[2])
+df_WI = df_celltype.get_group('WI')                  # All cells by type
+sns.scatterplot(df_WI,x = 'spont_FR',y = 'event_FR',c = '#64c864',ax = axes[2])
 axes[2].set_aspect('equal','box')
 axes[2].set_xlim(0,25)
 axes[2].set_ylim(0,30)
-fig.savefig(os.path.join(output_folder,'baseline_scatters_celltype'),format = 'svg')
+fig.savefig(os.path.join(output_folder,'baseline_scatters_celltype.svg'),format = 'svg')
 
 # scatter recovery phase (days:7,14)
 df_all_clusters_main_bsl = df_all_clusters_main[ (df_all_clusters_main['day'] == 7) | (df_all_clusters_main['day'] == 14) ]
@@ -110,17 +110,17 @@ sns.scatterplot(df_I,x = 'spont_FR',y = 'event_FR',c = '#0032ff',ax = axes[0])
 axes[0].set_aspect('equal','box')
 axes[0].set_xlim(0,30)
 axes[0].set_ylim(0,46)
-df_I = df_celltype.get_group('P')                  # All cells by type
-sns.scatterplot(df_I,x = 'spont_FR',y = 'event_FR',c = '#fa3232',ax = axes[1])
+df_E = df_celltype.get_group('P')                  # All cells by type
+sns.scatterplot(df_E,x = 'spont_FR',y = 'event_FR',c = '#fa3232',ax = axes[1])
 axes[1].set_aspect('equal','box')
 axes[1].set_xlim(0,30)
 axes[1].set_ylim(0,45)
-df_I = df_celltype.get_group('WI')                  # All cells by type
-sns.scatterplot(df_I,x = 'spont_FR',y = 'event_FR',c = '#64c864',ax = axes[2])
+df_WI = df_celltype.get_group('WI')                  # All cells by type
+sns.scatterplot(df_WI,x = 'spont_FR',y = 'event_FR',c = '#64c864',ax = axes[2])
 axes[2].set_aspect('equal','box')
 axes[2].set_xlim(0,25)
 axes[2].set_ylim(0,30)
-fig.savefig(os.path.join(output_folder,'recovery_scatters_celltype'),format = 'svg')
+fig.savefig(os.path.join(output_folder,'recovery_scatters_celltype.svg'),format = 'svg')
 
 # scatter chronic phase (days:28,42)
 df_all_clusters_main_bsl = df_all_clusters_main[ (df_all_clusters_main['day'] == 28) | (df_all_clusters_main['day'] == 42) ]
@@ -133,17 +133,17 @@ sns.scatterplot(df_I,x = 'spont_FR',y = 'event_FR',c = '#0032ff',ax = axes[0])
 axes[0].set_aspect('equal','box')
 axes[0].set_xlim(0,30)
 axes[0].set_ylim(0,46)
-df_I = df_celltype.get_group('P')                  # All cells by type
-sns.scatterplot(df_I,x = 'spont_FR',y = 'event_FR',c = '#fa3232',ax = axes[1])
+df_E = df_celltype.get_group('P')                  # All cells by type
+sns.scatterplot(df_E,x = 'spont_FR',y = 'event_FR',c = '#fa3232',ax = axes[1])
 axes[1].set_aspect('equal','box')
 axes[1].set_xlim(0,30)
 axes[1].set_ylim(0,45)
-df_I = df_celltype.get_group('WI')                  # All cells by type
-sns.scatterplot(df_I,x = 'spont_FR',y = 'event_FR',c = '#64c864',ax = axes[2])
+df_WI = df_celltype.get_group('WI')                  # All cells by type
+sns.scatterplot(df_WI,x = 'spont_FR',y = 'event_FR',c = '#64c864',ax = axes[2])
 axes[2].set_aspect('equal','box')
 axes[2].set_xlim(0,25)
 axes[2].set_ylim(0,30)
-fig.savefig(os.path.join(output_folder,'chronic_scatters_celltype'),format = 'svg')
+fig.savefig(os.path.join(output_folder,'chronic_scatters_celltype.svg'),format = 'svg')
 
 
 df_I_act = df_I.groupby('response').get_group(1)    # Only stimulus locked
@@ -165,8 +165,8 @@ sns.scatterplot(df_all_clusters_main_bsl,x = 'burst_i',y = 'wav_assym')
 sns.histplot(data=df_all_clusters_main_bsl, x="T2P", color="red", label="Trough to Peak", kde=True,kde_kws = {'bw_adjust' : 1.3}, binwidth = 0.05)
 
 ## Clustering here
-class_clustering = Clustering.AgglomerativeClustering(n_clusters=3).fit(nn_data)
-class_clustering.labels_
+# class_clustering = Clustering.AgglomerativeClustering(n_clusters=3).fit(nn_data)
+# class_clustering.labels_
 
 # Spontaenous FR by celltype (Fig 1 E)
 df_all_clusters_main_all = df_all_clusters_main.groupby(['day','celltype'])
@@ -179,4 +179,23 @@ plt.plot(x_axis,arr_all[:,1],'r-',linewidth = 2.5)
 plt.plot(x_axis,arr_all[:,2],'g-',linewidth = 2.5)
 plt.legend(['FS/PV','Pyr','Wide-Inter'])
 plt.xlabel('Days')
-plt.savefig(os.path.join('/home/hyr2-office/Documents/Paper/Single-Figures-SVG/Fig1_updated/subfigures/','FR_plot_celltype.svg'),format = 'svg')
+# plt.savefig(os.path.join('/home/hyr2-office/Documents/Paper/Single-Figures-SVG/Fig1_updated/subfigures/','FR_plot_celltype.svg'),format = 'svg')
+
+
+# Plotting of Burst Index longitudinal (no spatial info)
+filename_save = os.path.join(output_folder,'burst_index_BOX.svg')
+df_all_clusters_main_high = df_all_clusters_main[df_all_clusters_main['spont_FR'] > 1.5]            # only high spike count clusters considered for this analysis
+df_all_clusters_main_high_bsl = df_all_clusters_main_high[(df_all_clusters_main_high['day'] == -3) |(df_all_clusters_main_high['day'] == -2) ]
+df_all_clusters_main_high_bsl.loc[:,'day'] = 'Pre'
+df_all_clusters_main_high_recovery = df_all_clusters_main_high[(df_all_clusters_main_high['day'] == 7) |(df_all_clusters_main_high['day'] == 14) ]
+df_all_clusters_main_high_recovery.loc[:,'day'] = 'Recovery'
+df_all_clusters_main_high_chronic = df_all_clusters_main_high[(df_all_clusters_main_high['day'] == 28) |(df_all_clusters_main_high['day'] == 42) ]
+df_all_clusters_main_high_chronic.loc[:,'day'] = 'Chronic'
+df = pd.concat([df_all_clusters_main_high_bsl,df_all_clusters_main_high_recovery,df_all_clusters_main_high_chronic],axis = 0)
+fig, axes = plt.subplots(1,1, figsize=(10,12), dpi=100)
+sns.lineplot(x='day', y='burst_i', data = df, linewidth=2,errorbar = 'se',ax = axes,err_style = 'bars')# ax.set_ylim([-1.1,1.5])
+axes.set(xlabel=None, ylabel = None,title = 'Network Bursting')
+axes.grid(alpha=0.5)
+fig.set_size_inches((10, 6), forward=True)
+plt.savefig(filename_save,format = 'svg')
+
