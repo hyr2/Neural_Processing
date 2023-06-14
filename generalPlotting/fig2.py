@@ -58,8 +58,8 @@ def FR_all_trials(firing_stamp, t_trial_start, trial_duration_in_samples, window
 
 
 # Raster plotting
-Firings_bsl = readmda('/home/hyr2-office/Documents/Data/NVC/RH-7/10-17-22/firings.mda')
-trials_bsl = loadmat('/home/hyr2-office/Documents/Data/NVC/RH-7/10-17-22/trials_times.mat')['t_trial_start'].squeeze()
+Firings_bsl = readmda('/home/hyr2-office/Documents/Data/NVC/Main-Animals/processed_data_rh7/22-10-17/firings.mda')
+trials_bsl = loadmat('/home/hyr2-office/Documents/Data/NVC/Main-Animals/processed_data_rh7/22-10-17/trials_times.mat')['t_trial_start'].squeeze()
 firings_bsl_351 = Firings_bsl[1,Firings_bsl[2,:] == 351]
 firings_bsl_10 = Firings_bsl[1,Firings_bsl[2,:] == 10]
 firings_bsl_nr = Firings_bsl[1,Firings_bsl[2,:] == 184]
@@ -101,7 +101,7 @@ for iter_t in range(len(firing_rate_series_351)):
     plt.plot(raster_local,y_local,color = 'red',marker = "o",linestyle = 'None',markersize = 3)
 plt.xlim(2,3.5)
 plt.axis('off')
-plt.savefig(os.path.join(filename_save,'rh7-10-17-22-cluster315_raster.svg'),format = 'svg')
+plt.savefig(os.path.join(filename_save,'rh7-10-17-22-cluster351_raster.svg'),format = 'svg')
 plt.figure()
 for iter_t in range(len(firing_rate_series_nr)):
     raster_local = firing_rate_series_nr[iter_t]
@@ -136,19 +136,19 @@ plt.figure()
 plt.plot(x_axis,filter_Savitzky_fast(np.mean(firing_rate_series_10,axis = 0)),'b',linewidth = 3)
 plt.axis('off')
 plt.xlim(2,3.5)
-plt.ylim(0,1.5)
+plt.ylim(0,2)
 plt.savefig(os.path.join(filename_save,'rh7-10-17-22-cluster10_FR.svg'),format = 'svg')
 plt.figure()
 plt.plot(x_axis,filter_Savitzky_fast(np.mean(firing_rate_series_351,axis = 0)),'r',linewidth = 3)
 plt.axis('off')
 plt.xlim(2,3.5)
-plt.ylim(0,1.5)
+plt.ylim(0,2)
 plt.savefig(os.path.join(filename_save,'rh7-10-17-22-cluster351_FR.svg'),format = 'svg')
 plt.figure()
 plt.plot(x_axis,filter_Savitzky_fast(np.mean(firing_rate_series_nr,axis = 0)),'b',linewidth = 3)
 plt.axis('off')
 plt.xlim(2,3.5)
-plt.ylim(0,1.5)
+plt.ylim(0,2)
 plt.savefig(os.path.join(filename_save,'rh7-10-17-22-cluster184_FR.svg'),format = 'svg')
 # filename_save = '/home/hyr2-office/Documents/Paper/Single-Figures-SVG/Fig2/subfigures/'
 
