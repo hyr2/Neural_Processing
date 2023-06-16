@@ -23,12 +23,9 @@ import seaborn as sns
 # Script to perform statistical testing on the neural data (only for spiking data)
 def stat_test_spikes(source_dir):
     # Input:
-        # filename_dfL300 : h5 file containing the dataframe for the peri-infarct region
-        # filename_dfG300 : h5 file containing the dataframe for the spared barrel cortex
-        # filename_S2 : h5 file containing the dataframe for the secondary somatosensory cortex
-        # filename_dfSummary : h5 file containing the dataframe for the summary of the three regions
+        
     
-    # SINGLE CLUSTER LEVEL STATISTICAL TESTING (BY BRAIN REGION)
+    # SINGLE CLUSTER LEVEL STATISTICAL TESTING (BY BRAIN REGION) ----------------
     df_act = pd.read_pickle(os.path.join(source_dir,'dataframe_act.pkl'))
     df_S = pd.read_pickle(os.path.join(source_dir,'dataframe_sup.pkl'))
     df_E = pd.read_pickle(os.path.join(source_dir,'dataframe_E.pkl'))
@@ -46,21 +43,21 @@ def stat_test_spikes(source_dir):
     group0 = df_act_new_DL300[(df_act_new_DL300['day'] == -3) | (df_act_new_DL300['day'] == -2)]                                     # baseline
     group1 = df_act_new_DL300[df_act_new_DL300['day'] == 2]                                                                          # sub-acute
     group2 = df_act_new_DL300[(df_act_new_DL300['day'] == 7) | (df_act_new_DL300['day'] == 14)]                                      # recovery
-    group3 = df_act_new_DL300[(df_act_new_DL300['day'] == 21) | (df_act_new_DL300['day'] == 28) | (df_act_new_DL300['day'] == 42)]   # chronic
+    group3 = df_act_new_DL300[(df_act_new_DL300['day'] == 21) | (df_act_new_DL300['day'] == 28) | (df_act_new_DL300['day'] == 42) | (df_act_new_DL300['day'] == 35) | (df_act_new_DL300['day'] == 49)]   # chronic
     sstats.ranksums(x = group0['delta_S'],y = group1['delta_S'], alternative = 'greater')
     sstats.ranksums(x = group0['delta_S'],y = group2['delta_S'], alternative = 'greater')
     sstats.ranksums(x = group0['delta_S'],y = group3['delta_S'], alternative = 'greater')
     group0 = df_act_new_DG300[(df_act_new_DG300['day'] == -3) | (df_act_new_DG300['day'] == -2)]                                     # baseline
     group1 = df_act_new_DG300[df_act_new_DG300['day'] == 2]                                                                          # sub-acute
     group2 = df_act_new_DG300[(df_act_new_DG300['day'] == 7) | (df_act_new_DG300['day'] == 14)]                                      # recovery
-    group3 = df_act_new_DG300[(df_act_new_DG300['day'] == 21) | (df_act_new_DG300['day'] == 28) | (df_act_new_DG300['day'] == 42)]   # chronic
+    group3 = df_act_new_DG300[(df_act_new_DG300['day'] == 21) | (df_act_new_DG300['day'] == 28) | (df_act_new_DG300['day'] == 42)| (df_act_new_DL300['day'] == 35) | (df_act_new_DL300['day'] == 49)]   # chronic
     sstats.ranksums(x = group0['delta_S'],y = group1['delta_S'], alternative = 'greater')
     sstats.ranksums(x = group0['delta_S'],y = group2['delta_S'], alternative = 'less')
     sstats.ranksums(x = group0['delta_S'],y = group3['delta_S'], alternative = 'less')
     group0 = df_act_new_S2[(df_act_new_S2['day'] == -3) | (df_act_new_S2['day'] == -2)]                                         # baseline
     group1 = df_act_new_S2[df_act_new_S2['day'] == 2]                                                                           # sub-acute
     group2 = df_act_new_S2[(df_act_new_S2['day'] == 7) | (df_act_new_S2['day'] == 14)]                                          # recovery
-    group3 = df_act_new_S2[(df_act_new_S2['day'] == 21) | (df_act_new_S2['day'] == 28) | (df_act_new_S2['day'] == 42)]          # chronic
+    group3 = df_act_new_S2[(df_act_new_S2['day'] == 21) | (df_act_new_S2['day'] == 28) | (df_act_new_S2['day'] == 42)| (df_act_new_DL300['day'] == 35) | (df_act_new_DL300['day'] == 49)]          # chronic
     sstats.ranksums(x = group0['delta_S'],y = group1['delta_S'], alternative = 'less')
     sstats.ranksums(x = group0['delta_S'],y = group2['delta_S'], alternative = 'less')
     sstats.ranksums(x = group0['delta_S'],y = group3['delta_S'], alternative = 'two-sided')
@@ -75,21 +72,21 @@ def stat_test_spikes(source_dir):
     group0 = df_act_new_DL300[(df_act_new_DL300['day'] == -3) | (df_act_new_DL300['day'] == -2)]                                     # baseline
     group1 = df_act_new_DL300[df_act_new_DL300['day'] == 2]                                                                          # sub-acute
     group2 = df_act_new_DL300[(df_act_new_DL300['day'] == 7) | (df_act_new_DL300['day'] == 14)]                                      # recovery
-    group3 = df_act_new_DL300[(df_act_new_DL300['day'] == 21) | (df_act_new_DL300['day'] == 28) | (df_act_new_DL300['day'] == 42)]   # chronic
+    group3 = df_act_new_DL300[(df_act_new_DL300['day'] == 21) | (df_act_new_DL300['day'] == 28) | (df_act_new_DL300['day'] == 42)| (df_act_new_DL300['day'] == 35) | (df_act_new_DL300['day'] == 49)]   # chronic
     sstats.ranksums(x = group0['delta_S'],y = group1['delta_S'], alternative = 'less')
     sstats.ranksums(x = group0['delta_S'],y = group2['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group3['delta_S'], alternative = 'two-sided')
     group0 = df_act_new_DG300[(df_act_new_DG300['day'] == -3) | (df_act_new_DG300['day'] == -2)]                                     # baseline
     group1 = df_act_new_DG300[df_act_new_DG300['day'] == 2]                                                                          # sub-acute
     group2 = df_act_new_DG300[(df_act_new_DG300['day'] == 7) | (df_act_new_DG300['day'] == 14)]                                      # recovery
-    group3 = df_act_new_DG300[(df_act_new_DG300['day'] == 21) | (df_act_new_DG300['day'] == 28) | (df_act_new_DG300['day'] == 42)]   # chronic
+    group3 = df_act_new_DG300[(df_act_new_DG300['day'] == 21) | (df_act_new_DG300['day'] == 28) | (df_act_new_DG300['day'] == 42)| (df_act_new_DL300['day'] == 35) | (df_act_new_DL300['day'] == 49)]   # chronic
     sstats.ranksums(x = group0['delta_S'],y = group1['delta_S'], alternative = 'less')
     sstats.ranksums(x = group0['delta_S'],y = group2['delta_S'], alternative = 'greater')
     sstats.ranksums(x = group0['delta_S'],y = group3['delta_S'], alternative = 'greater')
     group0 = df_act_new_S2[(df_act_new_S2['day'] == -3) | (df_act_new_S2['day'] == -2)]                                         # baseline
     group1 = df_act_new_S2[df_act_new_S2['day'] == 2]                                                                           # sub-acute
     group2 = df_act_new_S2[(df_act_new_S2['day'] == 7) | (df_act_new_S2['day'] == 14)]                                          # recovery
-    group3 = df_act_new_S2[(df_act_new_S2['day'] == 21) | (df_act_new_S2['day'] == 28) | (df_act_new_S2['day'] == 42)]          # chronic
+    group3 = df_act_new_S2[(df_act_new_S2['day'] == 21) | (df_act_new_S2['day'] == 28) | (df_act_new_S2['day'] == 42)| (df_act_new_DL300['day'] == 35) | (df_act_new_DL300['day'] == 49)]          # chronic
     sstats.ranksums(x = group0['delta_S'],y = group1['delta_S'], alternative = 'greater')
     sstats.ranksums(x = group0['delta_S'],y = group2['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group3['delta_S'], alternative = 'two-sided')
@@ -103,21 +100,21 @@ def stat_test_spikes(source_dir):
     group0 = df_act_new_DL300[(df_act_new_DL300['day'] == -3) | (df_act_new_DL300['day'] == -2)]                                     # baseline
     group1 = df_act_new_DL300[df_act_new_DL300['day'] == 2]                                                                          # sub-acute
     group2 = df_act_new_DL300[(df_act_new_DL300['day'] == 7) | (df_act_new_DL300['day'] == 14)]                                      # recovery
-    group3 = df_act_new_DL300[(df_act_new_DL300['day'] == 21) | (df_act_new_DL300['day'] == 28) | (df_act_new_DL300['day'] == 42)]   # chronic
+    group3 = df_act_new_DL300[(df_act_new_DL300['day'] == 21) | (df_act_new_DL300['day'] == 28) | (df_act_new_DL300['day'] == 42)| (df_act_new_DL300['day'] == 35) | (df_act_new_DL300['day'] == 49)]   # chronic
     sstats.ranksums(x = group0['delta_S'],y = group1['delta_S'], alternative = 'greater')
     sstats.ranksums(x = group0['delta_S'],y = group2['delta_S'], alternative = 'greater')
     sstats.ranksums(x = group0['delta_S'],y = group3['delta_S'], alternative = 'greater')
     group0 = df_act_new_DG300[(df_act_new_DG300['day'] == -3) | (df_act_new_DG300['day'] == -2)]                                     # baseline
     group1 = df_act_new_DG300[df_act_new_DG300['day'] == 2]                                                                          # sub-acute
     group2 = df_act_new_DG300[(df_act_new_DG300['day'] == 7) | (df_act_new_DG300['day'] == 14)]                                      # recovery
-    group3 = df_act_new_DG300[(df_act_new_DG300['day'] == 21) | (df_act_new_DG300['day'] == 28) | (df_act_new_DG300['day'] == 42)]   # chronic
+    group3 = df_act_new_DG300[(df_act_new_DG300['day'] == 21) | (df_act_new_DG300['day'] == 28) | (df_act_new_DG300['day'] == 42)| (df_act_new_DL300['day'] == 35) | (df_act_new_DL300['day'] == 49)]   # chronic
     sstats.ranksums(x = group0['delta_S'],y = group1['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group2['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group3['delta_S'], alternative = 'two-sided')
     group0 = df_act_new_S2[(df_act_new_S2['day'] == -3) | (df_act_new_S2['day'] == -2)]                                         # baseline
     group1 = df_act_new_S2[df_act_new_S2['day'] == 2]                                                                           # sub-acute
     group2 = df_act_new_S2[(df_act_new_S2['day'] == 7) | (df_act_new_S2['day'] == 14)]                                          # recovery
-    group3 = df_act_new_S2[(df_act_new_S2['day'] == 21) | (df_act_new_S2['day'] == 28) | (df_act_new_S2['day'] == 42)]          # chronic
+    group3 = df_act_new_S2[(df_act_new_S2['day'] == 21) | (df_act_new_S2['day'] == 28) | (df_act_new_S2['day'] == 42)| (df_act_new_DL300['day'] == 35) | (df_act_new_DL300['day'] == 49)]          # chronic
     sstats.ranksums(x = group0['delta_S'],y = group1['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group2['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group3['delta_S'], alternative = 'two-sided')
@@ -132,21 +129,21 @@ def stat_test_spikes(source_dir):
     group0 = df_act_new_DL300[(df_act_new_DL300['day'] == -3) | (df_act_new_DL300['day'] == -2)]                                     # baseline
     group1 = df_act_new_DL300[df_act_new_DL300['day'] == 2]                                                                          # sub-acute
     group2 = df_act_new_DL300[(df_act_new_DL300['day'] == 7) | (df_act_new_DL300['day'] == 14)]                                      # recovery
-    group3 = df_act_new_DL300[(df_act_new_DL300['day'] == 21) | (df_act_new_DL300['day'] == 28) | (df_act_new_DL300['day'] == 42)]   # chronic
+    group3 = df_act_new_DL300[(df_act_new_DL300['day'] == 21) | (df_act_new_DL300['day'] == 28) | (df_act_new_DL300['day'] == 42)| (df_act_new_DL300['day'] == 35) | (df_act_new_DL300['day'] == 49)]   # chronic
     sstats.ranksums(x = group0['delta_S'],y = group1['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group2['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group3['delta_S'], alternative = 'two-sided')
     group0 = df_act_new_DG300[(df_act_new_DG300['day'] == -3) | (df_act_new_DG300['day'] == -2)]                                     # baseline
     group1 = df_act_new_DG300[df_act_new_DG300['day'] == 2]                                                                          # sub-acute
     group2 = df_act_new_DG300[(df_act_new_DG300['day'] == 7) | (df_act_new_DG300['day'] == 14)]                                      # recovery
-    group3 = df_act_new_DG300[(df_act_new_DG300['day'] == 21) | (df_act_new_DG300['day'] == 28) | (df_act_new_DG300['day'] == 42)]   # chronic
+    group3 = df_act_new_DG300[(df_act_new_DG300['day'] == 21) | (df_act_new_DG300['day'] == 28) | (df_act_new_DG300['day'] == 42)| (df_act_new_DL300['day'] == 35) | (df_act_new_DL300['day'] == 49)]   # chronic
     sstats.ranksums(x = group0['delta_S'],y = group1['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group2['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group3['delta_S'], alternative = 'two-sided')
     group0 = df_act_new_S2[(df_act_new_S2['day'] == -3) | (df_act_new_S2['day'] == -2)]                                         # baseline
     group1 = df_act_new_S2[df_act_new_S2['day'] == 2]                                                                           # sub-acute
     group2 = df_act_new_S2[(df_act_new_S2['day'] == 7) | (df_act_new_S2['day'] == 14)]                                          # recovery
-    group3 = df_act_new_S2[(df_act_new_S2['day'] == 21) | (df_act_new_S2['day'] == 28) | (df_act_new_S2['day'] == 42)]          # chronic
+    group3 = df_act_new_S2[(df_act_new_S2['day'] == 21) | (df_act_new_S2['day'] == 28) | (df_act_new_S2['day'] == 42)| (df_act_new_DL300['day'] == 35) | (df_act_new_DL300['day'] == 49)]          # chronic
     sstats.ranksums(x = group0['delta_S'],y = group1['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group2['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group3['delta_S'], alternative = 'two-sided')
@@ -160,21 +157,21 @@ def stat_test_spikes(source_dir):
     group0 = df_act_new_DL300[(df_act_new_DL300['day'] == -3) | (df_act_new_DL300['day'] == -2)]                                     # baseline
     group1 = df_act_new_DL300[df_act_new_DL300['day'] == 2]                                                                          # sub-acute
     group2 = df_act_new_DL300[(df_act_new_DL300['day'] == 7) | (df_act_new_DL300['day'] == 14)]                                      # recovery
-    group3 = df_act_new_DL300[(df_act_new_DL300['day'] == 21) | (df_act_new_DL300['day'] == 28) | (df_act_new_DL300['day'] == 42)]   # chronic
+    group3 = df_act_new_DL300[(df_act_new_DL300['day'] == 21) | (df_act_new_DL300['day'] == 28) | (df_act_new_DL300['day'] == 42)| (df_act_new_DL300['day'] == 35) | (df_act_new_DL300['day'] == 49)]   # chronic
     sstats.ranksums(x = group0['delta_S'],y = group1['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group2['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group3['delta_S'], alternative = 'two-sided')
     group0 = df_act_new_DG300[(df_act_new_DG300['day'] == -3) | (df_act_new_DG300['day'] == -2)]                                     # baseline
     group1 = df_act_new_DG300[df_act_new_DG300['day'] == 2]                                                                          # sub-acute
     group2 = df_act_new_DG300[(df_act_new_DG300['day'] == 7) | (df_act_new_DG300['day'] == 14)]                                      # recovery
-    group3 = df_act_new_DG300[(df_act_new_DG300['day'] == 21) | (df_act_new_DG300['day'] == 28) | (df_act_new_DG300['day'] == 42)]   # chronic
+    group3 = df_act_new_DG300[(df_act_new_DG300['day'] == 21) | (df_act_new_DG300['day'] == 28) | (df_act_new_DG300['day'] == 42)| (df_act_new_DL300['day'] == 35) | (df_act_new_DL300['day'] == 49)]   # chronic
     sstats.ranksums(x = group0['delta_S'],y = group1['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group2['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group3['delta_S'], alternative = 'two-sided')
     group0 = df_act_new_S2[(df_act_new_S2['day'] == -3) | (df_act_new_S2['day'] == -2)]                                         # baseline
     group1 = df_act_new_S2[df_act_new_S2['day'] == 2]                                                                           # sub-acute
     group2 = df_act_new_S2[(df_act_new_S2['day'] == 7) | (df_act_new_S2['day'] == 14)]                                          # recovery
-    group3 = df_act_new_S2[(df_act_new_S2['day'] == 21) | (df_act_new_S2['day'] == 28) | (df_act_new_S2['day'] == 42)]          # chronic
+    group3 = df_act_new_S2[(df_act_new_S2['day'] == 21) | (df_act_new_S2['day'] == 28) | (df_act_new_S2['day'] == 42)| (df_act_new_DL300['day'] == 35) | (df_act_new_DL300['day'] == 49)]          # chronic
     sstats.ranksums(x = group0['delta_S'],y = group1['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group2['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group3['delta_S'], alternative = 'two-sided')
@@ -189,24 +186,68 @@ def stat_test_spikes(source_dir):
     group0 = df_act_new_DL300[(df_act_new_DL300['day'] == -3) | (df_act_new_DL300['day'] == -2)]                                     # baseline
     group1 = df_act_new_DL300[df_act_new_DL300['day'] == 2]                                                                          # sub-acute
     group2 = df_act_new_DL300[(df_act_new_DL300['day'] == 7) | (df_act_new_DL300['day'] == 14)]                                      # recovery
-    group3 = df_act_new_DL300[(df_act_new_DL300['day'] == 21) | (df_act_new_DL300['day'] == 28) | (df_act_new_DL300['day'] == 42)]   # chronic
+    group3 = df_act_new_DL300[(df_act_new_DL300['day'] == 21) | (df_act_new_DL300['day'] == 28) | (df_act_new_DL300['day'] == 42)| (df_act_new_DL300['day'] == 35) | (df_act_new_DL300['day'] == 49)]   # chronic
     sstats.ranksums(x = group0['delta_S'],y = group1['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group2['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group3['delta_S'], alternative = 'two-sided')
     group0 = df_act_new_DG300[(df_act_new_DG300['day'] == -3) | (df_act_new_DG300['day'] == -2)]                                     # baseline
     group1 = df_act_new_DG300[df_act_new_DG300['day'] == 2]                                                                          # sub-acute
     group2 = df_act_new_DG300[(df_act_new_DG300['day'] == 7) | (df_act_new_DG300['day'] == 14)]                                      # recovery
-    group3 = df_act_new_DG300[(df_act_new_DG300['day'] == 21) | (df_act_new_DG300['day'] == 28) | (df_act_new_DG300['day'] == 42)]   # chronic
+    group3 = df_act_new_DG300[(df_act_new_DG300['day'] == 21) | (df_act_new_DG300['day'] == 28) | (df_act_new_DG300['day'] == 42)| (df_act_new_DL300['day'] == 35) | (df_act_new_DL300['day'] == 49)]   # chronic
     sstats.ranksums(x = group0['delta_S'],y = group1['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group2['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group3['delta_S'], alternative = 'two-sided')
     group0 = df_act_new_S2[(df_act_new_S2['day'] == -3) | (df_act_new_S2['day'] == -2)]                                         # baseline
     group1 = df_act_new_S2[df_act_new_S2['day'] == 2]                                                                           # sub-acute
     group2 = df_act_new_S2[(df_act_new_S2['day'] == 7) | (df_act_new_S2['day'] == 14)]                                          # recovery
-    group3 = df_act_new_S2[(df_act_new_S2['day'] == 21) | (df_act_new_S2['day'] == 28) | (df_act_new_S2['day'] == 42)]          # chronic
+    group3 = df_act_new_S2[(df_act_new_S2['day'] == 21) | (df_act_new_S2['day'] == 28) | (df_act_new_S2['day'] == 42)| (df_act_new_DL300['day'] == 35) | (df_act_new_DL300['day'] == 49)]          # chronic
     sstats.ranksums(x = group0['delta_S'],y = group1['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group2['delta_S'], alternative = 'two-sided')
     sstats.ranksums(x = group0['delta_S'],y = group3['delta_S'], alternative = 'two-sided')
+    
+    # Connectivities STATISTICAL TESTING (BY BRAIN REGION) ----------------
+    df = pd.read_pickle(os.path.join(source_dir,'dataframe_df.pkl'))
+    df_S2 = df.groupby('region').get_group('S2')
+    df_L300 = df.groupby('region').get_group('D<300')
+    df_G300 = df.groupby('region').get_group('D>300')
+    
+    sstats.ranksums(x = df_L300[df_L300['day'] == 'Pre']['avg_synch'],y = df_L300[df_L300['day'] == 'SubAcute']['avg_synch'].fillna(0),alternative='greater')
+    sstats.ranksums(x = df_L300[df_L300['day'] == 'Pre']['avg_synch'],y = df_L300[df_L300['day'] == 'Recovery']['avg_synch'].fillna(0),alternative='greater')
+    sstats.ranksums(x = df_L300[df_L300['day'] == 'Pre']['avg_synch'],y = df_L300[df_L300['day'] == 'Chronic']['avg_synch'].fillna(0),alternative='greater')
+    
+    sstats.ranksums(x = df_G300[df_G300['day'] == 'Pre']['avg_synch'],y = df_G300[df_G300['day'] == 'SubAcute']['avg_synch'].fillna(0),alternative='greater')
+    sstats.ranksums(x = df_G300[df_G300['day'] == 'Pre']['avg_synch'],y = df_G300[df_G300['day'] == 'Recovery']['avg_synch'].fillna(0),alternative = 'less')
+    sstats.ranksums(x = df_G300[df_G300['day'] == 'Pre']['avg_synch'],y = df_G300[df_G300['day'] == 'Chronic']['avg_synch'].fillna(0), alternative = 'less')
+    
+    sstats.ranksums(x = df_S2[df_S2['day'] == 'Pre']['avg_synch'],y = df_S2[df_S2['day'] == 'SubAcute']['avg_synch'].fillna(0))
+    sstats.ranksums(x = df_S2[df_S2['day'] == 'Pre']['avg_synch'],y = df_S2[df_S2['day'] == 'Recovery']['avg_synch'].fillna(0))
+    sstats.ranksums(x = df_S2[df_S2['day'] == 'Pre']['avg_synch'],y = df_S2[df_S2['day'] == 'Chronic']['avg_synch'].fillna(0))
+    
+    # monosyn E
+    sstats.ranksums(x = df_L300[df_L300['day'] == 'Pre']['num_monosyn_e'],y = df_L300[df_L300['day'] == 'SubAcute']['num_monosyn_e'].fillna(0))
+    sstats.ranksums(x = df_L300[df_L300['day'] == 'Pre']['num_monosyn_e'],y = df_L300[df_L300['day'] == 'Recovery']['num_monosyn_e'].fillna(0))
+    sstats.ranksums(x = df_L300[df_L300['day'] == 'Pre']['num_monosyn_e'],y = df_L300[df_L300['day'] == 'Chronic']['num_monosyn_e'].fillna(0))
+    
+    sstats.ranksums(x = df_G300[df_G300['day'] == 'Pre']['num_monosyn_e'],y = df_G300[df_G300['day'] == 'SubAcute']['num_monosyn_e'].fillna(0))
+    sstats.ranksums(x = df_G300[df_G300['day'] == 'Pre']['num_monosyn_e'],y = df_G300[df_G300['day'] == 'Recovery']['num_monosyn_e'].fillna(0))
+    sstats.ranksums(x = df_G300[df_G300['day'] == 'Pre']['num_monosyn_e'],y = df_G300[df_G300['day'] == 'Chronic']['num_monosyn_e'].fillna(0))
+    
+    sstats.ranksums(x = df_S2[df_S2['day'] == 'Pre']['num_monosyn_e'],y = df_S2[df_S2['day'] == 'SubAcute']['num_monosyn_e'].fillna(0))
+    sstats.ranksums(x = df_S2[df_S2['day'] == 'Pre']['num_monosyn_e'],y = df_S2[df_S2['day'] == 'Recovery']['num_monosyn_e'].fillna(0))
+    sstats.ranksums(x = df_S2[df_S2['day'] == 'Pre']['num_monosyn_e'],y = df_S2[df_S2['day'] == 'Chronic']['num_monosyn_e'].fillna(0))
+    
+    # monosyn I
+    sstats.ranksums(x = df_L300[df_L300['day'] == 'Pre']['num_monosyn_i'],y = df_L300[df_L300['day'] == 'SubAcute']['num_monosyn_i'].fillna(0))
+    sstats.ranksums(x = df_L300[df_L300['day'] == 'Pre']['num_monosyn_i'],y = df_L300[df_L300['day'] == 'Recovery']['num_monosyn_i'].fillna(0))
+    sstats.ranksums(x = df_L300[df_L300['day'] == 'Pre']['num_monosyn_i'],y = df_L300[df_L300['day'] == 'Chronic']['num_monosyn_i'].fillna(0))
+    
+    sstats.ranksums(x = df_G300[df_G300['day'] == 'Pre']['num_monosyn_i'],y = df_G300[df_G300['day'] == 'SubAcute']['num_monosyn_i'].fillna(0))
+    sstats.ranksums(x = df_G300[df_G300['day'] == 'Pre']['num_monosyn_i'],y = df_G300[df_G300['day'] == 'Recovery']['num_monosyn_i'].fillna(0))
+    sstats.ranksums(x = df_G300[df_G300['day'] == 'Pre']['num_monosyn_i'],y = df_G300[df_G300['day'] == 'Chronic']['num_monosyn_i'].fillna(0))
+    
+    sstats.ranksums(x = df_S2[df_S2['day'] == 'Pre']['num_monosyn_i'],y = df_S2[df_S2['day'] == 'SubAcute']['num_monosyn_i'].fillna(0))
+    sstats.ranksums(x = df_S2[df_S2['day'] == 'Pre']['num_monosyn_i'],y = df_S2[df_S2['day'] == 'Recovery']['num_monosyn_i'].fillna(0))
+    sstats.ranksums(x = df_S2[df_S2['day'] == 'Pre']['num_monosyn_i'],y = df_S2[df_S2['day'] == 'Chronic']['num_monosyn_i'].fillna(0))
     
     # df_less300_full = pd.read_hdf(filename_dfL300)
     # df_great300_full = pd.read_hdf(filename_dfL300)
@@ -314,5 +355,5 @@ def stat_test_spikes(source_dir):
 
 
 
-# source_dir = input('Results directory: ')
-# source_dir = str(source_dir)
+source_dir = input('Results directory: ')
+source_dir = str(source_dir)
