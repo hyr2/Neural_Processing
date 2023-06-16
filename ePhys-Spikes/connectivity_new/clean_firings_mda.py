@@ -19,12 +19,13 @@ from utils.mdaio import writemda64
 
 
 def reorder_mda_arrs(
-    firings_full : np.ndarray, templates_full : np.ndarray, 
+    clus_locations : np.ndarray, firings_full : np.ndarray, templates_full : np.ndarray, 
     clean_mask : np.ndarray, prim_channels_full: np.ndarray
     ):
     """reorder mda arrays
     Parameters
     ----------
+    clus_locations : (n_clus_raw,2) <float> 
     firings_full : (3, n_clus_raw) <int> [primary channel; event time(sample); unit label]
     templates_full : (n_chs, waveform_len, n_clus_raw)
     clean_mask : (n_chs,) <boolean>
@@ -54,7 +55,8 @@ def reorder_mda_arrs(
     prim_channels_clean = prim_channels_full[clean_mask]
     tmp_prichs_new = prim_channels_clean[firings_clean[2,:]-1]
     firings_clean[0,:] = tmp_prichs_new
-    return firings_clean, templates_clean, map_clean2original_labels
+    clus_locations_new = clus_locations[clean_mask,:]       # cleaning up the cluster_locations.csv file here
+    return clus_locations_new,firings_clean, templates_clean, map_clean2original_labels
     
 
 def clean_mdas(msort_path, postproc_path, mda_savepath):
@@ -75,6 +77,8 @@ def clean_mdas(msort_path, postproc_path, mda_savepath):
     # read firing stamps, template and continuous waveforms from MountainSort outputs and some processing
     firings = readmda(os.path.join(msort_path, "firings.mda")).astype(np.int64)
     template_waveforms = readmda(os.path.join(msort_path, "templates.mda")).astype(np.float64)
+    clus_locations = pd.read_csv(os.path.join(msort_path, 'clus_locations.csv'),header = None)
+    clus_locationsA = clus_locations.to_numpy()
     n_clus = template_waveforms.shape[2]
     # set nan to zero just in case some units don't fire during the segment resulting in nan 
     template_waveforms = np.nan_to_num(template_waveforms, nan=0.0)
@@ -86,7 +90,8 @@ def clean_mdas(msort_path, postproc_path, mda_savepath):
     peak_snr[clus_labels-1] = peak_snr_short
     spiking_mask = (peak_snr>=0)
     # read rejection mask
-    accept_mask = np.load(os.path.join(postproc_path, "cluster_rejection_mask.npz"))['single_unit_mask'].astype(bool)
+    # accept_mask = np.load(os.path.join(postproc_path, "cluster_rejection_mask.npz"))['single_unit_mask'].astype(bool)
+    accept_mask = pd.read_csv(os.path.join(postproc_path, 'accept_mask.csv') , header = None).values.squeeze().astype(bool)
     positive_mask = pd.read_csv(os.path.join(postproc_path, "positive_mask.csv"), header=None).values.squeeze().astype(bool)
     # clusters to keep: both (1) spiking and (2) accepted by curation criteria
     clean_mask = np.logical_and(spiking_mask, accept_mask)
@@ -96,11 +101,14 @@ def clean_mdas(msort_path, postproc_path, mda_savepath):
     template_peaks_single_sided = np.max(np.abs(template_waveforms), axis=1) # (n_ch, n_clus)
     pri_ch_lut = np.argmax(template_peaks_single_sided, axis=0) # (n_clus)
     # do the actual cleaning up
-    firings_clean, templates_clean, map_clean2original_labels = reorder_mda_arrs(
-        firings, template_waveforms, clean_mask, pri_ch_lut+1
+    clus_locations_clean, firings_clean, templates_clean, map_clean2original_labels = reorder_mda_arrs(
+        clus_locationsA,firings, template_waveforms, clean_mask, pri_ch_lut+1
         )
     writemda64(firings_clean, os.path.join(mda_savepath, "firings_clean.mda"))
     writemda64(templates_clean, os.path.join(mda_savepath, "templates_clean.mda"))
+    pd.DataFrame(clus_locations_clean).to_csv(os.path.join(mda_savepath,'clus_locations_clean.csv'),index = False ,header = False)
+    
+    
     pd.DataFrame(data=map_clean2original_labels).to_csv(
         os.path.join(mda_savepath, "map_clean2original_labels.csv"), 
         index=False, header=False
@@ -116,6 +124,6 @@ def clean_mdas_main(spk_folders, clean_mda_output_folders):
 
 if __name__ == "__main__":
     import config as cfg
-    spk_folders = list(map(lambda x_: os.path.join(cfg.spk_inpdir, x_), cfg.spk_reldirs))
-    clean_mda_folders = list(map(lambda x_: os.path.join(cfg.mda_tempdir, x_), cfg.mda_reldirs))
+    spk_folders = list(map(lambda x_: os.path.join(cfg.spk_inpdir, x_), cfg.mda_reldirs))           # input of mda files (all animals and all sessions)
+    clean_mda_folders = list(map(lambda x_: os.path.join(cfg.mda_tempdir, x_), cfg.mda_reldirs))    # output of mda files (all animals and all sessions)
     clean_mdas_main(spk_folders, clean_mda_folders)
