@@ -9,6 +9,7 @@ from copy import deepcopy
 import gc
 import json
 import re
+from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
@@ -19,12 +20,13 @@ from utils.mdaio import writemda64
 
 
 def reorder_mda_arrs(
-    clus_locations : np.ndarray, firings_full : np.ndarray, templates_full : np.ndarray, 
-    clean_mask : np.ndarray, prim_channels_full: np.ndarray
+    all_waveforms_by_cluster ,clus_locations : np.ndarray, firings_full : np.ndarray,
+    templates_full : np.ndarray, clean_mask : np.ndarray, prim_channels_full: np.ndarray
     ):
     """reorder mda arrays
     Parameters
     ----------
+    all_waveforms_by_cluster: nested list 
     clus_locations : (n_clus_raw,2) <float> 
     firings_full : (3, n_clus_raw) <int> [primary channel; event time(sample); unit label]
     templates_full : (n_chs, waveform_len, n_clus_raw)
@@ -56,7 +58,19 @@ def reorder_mda_arrs(
     tmp_prichs_new = prim_channels_clean[firings_clean[2,:]-1]
     firings_clean[0,:] = tmp_prichs_new
     clus_locations_new = clus_locations[clean_mask,:]       # cleaning up the cluster_locations.csv file here
-    return clus_locations_new,firings_clean, templates_clean, map_clean2original_labels
+    # Cleaning file all_waveforms_by_cluster.npz (This file saves all clusters all spike waveforms)
+    waveforms_all_dict = OrderedDict()
+    nTemplates = clus_locations.shape[0]
+    i_clus_real = 0
+    for i_clus in range(nTemplates):
+        if clean_mask[i_clus]:
+            waveforms_this_cluster = all_waveforms_by_cluster['clus%d'%(i_clus+1)]
+            waveforms_all_dict['clus%d'%(i_clus_real+1)] = waveforms_this_cluster
+            i_clus_real += 1
+   
+    
+    
+    return waveforms_all_dict,clus_locations_new,firings_clean, templates_clean, map_clean2original_labels
     
 
 def clean_mdas(msort_path, postproc_path, mda_savepath):
@@ -78,6 +92,7 @@ def clean_mdas(msort_path, postproc_path, mda_savepath):
     firings = readmda(os.path.join(msort_path, "firings.mda")).astype(np.int64)
     template_waveforms = readmda(os.path.join(msort_path, "templates.mda")).astype(np.float64)
     clus_locations = pd.read_csv(os.path.join(msort_path, 'clus_locations.csv'),header = None)
+    all_waveforms_by_cluster = np.load(os.path.join(msort_path,'all_waveforms_by_cluster.npz'))
     clus_locationsA = clus_locations.to_numpy()
     n_clus = template_waveforms.shape[2]
     # set nan to zero just in case some units don't fire during the segment resulting in nan 
@@ -101,13 +116,13 @@ def clean_mdas(msort_path, postproc_path, mda_savepath):
     template_peaks_single_sided = np.max(np.abs(template_waveforms), axis=1) # (n_ch, n_clus)
     pri_ch_lut = np.argmax(template_peaks_single_sided, axis=0) # (n_clus)
     # do the actual cleaning up
-    clus_locations_clean, firings_clean, templates_clean, map_clean2original_labels = reorder_mda_arrs(
-        clus_locationsA,firings, template_waveforms, clean_mask, pri_ch_lut+1
+    waveforms_all_dict, clus_locations_clean, firings_clean, templates_clean, map_clean2original_labels = reorder_mda_arrs(
+        all_waveforms_by_cluster,clus_locationsA,firings, template_waveforms, clean_mask, pri_ch_lut+1
         )
     writemda64(firings_clean, os.path.join(mda_savepath, "firings_clean.mda"))
     writemda64(templates_clean, os.path.join(mda_savepath, "templates_clean.mda"))
     pd.DataFrame(clus_locations_clean).to_csv(os.path.join(mda_savepath,'clus_locations_clean.csv'),index = False ,header = False)
-    
+    np.savez(os.path.join(mda_savepath, "all_waveforms_by_cluster_clean.npz"), **waveforms_all_dict)
     
     pd.DataFrame(data=map_clean2original_labels).to_csv(
         os.path.join(mda_savepath, "map_clean2original_labels.csv"), 
