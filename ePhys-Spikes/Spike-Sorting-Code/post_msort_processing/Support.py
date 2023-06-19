@@ -438,7 +438,7 @@ def append_df_to_excel(filename, df, sheet_name='Sheet1', startrow=None,
 # The following is Jiaao's code for determining possible candidates for merging
 # TRANSIENT_AMPLITUDE_VALID_DURATION = 10e-4 # seconds (duration of data before and after each spike that we consider when deciding the transient amplitude)
 # tavd_nsample = int(np.ceil(TRANSIENT_AMPLITUDE_VALID_DURATION*F_SAMPLE))
-MAX_GEOM_DIST = 25 # um
+MAX_GEOM_DIST = 75 # um
 ADJACENCY_RADIUS_SQUARED = 140**2
 def get_peak_amp_ratio_matrix(data_a, data_b=None):
     """
@@ -513,7 +513,7 @@ def calc_merge_candidates(templates, locations, peak_amplitudes):
     pairs_all = []
     pairs_cand = []
     for i_clus in range(n_clus):
-        neighborhood_mask = np.sum((locations-locations[i_clus,:])**2, axis=1) < MAX_GEOM_DIST**2
+        neighborhood_mask = np.sum((locations-locations[i_clus,:])**2, axis=1) < MAX_GEOM_DIST**2       # looks within 3 electrodes as primary channel
         neighborhood_mask[i_clus: ] = False # Force non-directed graph for merging; also no comparison with self
         n_neighborhood = np.sum(neighborhood_mask)
         if n_neighborhood<1:
