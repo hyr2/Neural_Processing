@@ -108,6 +108,44 @@ def plot_src_conns_vs_spkwidth(data_dicts, figpath):
     plt.savefig(os.path.join(figpath, "src_conns_vs_spkwidth.png"))
     plt.close()
 
+def boxplot_src_conns_vs_spkwidth(data_dicts, figpath):
+    
+    all_spikewidths = np.concatenate([dd["spikewidths"] for dd in data_dicts])
+    all_n_ex_cons_from = np.concatenate([dd["n_ex_cons_from"] for dd in data_dicts])
+    all_n_in_cons_from = np.concatenate([dd["n_in_cons_from"] for dd in data_dicts])
+
+    has_connec_mask = np.logical_or(all_n_ex_cons_from>0, all_n_in_cons_from>0)
+    all_spikewidths = all_spikewidths[has_connec_mask]
+    all_n_ex_cons_from = all_n_ex_cons_from[has_connec_mask]
+    all_n_in_cons_from = all_n_in_cons_from[has_connec_mask]
+
+    inh_mask = (all_spikewidths<0.47)
+    groups = [
+        "Excitations\nfrom I cell",
+        "Inhibitions\nfrom I cell",
+        "Excitations\nfrom E cell",
+        "Inhibitions\nfrom E cell",
+        ]
+    datasets = [
+        all_n_ex_cons_from[inh_mask],
+        all_n_in_cons_from[inh_mask],
+        all_n_ex_cons_from[~inh_mask],
+        all_n_in_cons_from[~inh_mask],
+    ]
+    data_means = [np.mean(dataset) for dataset in datasets]
+    data_sdems = [np.std(dataset)/np.sqrt(dataset.shape[0]) for dataset in datasets]
+    fig, ax = plt.subplots()
+    # ax.boxplot(datasets, positions=[0,1,3,4])
+    ax.bar([0,1,3,4], data_means, width=0.4, yerr=data_sdems, 
+        color="white",edgecolor='black'
+    )
+    ax.set_xticks([0,1,3,4])
+    ax.set_xticklabels(groups)
+    ax.set_ylabel("Synapse counts")
+    plt.savefig(os.path.join(figpath, "src_conns_vs_spkwidth_box.png"))
+    plt.close()
+
+
 def plot_src_conns_vs_spkwidth_hist2d(data_dicts, figpath):
     spikewidths_ex_src = []
     spikewidths_in_src = []
@@ -154,5 +192,5 @@ if __name__ == "__main__":
         data_folder = os.path.join(cfg.spk_inpdir, reldir)
         temp_folder = os.path.join(cfg.mda_tempdir, reldir)
         data_dicts.append(read_postproc_data(data_folder, temp_folder, temp_folder))
-    plot_src_conns_vs_spkwidth_hist2d(data_dicts, cfg.mda_tempdir)
+    boxplot_src_conns_vs_spkwidth(data_dicts, cfg.mda_tempdir)
 
