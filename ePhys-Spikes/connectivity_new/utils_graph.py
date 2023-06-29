@@ -15,14 +15,17 @@ def create_graph(n_units: int, edge_table: np.ndarray):
     g.add_edges_from(edge_table_n)
     return g
 
-def create_graph_no_orphans(edge_table: np.ndarray):
+def create_graph_no_orphans(edge_table: np.ndarray, directed: bool, prop_name: str):
     '''
     create a graph with and edges defined in `edge_table` and involved nodes.
     `edge_table` has shape (n_edges, 3) where each row is
-    (source id, sink id, connection_type)
+    (source id, sink id, prop_value)
     '''
-    g = nx.DiGraph()
-    edge_table_n = [(u, v, {"type": x}) for (u,v,x) in edge_table]
+    if directed:
+        g = nx.DiGraph()
+    else:
+        g = nx.Graph()
+    edge_table_n = [(u, v, {prop_name: x}) for (u,v,x) in edge_table]
     g.add_edges_from(edge_table_n)
     return g
 

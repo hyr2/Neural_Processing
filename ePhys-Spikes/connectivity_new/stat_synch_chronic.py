@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 from scipy.io import loadmat
 import scipy.stats as stats
 
-
+from synchrony import get_synchrony_matrix
 import utils_graph
 sys.path.insert(0, "../Spike-Sorting-Code/preprocess_rhd")
 from utils.read_mda import readmda
@@ -29,7 +29,7 @@ import config as CFG
 
 
 
-def read_postproc_data(session_spk_dir: str, mdaclean_temp_dir: str, session_connec_dir: str, shank_def: dict, apply_curation: bool, count_type: int) -> dict:
+def read_postproc_data(session_spk_dir: str, mdaclean_temp_dir: str, session_connec_dir: str, rng: np.random.Generator) -> dict:
     """ read post processed data
     Assumes the 'label' field in combine_metrics_new.json is 1..n_clus_uncurated
     """
@@ -56,132 +56,85 @@ def read_postproc_data(session_spk_dir: str, mdaclean_temp_dir: str, session_con
     template_peaks_single_sided = np.max(np.abs(template_waveforms), axis=1) # (n_ch, n_clus)
     pri_ch_lut = np.argmax(template_peaks_single_sided, axis=0) # (n_clus)
     n_units = pri_ch_lut.shape[0]
-    # spikewidths = [calc_t2p(template_waveforms[pri_ch_lut[i_], :, i_], session_info["SampleRate"]) for i_ in range(pri_ch_lut.shape[0])]
-    # spikewidths = np.array([k[0] for k in spikewidths])
-    # read putative connectivity
-    connecs = pd.read_csv(os.path.join(session_connec_dir, "connecs.csv"), header=None).values.astype(int)
-    if apply_curation:
-        curate_mask = pd.read_csv(os.path.join(session_connec_dir, "conn_keep_mask.csv"), header=None).values.squeeze()
-        curate_mask = (curate_mask>0).astype(bool)
-        connecs = connecs[curate_mask, :]
-    connecs[:, :2] = connecs[:,:2]-1
-    
-    # in case all connections are rejected:
-    if connecs.shape[0]==0:
-        connecs = np.zeros((0,3), dtype=int)
-        ret["conn_exc_ratio"] = None
-        ret["conn_inh_ratio"] = None
+
+    synchrony_savepath = os.path.join(session_connec_dir, "synchrony.npz")
+    if not os.path.exists(synchrony_savepath):
+        print("Start calculating synchrony")
+        ts = time()
+        sm, phi, plo = get_synchrony_matrix(ret["ccg"], ret["spike_counts"], ret["ccg_bincenters_ms"], 15, 200, rng)
+        te = time()-ts
+        print("Synchrony calculation time:", te)
+        ret["synchrony_val_matrix"] = sm
+        ret["synchrony_phi_matrix"] = phi
+        ret["synchrony_plo_matrix"] = plo
+        np.savez(
+            synchrony_savepath,
+            synchrony_val_matrix=sm,
+            synchrony_phi_matrix=phi,
+            synchrony_plo_matrix=plo
+        )
+
+        plt.figure()
+        plt.subplot(1,2,1)
+        z1 = plt.imshow(sm, cmap="hot", vmin=0.0, vmax=1.0)
+        plt.colorbar(z1, ax=plt.gca())
+        plt.title("Synchrony matrix")
+        plt.subplot(1,2,2)
+        z2 = plt.imshow(phi, cmap="hot", vmin=0.0, vmax=1.0)
+        plt.colorbar(z2, ax=plt.gca())
+        plt.title("Percentage of randomly shuffled\nsynchrony larger than observed")
+        plt.savefig(os.path.join(session_connec_dir, "synchrony.png"))
+        # plt.show()
+        plt.close()
     else:
-        ret["conn_exc_ratio"] = np.sum(connecs[:, 2]==1) / connecs.shape[0]
-        ret["conn_inh_ratio"] = 1 - ret["conn_exc_ratio"]
-    ret["connecs"] = connecs
-    # ret["conn_cnt_mat"] = np.zeros((4,4), dtype=int)
-    ret["conn_cnt_types"] = list(CFG.ShankLoc) # NOTE this assumes the ShankLoc enum type has values from 0 and increments by 1.
-    ret["templates_clean"] = template_waveforms
-    unit_shanks = ch2shank[pri_ch_lut[np.arange(n_units)]]
-    unit_regions = np.array([shank_def[sk_] for sk_ in unit_shanks])
-
-    # if not(apply_curation):
-    #     print("  ====%s" % (session_connec_dir))
-
-    conn_vertdists = np.abs(unit_depths[connecs[:, 0]] - unit_depths[connecs[:,1]])
-    conn_exc_vertdists = conn_vertdists[connecs[:, 2]==1]
-    conn_inh_vertdists = conn_vertdists[connecs[:, 2]==-1]
-    ret["conn_exc_vertdists"] = conn_exc_vertdists
-    ret["conn_inh_vertdists"] = conn_inh_vertdists
-
-    # for i_connec, (src, snk, contype) in enumerate(connecs[:, :]):
-    #     if (count_type!=0 and contype!=count_type):
-    #         continue
-    #     # The commented-out code counts the connections cross-region and normalize.
-    #     # src_original_id = map_clean2original[src]
-    #     # snk_original_id = map_clean2original[snk]
-    #     # src_shanknum    = ch2shank[pri_ch_lut[src]]
-    #     # snk_shanknum    = ch2shank[pri_ch_lut[snk]]
-    #     # src_region      = shank_def[src_shanknum] # IntEnum instance
-    #     # snk_region      = shank_def[snk_shanknum] # IntEnum instance
-    #     # assert src_region==unit_regions[src] and snk_region==unit_regions[snk]
-    #     # if src_region == snk_region:
-    #     #     # for connections whose source and target are in the same region, we only consider them if they are in the same shank
-    #     #     if src_shanknum == snk_shanknum:
-    #     #         ret["conn_cnt_mat"][src_region][snk_region] += 1
-    #     # else:
-    #     #     ret["conn_cnt_mat"][src_region][snk_region] += 1
-    #     # #print cross-shank connection
-    #     if not(apply_curation) and src_shanknum != snk_shanknum:
-    #         print("    ====i_connec:%3d, Source: %d, Sink: %d" % (i_connec, src, snk))
-    # noramlize by number of edges maximum possible
-    # mat_max_edges = np.ones((4,4), dtype=int)
-    # for i_r_, src_region_ in enumerate(ret["conn_cnt_types"]):
-    #     n_i_ = np.sum(unit_regions==src_region_)
-    #     for j_r_, snk_region_ in enumerate(ret["conn_cnt_types"]):
-    #         if i_r_==j_r_:
-    #             # remember we only consider within-shank for within-region connections
-    #             temp = 0
-    #             shanks_oi_ = list(filter(lambda x: shank_def[x]==src_region_, range(4)))
-    #             for sh_ in shanks_oi_:
-    #                 n_units_in_shank_ = np.sum(unit_shanks==sh_)
-    #                 temp += n_units_in_shank_ * (n_units_in_shank_-1)
-    #             # mat_max_edges[i_r_, j_r_] = n_i_ * (n_i_ - 1)
-    #             mat_max_edges[i_r_, j_r_] = temp
-    #         else:
-    #             n_j_ = np.sum(unit_regions==snk_region_)
-    #             mat_max_edges[i_r_, j_r_] = n_i_ * n_j_
-    # mat_max_edges = np.clip(mat_max_edges, 1, None)
-    # ret["conn_density_mat"] = ret["conn_cnt_mat"].astype(float) / mat_max_edges.astype(float)
-    # ret["spikewidths"] = spikewidths
-    print("Edge table size:", connecs.shape)
-    g = utils_graph.create_graph_no_orphans(connecs, True, "type")
+        tmp = np.load(synchrony_savepath)
+        ret["synchrony_val_matrix"] = tmp["synchrony_val_matrix"]
+        ret["synchrony_phi_matrix"] = tmp["synchrony_phi_matrix"]
+        ret["synchrony_plo_matrix"] = tmp["synchrony_plo_matrix"]
+    # accept an synchronized pair only if the synchrony is "significant" both ways
+    # use the (sync[i,j]+sync[j,i])/2 as the synchrony value of the pair
+    # Intuitively the synchrony matrix should be symmetric but actually it is not
+    # because of some tricks used by CellExplorer in CCG calculation in previous step.
+    # Despite the asymmetry, sync[i][j] and sync[j][i] are quite similar.
+    synch_valid_mask = (ret["synchrony_phi_matrix"]<0.05)
+    synch_valid_mask = np.logical_and(synch_valid_mask, synch_valid_mask.T)
+    synch_avg_matrix = (ret["synchrony_val_matrix"] + ret["synchrony_val_matrix"].T)/2
+    synch_table = [(i, j, synch_avg_matrix[i,j]) for (i,j) in zip(*np.where(synch_valid_mask)) if i<j]
+    print("# of edges:", len(synch_table))
+    g = utils_graph.create_graph_no_orphans(synch_table, False, "weight")
     n_edges = g.number_of_edges()
     
-    # try:
-    #     ret["graph_richclub"] = nx.rich_club_coefficient(g.to_undirected())
-    # except:
-    #     ret["graph_richclub"] = {0: 0}
-    
+    starr = np.array(synch_table)[:, :2].astype(int)
+    ret["synch_vertdists"] = np.abs(unit_depths[starr[:, 0]] - unit_depths[starr[:,1]])
     try:
         # a_ = nx.adjacency_matrix(g).todense()
         # print(a_)
-        hu, au = utils_graph.calc_hits(g)
+        evc = nx.eigenvector_centrality(g, weight="weight")
         edge_be_cent = nx.edge_betweenness_centrality(g, normalized=True, k=None)
         # print("hu:", hu)
         # print("au:", au)
-        ret["graph_hits_h_array"] = hu
-        ret["graph_hits_a_array"] = au
+        ret["graph_evc_array"] = np.array(list(evc.values()))
         ret["graph_edge_be_cen_array"] = np.array(list(edge_be_cent.values()))
     except Exception as e:
         print("Warning: encountered exception in centrality calculation:")
         print(e)
-        ret["graph_hits_h_array"] = np.array([])
-        ret["graph_hits_a_array"] = np.array([])
+        ret["graph_evc_array"] = np.array([])
         ret["graph_edge_be_cen_array"] = np.array([])
     
     # Efficiency metric
     try:
-        ret["graph_global_efficiency"] = nx.global_efficiency(g.to_undirected())
+        ret["graph_global_efficiency"] = nx.global_efficiency(g)
     except:
         ret["graph_global_efficiency"] = None
     try:
-        ret["graph_local_efficiency"] = nx.local_efficiency(g.to_undirected())
+        ret["graph_local_efficiency"] = nx.local_efficiency(g)
     except:
         ret["graph_local_efficiency"] = None
     
-    matched_microcircuits_dict = utils_graph.match_microcircuits(g, utils_graph.MICROCIRCUIT_NXGRAPHS)
-    ret["matched_mc_count_dict"] = dict((k, len(v)) for k, v in matched_microcircuits_dict.items())
-    mc_dens_dict = dict()
-    for k, v in matched_microcircuits_dict.items():
-        mc_size = utils_graph.MICROCIRCUIT_NXGRAPHS[k].number_of_edges()
-        if n_edges < mc_size:
-            print("n_edges=%d<mc_size=%d"%(n_edges, mc_size))
-            dens_ = 0
-        else:
-            dens_ = len(v) / comb(n_edges, mc_size)
-        mc_dens_dict[k] = dens_
-    ret["matched_mc_density_dict"] = mc_dens_dict
     return ret
 
 
-def get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_module, apply_curation, count_type):
+def get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_module, rng):
     # data_dicts = []
     data_dict = OrderedDict()
     for i_session, session_reldir in enumerate(session_reldirs):
@@ -189,18 +142,18 @@ def get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_m
         session_spk_dir_   = os.path.join(cfg_module.spk_inpdir, session_reldir)
         mdaclean_temp_dir_ = os.path.join(cfg_module.mda_tempdir, session_reldir)
         monosyn_conn_dir_  = os.path.join(cfg_module.con_resdir, session_reldir)
-        data_dict_t = read_postproc_data(session_spk_dir_, mdaclean_temp_dir_, monosyn_conn_dir_, cfg_module.shank_defs[animal_id], apply_curation, count_type)
+        data_dict_t = read_postproc_data(session_spk_dir_, mdaclean_temp_dir_, monosyn_conn_dir_, rng)
         # conn_mat_sym = data_dict["conn_cnt_mat"] + data_dict["conn_cnt_mat"].T - np.diag(np.diag(data_dict["conn_cnt_mat"]))
         # conn_mat_sym = (data_dict["conn_density_mat"] + data_dict["conn_density_mat"].T) / 2#  - np.diag(np.diag(data_dict["conn_cnt_mat"]))
         data_dict[session_ids[i_session]] = data_dict_t
     return data_dict
 
-def get_connec_data_all_animal(animal_session_id_dict, animal_session_reldir_dict, cfg_module, apply_curation, count_type):
+def get_connec_data_all_animal(animal_session_id_dict, animal_session_reldir_dict, cfg_module, rng):
     animal_data_dict = OrderedDict()
     for animal_id in animal_session_id_dict.keys():
         session_ids = animal_session_id_dict[animal_id]
         session_reldirs = animal_session_reldir_dict[animal_id]
-        animal_data_dict[animal_id] = get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_module, apply_curation, count_type)
+        animal_data_dict[animal_id] = get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_module, rng)
     return animal_data_dict
 
 
@@ -453,21 +406,21 @@ def boxplot_conns_for_each_animal(animal_days_dict, animal_data_dict, days_stand
             # ax.plot(days, dataset, marker='x', markersize=2.0, linewidth=1.0, label=animal_id)
         datasets_bucketed[chronic_phase] = datasets_this_phase
 
-    # plot counts of exhibitions and inhibitions, bucketed
-    exc_ratios_bucketed = get_scalar_dataset_bucketed(
-        datasets_bucketed,
-        lambda x: x["conn_exc_ratio"]
-    ) # exc_ratios_bucketed is a list of lists; each level-2 list is a set of numbers
-    fig, ax = plt.subplots()
-    positions = list(range(n_buckets))
-    data_means = [np.mean(dataset_) for dataset_ in exc_ratios_bucketed.values()]
-    data_sdems = [np.std(dataset_)/np.sqrt(len(dataset_)) for dataset_ in exc_ratios_bucketed.values()]
-    ax.bar(positions, data_means, yerr=data_sdems, color='white', edgecolor='black')
-    ax.set_xticks(positions)
-    ax.set_xticklabels(list(exc_ratios_bucketed.keys()))
-    ax.set_ylabel("Ratio of excitatory connectivities")
-    plt.savefig(os.path.join(fig_folder, "exc_ratios.png"))
-    plt.close()
+    # # plot counts of exhibitions and inhibitions, bucketed
+    # exc_ratios_bucketed = get_scalar_dataset_bucketed(
+    #     datasets_bucketed,
+    #     lambda x: x["conn_exc_ratio"]
+    # ) # exc_ratios_bucketed is a list of lists; each level-2 list is a set of numbers
+    # fig, ax = plt.subplots()
+    # positions = list(range(n_buckets))
+    # data_means = [np.mean(dataset_) for dataset_ in exc_ratios_bucketed.values()]
+    # data_sdems = [np.std(dataset_)/np.sqrt(len(dataset_)) for dataset_ in exc_ratios_bucketed.values()]
+    # ax.bar(positions, data_means, yerr=data_sdems, color='white', edgecolor='black')
+    # ax.set_xticks(positions)
+    # ax.set_xticklabels(list(exc_ratios_bucketed.keys()))
+    # ax.set_ylabel("Ratio of excitatory connectivities")
+    # plt.savefig(os.path.join(fig_folder, "exc_ratios.png"))
+    # plt.close()
     
 
     # plot local efficiency, bucketed
@@ -518,38 +471,13 @@ def boxplot_conns_for_each_animal(animal_days_dict, animal_data_dict, days_stand
         else:
             # not counting the bin corresponding to 0 value
             return np.histogram(x[k], bin_edges, density=True)[0][1:]*bin_width
-    hits_h_bucketed = get_scalar_dataset_bucketed(
+    evc_bucketed = get_scalar_dataset_bucketed(
         datasets_bucketed, 
-        lambda x: hist_helper(x, "graph_hits_h_array")
-    )
-    hits_a_bucketed = get_scalar_dataset_bucketed(
-        datasets_bucketed, 
-        lambda x: hist_helper(x, "graph_hits_a_array")
+        lambda x: hist_helper(x, "graph_evc_array")
     )
     fig, axes = plt.subplots(n_buckets,1,figsize=(6,12))
     axes_flat = axes.ravel()
-    for i_plot, (chronic_phase, datasets) in enumerate(hits_h_bucketed.items()):
-        # datasets is a list of ndarrays; each ndarray is a histogram
-        ax = axes_flat[i_plot]
-        # filter out the sessions without any monosyn connectivity
-        # datasets = list(filter(lambda x: x is not None, datasets))
-        datasets_stacked = np.stack(datasets)
-        mean_hist = np.mean(datasets_stacked, axis=0)
-        print("  Chronic phase: %s - ratio of Hub>=0.1: %.3f"%(chronic_phase, np.sum(mean_hist)))
-        sdem_hist = np.std(datasets_stacked, axis=0) / np.sqrt(len(datasets))
-        # print(mean_hist, sdem_hist)
-        ax.bar(
-            bin_centers, mean_hist, 
-            yerr=sdem_hist, color="white",edgecolor='black', width=bin_width
-        )
-        ax.set_title(chronic_phase)
-    plt.subplots_adjust(hspace=0.3)
-    plt.savefig(os.path.join(fig_folder, "hits_h_bucket.png"))
-    plt.close()
-    test_buckets(hits_h_bucketed, fig_folder, "hits_h_histogram")
-    fig, axes = plt.subplots(n_buckets,1,figsize=(6,12))
-    axes_flat = axes.ravel()
-    for i_plot, (chronic_phase, datasets) in enumerate(hits_a_bucketed.items()):
+    for i_plot, (chronic_phase, datasets) in enumerate(evc_bucketed.items()):
         # datasets is a list of ndarrays; each ndarray is a histogram
         ax = axes_flat[i_plot]
         # filter out the sessions without any monosyn connectivity
@@ -564,9 +492,9 @@ def boxplot_conns_for_each_animal(animal_days_dict, animal_data_dict, days_stand
         )
         ax.set_title(chronic_phase)
     plt.subplots_adjust(hspace=0.3)
-    plt.savefig(os.path.join(fig_folder, "hits_a_bucket.png"))
+    plt.savefig(os.path.join(fig_folder, "evc_bucket.png"))
     plt.close()
-    test_buckets(hits_a_bucketed, fig_folder, "hits_a_histogram")
+    test_buckets(evc_bucketed, fig_folder, "evc_histogram")
 
     # "graph_edge_be_cen_array"
     bin_edges = np.linspace(0, 0.5, 21)
@@ -603,41 +531,6 @@ def boxplot_conns_for_each_animal(animal_days_dict, animal_data_dict, days_stand
     plt.close()
     test_buckets(be_cen_bucketed, fig_folder, "BeCentralityHistogram")
 
-    # plot microcircuit counting results
-    arbitrary_single_animal = list(animal_data_dict.values())[0]
-    arbitrary_single_session = list(arbitrary_single_animal.values())[0]
-    matched_mc_names = list(arbitrary_single_session["matched_mc_density_dict"].keys())
-    print(matched_mc_names)
-    fig, axes = plt.subplots(2,3, figsize=(16,8))
-    axes_flat = axes.ravel()
-    for i_mc, mcname in enumerate(matched_mc_names):
-        scalar_dataset_bucketed = get_scalar_dataset_bucketed(
-            datasets_bucketed,
-            lambda x: x["matched_mc_density_dict"][mcname]
-        )
-        # plot
-        ax = axes_flat[i_mc]
-        positions = list(range(len(scalar_dataset_bucketed)))
-        # ax.boxplot(
-        #     list(dataset_bucketed.values()),
-        #     positions=positions,
-        #     widths=0.7
-        #     )
-        data_means = [np.mean(dataset_) for dataset_ in scalar_dataset_bucketed.values()]
-        data_sdems = [np.std(dataset_)/np.sqrt(len(dataset_)) for dataset_ in scalar_dataset_bucketed.values()]
-        ax.bar(positions, data_means, yerr=data_sdems, color='white', edgecolor='black')
-        ax.set_xticks(positions)
-        ax.set_xticklabels(list(scalar_dataset_bucketed.keys()))
-        # ax.legend()
-        ax.set_xlabel("Chronic Phase")
-        ax.set_ylabel("Density")
-        ax.set_title(mcname)
-        # statistical test and export results
-        test_buckets(scalar_dataset_bucketed, fig_folder, "count_mc_"+mcname)
-    plt.subplots_adjust(hspace=0.3)
-    plt.savefig(os.path.join(fig_folder, "microcircuits_barplot.png"))
-    plt.close()
-    
 
     # connection vertical lengths
     bin_edges = np.linspace(0, 350, 15)
@@ -652,7 +545,7 @@ def boxplot_conns_for_each_animal(animal_days_dict, animal_data_dict, days_stand
             return np.histogram(x[k], bin_edges, density=True)[0]*bin_width
     vd_exc_bucketed = get_scalar_dataset_bucketed(
         datasets_bucketed,
-        lambda x: hist_helper(x, "conn_exc_vertdists")
+        lambda x: hist_helper(x, "synch_vertdists")
     )
     fig, axes = plt.subplots(n_buckets,1,figsize=(6,12))
     axes_flat = axes.ravel()
@@ -670,57 +563,9 @@ def boxplot_conns_for_each_animal(animal_days_dict, animal_data_dict, days_stand
         )
         ax.set_title(chronic_phase)
     plt.subplots_adjust(hspace=0.3)
-    plt.savefig(os.path.join(fig_folder, "vd_exc_bucket.png"))
+    plt.savefig(os.path.join(fig_folder, "vd_synch_bucket.png"))
     plt.close()
-    vd_inh_bucketed = get_scalar_dataset_bucketed(
-        datasets_bucketed,
-        lambda x: hist_helper(x, "conn_inh_vertdists")
-    )
-    fig, axes = plt.subplots(n_buckets,1,figsize=(6,12))
-    axes_flat = axes.ravel()
-    for i_plot, (chronic_phase, datasets) in enumerate(vd_inh_bucketed.items()):
-        # datasets is a list of ndarrays; each ndarray is a histogram
-        ax = axes_flat[i_plot]
-        # filter out the sessions without any monosyn connectivity
-        # datasets = list(filter(lambda x: x is not None, datasets))
-        datasets_stacked = np.stack(datasets)
-        mean_hist = np.mean(datasets_stacked, axis=0)
-        sdem_hist = np.std(datasets_stacked, axis=0) / np.sqrt(len(datasets))
-        ax.bar(
-            bin_centers, mean_hist, 
-            yerr=sdem_hist, color="white",edgecolor='black', width=bin_width
-        )
-        ax.set_title(chronic_phase)
-    plt.subplots_adjust(hspace=0.3)
-    plt.savefig(os.path.join(fig_folder, "vd_inh_bucket.png"))
-    plt.close()
-
-    # hits distribution
-    # fig, axes = plt.subplots(n_animals, len(days_standard), figsize=(20,12), dpi=400)
-    # # regions = list(CFG.ShankLoc)[:3]
-    # for i_animal_id, animal_id in enumerate(animal_days_dict.keys()):
-    #     session_ids = animal_days_dict[animal_id]["session_ids"]
-    #     days        = animal_days_dict[animal_id]["days"]
-    #     for i_day_id, (day, session_id) in enumerate(zip(days, session_ids)):
-    #         ax_ypos = days_standard.index(day)
-    #         ax = axes[i_animal_id][ax_ypos]
-    #         ddict = animal_data_dict[animal_id][session_id]
-    #         h_ = ddict["graph_hits_h_array"]
-    #         a_ = ddict["graph_hits_a_array"]
-    #         bin_edges = np.arange(0, 1, 11)
-    #         bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
-    #         h_hist, bin_edges = np.histogram(h_)#, bin_edges)
-    #         bin_centers_h = (bin_edges[:-1] + bin_edges[1:]) / 2
-    #         a_hist, bin_edges = np.histogram(a_)#, bin_edges)
-    #         bin_centers_a = (bin_edges[:-1] + bin_edges[1:]) / 2
-    #         ax.bar(bin_centers_h, h_hist, color="orange", width=bin_centers_h[1]-bin_centers_h[0])
-    #         ax.bar(bin_centers_a, -a_hist, color="blue", width=bin_centers_a[1]-bin_centers_a[0])
-    #         ax.set_title("%s - day %d" % (animal_id, day))
-    # plt.tight_layout()
-    # plt.suptitle("Chronic HITS distribution for each animal\nOrange: hubs; Blue: authorities")
-    # os.makedirs(fig_folder, exist_ok=True)
-    # plt.savefig(os.path.join(fig_folder, "HITS.png"))
-    # plt.close()
+    test_buckets(vd_exc_bucketed, fig_folder, "SynchVerticalDistanceHistogram")
 
 if __name__ == "__main__":
     # data_dicts = []
@@ -732,18 +577,19 @@ if __name__ == "__main__":
     parser.add_argument('--nocurate', action="store_true", default=False)
     parser.add_argument('--noplot', action="store_true", default=False)
     parser.add_argument('--bucket', action="store_true", default=False)
-    parser.add_argument('--exc_only', action="store_true", default=False)
-    parser.add_argument('--inh_only', action="store_true", default=False)
+    # parser.add_argument('--exc_only', action="store_true", default=False)
+    # parser.add_argument('--inh_only', action="store_true", default=False)
     # parser.add_argument('--no_normalize', action="store_true", default=False)
     args = parser.parse_args()
-    assert not(args.exc_only and args.inh_only)
-    if args.exc_only:
-        count_type = 1
-    elif args.inh_only:
-        count_type = -1
-    else:
-        count_type = 0
-    arg_apply_curation = not(args.nocurate)
+    # assert not(args.exc_only and args.inh_only)
+    # if args.exc_only:
+    #     count_type = 1
+    # elif args.inh_only:
+    #     count_type = -1
+    # else:
+    #     count_type = 0
+    rng = np.random.default_rng()
+    # arg_apply_curation = not(args.nocurate)
     animal_session_id_dict = OrderedDict()
     animal_session_reldir_dict = OrderedDict()
     for reldir in CFG.spk_reldirs:
@@ -758,10 +604,10 @@ if __name__ == "__main__":
     animal_days_dict = get_valid_days_all_animal(animal_session_id_dict, CFG.strokedays, CFG.days_standard)
     for k, v in animal_days_dict.items():
         print(k, ":", v)
-    animal_data_dict = get_connec_data_all_animal(animal_session_id_dict, animal_session_reldir_dict, CFG, arg_apply_curation, count_type)
+    animal_data_dict = get_connec_data_all_animal(animal_session_id_dict, animal_session_reldir_dict, CFG, rng)
     print("Plotting")
     if not(args.noplot):
-        figfolder = os.path.join(CFG.con_resdir, "plots_20230621")
+        figfolder = os.path.join(CFG.con_resdir, "plots_sync_stats_20230628")
         os.makedirs(figfolder, exist_ok=True)
         if args.bucket:
             boxplot_conns_for_each_animal(animal_days_dict, animal_data_dict, CFG.days_standard, figfolder)
