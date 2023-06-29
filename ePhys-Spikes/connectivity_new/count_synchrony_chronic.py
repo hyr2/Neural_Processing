@@ -128,24 +128,24 @@ def process_postproc_data(session_spk_dir: str, mdaclean_temp_dir: str, session_
     return ret
 
 
-def get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_module, apply_curation):
+def get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_module, rng):
     # data_dicts = []
     region_conn_mats_dict = OrderedDict()
     for i_session, session_reldir in enumerate(session_reldirs):
         session_spk_dir_   = os.path.join(cfg_module.spk_inpdir, session_reldir)
         mdaclean_temp_dir_ = os.path.join(cfg_module.mda_tempdir, session_reldir)
         monosyn_conn_dir_  = os.path.join(cfg_module.con_resdir, session_reldir)
-        data_dict = process_postproc_data(session_spk_dir_, mdaclean_temp_dir_, monosyn_conn_dir_, cfg_module.shank_defs[animal_id], apply_curation)
+        data_dict = process_postproc_data(session_spk_dir_, mdaclean_temp_dir_, monosyn_conn_dir_, cfg_module.shank_defs[animal_id], rng)
 
         region_conn_mats_dict[session_ids[i_session]] = data_dict["region_avg_synchrony_mat"]
     return region_conn_mats_dict
 
-def get_connec_data_all_animal(animal_session_id_dict, animal_session_reldir_dict, cfg_module, apply_curation):
+def get_connec_data_all_animal(animal_session_id_dict, animal_session_reldir_dict, cfg_module, rng):
     animal_conn_mats_dict = OrderedDict()
     for animal_id in animal_session_id_dict.keys():
         session_ids = animal_session_id_dict[animal_id]
         session_reldirs = animal_session_reldir_dict[animal_id]
-        animal_conn_mats_dict[animal_id] = get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_module, apply_curation)
+        animal_conn_mats_dict[animal_id] = get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_module, rng)
     return animal_conn_mats_dict
 
 
