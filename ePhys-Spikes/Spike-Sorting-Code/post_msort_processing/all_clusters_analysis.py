@@ -9,6 +9,8 @@ Created on Tue May 23 20:50:56 2023
 import time
 import scipy.stats as sstats
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
+from statsmodels.stats.oneway import anova_oneway
+
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -198,4 +200,72 @@ axes.set(xlabel=None, ylabel = None,title = 'Network Bursting')
 axes.grid(alpha=0.5)
 fig.set_size_inches((10, 6), forward=True)
 plt.savefig(filename_save,format = 'svg')
+
+# Here Generating FR of all clusters and Population of all clusters 
+filename_save = os.path.join(output_folder,'avg_FR_all_clusters.svg')
+df_all_clusters_main.loc[df_all_clusters_main['day'] == 47,'day'] = 49
+df_all_clusters_main.loc[df_all_clusters_main['day'] == 24,'day'] = 21
+y_axis_data = df_all_clusters_main.groupby('day').mean()['spont_FR'].to_numpy()[:-1]
+y_axis_sem = df_all_clusters_main.groupby('day').sem()['spont_FR'].to_numpy()[:-1]
+day_axis = df_all_clusters_main.groupby('day').mean().index.to_numpy()[:-1]
+plt.errorbar(x = day_axis,y = y_axis_data,yerr = y_axis_sem,lw = 2.9,color = 'r')
+plt.grid()
+plt.title('Avg Spontaneous Firing Rate (all Clusters)')
+plt.savefig(filename_save,format = 'svg')
+plt.figure()
+filename_save = os.path.join(output_folder,'avg_pop_all_clusters.svg')
+y_pop_ = df_all_clusters_main.groupby('day').count()['spont_FR'].to_numpy()[:-1]
+plt.plot(day_axis,y_pop_)
+plt.title('Avg Population (all Clusters)')
+plt.savefig(filename_save,format = 'svg')
+
+# Bursting Index by E and I cells
+filename_save = os.path.join(output_folder,'burst_index_alldays.svg')
+y = df_all_clusters_main_high.groupby(['day','celltype']).mean()['burst_i'].groupby('celltype').get_group('WI').to_numpy()
+y_e = df_all_clusters_main_high.groupby(['day','celltype']).sem()['burst_i'].groupby('celltype').get_group('WI').to_numpy()
+plt.errorbar(x = np.sort(df_all_clusters_main_high['day'].unique()), y= y, yerr  = y_e , color = 'g',lw = 2.9)
+y = df_all_clusters_main_high.groupby(['day','celltype']).mean()['burst_i'].groupby('celltype').get_group('NI').to_numpy()
+y_e = df_all_clusters_main_high.groupby(['day','celltype']).sem()['burst_i'].groupby('celltype').get_group('NI').to_numpy()
+plt.errorbar(x = np.sort(df_all_clusters_main_high['day'].unique()), y= y, yerr  = y_e , color = 'b',lw = 2.9)
+y = df_all_clusters_main_high.groupby(['day','celltype']).mean()['burst_i'].groupby('celltype').get_group('P').to_numpy()
+y_e = df_all_clusters_main_high.groupby(['day','celltype']).sem()['burst_i'].groupby('celltype').get_group('P').to_numpy()
+plt.errorbar(x = np.sort(df_all_clusters_main_high['day'].unique()), y= y, yerr  = y_e , color = 'r',lw = 2.9)
+plt.legend(['Wide Interneuron','FS/PV','Pyr'])
+plt.savefig(filename_save,format = 'svg')
+
+df_local = df_all_clusters_main_high.groupby('celltype').get_group('P')[['day','burst_i']]  # for pyramidal
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 2)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 7)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 14)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 21)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 28)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 35)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 42)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 49)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 56)]['burst_i'] )
+df_local = df_all_clusters_main_high.groupby('celltype').get_group('NI')[['day','burst_i']]     # FS/PV cells
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 2)]['burst_i'] ) 
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 7)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 14)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 21)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 28)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 35)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 42)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 49)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 56)]['burst_i'] )
+df_local = df_all_clusters_main_high.groupby('celltype').get_group('WI')[['day','burst_i']]      # Wide interneurons
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 2)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 7)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 14)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 21)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 28)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 35)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 42)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 49)]['burst_i'] )
+sstats.ranksums(df_local[(df_local['day'] == -2)| (df_local['day'] == -3)]['burst_i'], df_local[(df_local['day'] == 56)]['burst_i'] )
+
+
+
+
+
 
