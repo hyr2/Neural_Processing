@@ -15,12 +15,13 @@ import seaborn as sns
 
 
 
+# Script to perform statistical testing on the neural data (only for spiking data) [use after running: "combined_FR_TS_pop_versionA"]
 
 
 
 
 
-# Script to perform statistical testing on the neural data (only for spiking data)
+# Script to perform statistical testing on the neural data (only for spiking data) [use after running: "combined_FR_TS_pop_versionA"]
 def stat_test_spikes(source_dir):
     # Input:
         
@@ -249,11 +250,12 @@ def stat_test_spikes(source_dir):
     sstats.ranksums(x = df_S2[df_S2['day'] == 'Pre']['num_monosyn_i'],y = df_S2[df_S2['day'] == 'Recovery']['num_monosyn_i'].fillna(0))
     sstats.ranksums(x = df_S2[df_S2['day'] == 'Pre']['num_monosyn_i'],y = df_S2[df_S2['day'] == 'Chronic']['num_monosyn_i'].fillna(0))
     
-    # df_less300_full = pd.read_hdf(filename_dfL300)
-    # df_great300_full = pd.read_hdf(filename_dfL300)
-    # df_S2_full = pd.read_hdf(filename_dfL300)
-    # df_all_summary = pd.read_hdf(filename_dfL300)
-    # df_nonless300 = pd.concat([df_great300_full,df_S2_full],axis = 0)
+
+    # Statistical testing and all population plot
+    df_L300 = pd.read_pickle(os.path.join(source_dir,'dataframe_L300.pkl'))
+    df_G300 = pd.read_pickle(os.path.join(source_dir,'dataframe_G300.pkl'))
+    df_S2 = pd.read_pickle(os.path.join(source_dir,'dataframe_S2.pkl'))
+    
     
     # Statistical tests on the I/E ratio
     
