@@ -12,7 +12,6 @@ Created on Sun Mar 19 14:57:09 2023
 
 import os, sys, json
 from time import time
-
 sys.path.append(os.path.join(os.getcwd(),'utils'))
 sys.path.append(os.getcwd())
 from itertools import groupby
@@ -129,6 +128,7 @@ def func_convert2Phy(session_folder):
     prim_ch_new = prim_ch
     firings_new = np.vstack((prim_ch_new,spike_times_new,spike_clusters_new))
     templates_sliced, _, peak_amplitudes, clus_coordinates = calc_key_metrics(np.moveaxis(template_waveforms_new,[0,1,2],[2,1,0]), firings_new, channel_positions, F_SAMPLE)
+    clus_coordinates = pd.read_csv(os.path.join(session_folder,'clus_locations_clean.csv'), header = None).to_numpy()
     merge_cand_mat = calc_merge_candidates(templates_sliced, clus_coordinates, peak_amplitudes)
     merge_cand_mat[:,0] = merge_cand_mat[:,0] - 1   # Cluster IDs now start from 0
     merge_cand_mat[:,1] = merge_cand_mat[:,1] - 1   # Cluster IDs now start from 0
@@ -288,3 +288,94 @@ def func_convert2Phy(session_folder):
 # # plt.scatter(x1[:, 1], x1[:, 0])
 # # plt.scatter(x2[:, 1], x2[:, 0])
 # plt.show()
+
+# Convert back to MS outputs
+def convert2MS(session_folder):
+    firings_filepath = os.path.join(session_folder, 'phy_output' ,"firings_clean_merged.mda")
+    templates_filepath = os.path.join(session_folder, 'phy_output' ,"templates_clean_merged.mda")
+     
+    
+    
+    
+    # Re-creating firings.mda and templates.mda
+    spike_clusters = np.load(os.path.join(session_folder,'phy_output','spike_clusters.npy'))
+    spike_times = np.load(os.path.join(session_folder,'phy_output','spike_times.npy'))
+    template_waveforms = readmda(os.path.join(session_folder, "templates_clean.mda")).astype(np.float64)
+    cluster_id_orig = np.arange(0,template_waveforms.shape[2],1)                    # original cluster IDs
+    
+    assert spike_times.shape == spike_clusters.shape, f"Array dimensions for spike_clusters.npy are not the same as spike_times.npy in session {session_folder}"
+    
+    # Rejecting noise clusters (manually labelled)
+    cluster_info_df = pd.read_csv(os.path.join(session_folder,'phy_output','cluster_info.tsv'),sep = '\t')
+    cluster_label = cluster_info_df.group.to_numpy()
+    cluster_id = cluster_info_df.cluster_id.to_numpy()
+    n_spikes = cluster_info_df.n_spikes.to_numpy()
+    
+    noise_clusters = cluster_id[(cluster_label == 'noise')]                                                      # These are the noise clusters (from PHY curation)
+    
+    spike_clusters_new = np.delete( spike_clusters , np.isin(spike_clusters, noise_clusters) , axis = 0 )        # Removing Manually curated units
+    spike_times_new = np.delete( spike_times , np.isin(spike_clusters, noise_clusters) , axis = 0 )              # Removing Manually curated units
+    template_waveforms = np.delete(template_waveforms,noise_clusters,axis = 2)                                   # Removing Manually curated units
+    cluster_id_orig = np.delete(cluster_id_orig,noise_clusters,axis = 0)    
+    cluster_id = cluster_id[np.logical_not(cluster_label == 'noise')]            # manually curated
+    n_spikes = n_spikes[np.logical_not(cluster_label == 'noise')]                # manually curated
+    
+    # Loading original firings_clean.mda
+    firings_original = readmda(os.path.join(session_folder,'firings_clean.mda'))
+    spike_clusterIDs_original = firings_original[2,:] - 1                                                   # firings.mda cluster IDs start from 1  (mountainsort convention)
+    firings_original[2,:] = spike_clusterIDs_original
+    firings_original = np.delete(firings_original, np.isin(firings_original[2,:] , noise_clusters), axis = 1)     # Removing Manually curated units                                       
+    
+    assert spike_clusterIDs_original.shape == spike_clusters_new.shape
+    
+    # Get what clusters IDs were merged
+    GetMergeIDs(firings_original[2,:] , spike_clusters_new )
+
+    
+    
+    
+    
+    # recompute the primary channel here
+    
+    firings = np.zeros([3,spike_times_new.shape[0]])
+    firings[1,:] = spike_times_new
+    firings[2,:] = spike_clusters_new
+    # firings[0,:] = prim_ch_new
+    # writemda64( firings, firings_filepath )
+    
+def GetMergeIDs(spike_clusterIDs_original,spike_clusterIDs_new):
+    # INPUT PARAMETERS
+    # spike_clusterIDs_original : Array of the cluster IDs at all the spike stamps before PHY manual curation
+    # spike_clusterIDs_new : Array of the cluster IDs at all the spike stamps after PHY manual curation 
+    
+    clusters_orig = np.unique(spike_clusterIDs_original)
+    clusters_new = np.unique(spike_clusterIDs_new)
+    
+    clus_thresh = np.amax(clusters_orig)
+    
+    indx_phy = (spike_clusterIDs_new > clus_thresh)
+    
+    merged_clusters = clusters_new[clusters_new > clus_thresh]
+    
+    output_list = []    # create 2d list 
+    
+    df_output = pd.DataFrame(
+            {
+                "newID": [],
+                "oldIDs": []
+            }
+            )
+    
+    for iter_c in merged_clusters:
+        tmp_indx = np.where(spike_clusterIDs_new == iter_c)
+        iter_c_orig = np.unique(spike_clusterIDs_original[tmp_indx])
+        pd_tmp = pd.DataFrame({'newID':iter_c , 'oldIDs': [iter_c_orig.tolist()] })
+        df_output = pd.concat((df_output,pd_tmp),axis = 0)                              # contains info for the merged cluster ID and the original cluster IDs
+        
+        
+    
+    
+    
+    
+    
+    
