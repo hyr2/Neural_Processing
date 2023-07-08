@@ -438,7 +438,7 @@ def append_df_to_excel(filename, df, sheet_name='Sheet1', startrow=None,
 # The following is Jiaao's code for determining possible candidates for merging
 # TRANSIENT_AMPLITUDE_VALID_DURATION = 10e-4 # seconds (duration of data before and after each spike that we consider when deciding the transient amplitude)
 # tavd_nsample = int(np.ceil(TRANSIENT_AMPLITUDE_VALID_DURATION*F_SAMPLE))
-MAX_GEOM_DIST = 75 # um
+MAX_GEOM_DIST = 51 # um
 ADJACENCY_RADIUS_SQUARED = 140**2
 def get_peak_amp_ratio_matrix(data_a, data_b=None):
     """
@@ -521,10 +521,12 @@ def calc_merge_candidates(templates, locations, peak_amplitudes):
         neighborhood_clus_ids = np.where(neighborhood_mask)[0] + 1 # cluster id starts from 1
         current_clus_id = i_clus + 1        # Cluster IDs start from 1
         dist_mat = np.array([np.corrcoef(template_features[i_clus,:], template_features[k-1, :])[1,0] for k in neighborhood_clus_ids])
-        corr_mask = dist_mat > 0.7 # actually a vector
-        amp_ratio_mat = get_peak_amp_ratio_matrix(peak_amplitudes[:,None][i_clus,:], peak_amplitudes[neighborhood_mask]).squeeze()
-        amp_ratio_mask = amp_ratio_mat < 0.5 # np.logical_and(amp_ratio_mat>0.8, amp_ratio_mat<1.25)
-        merge_cand_mask = np.logical_and(amp_ratio_mask, corr_mask) # actually a vector
+        dist_mat = np.ones([n_neighborhood,])
+        corr_mask = dist_mat > 0.5 # actually a vector
+        # amp_ratio_mat = get_peak_amp_ratio_matrix(peak_amplitudes[:,None][i_clus,:], peak_amplitudes[neighborhood_mask]).squeeze()
+        # amp_ratio_mask = amp_ratio_mat < 0.5  #np.logical_and(amp_ratio_mat>0.8, amp_ratio_mat<1.25) #amp_ratio_mat < 0.5
+        # merge_cand_mask = np.logical_and(amp_ratio_mask, corr_mask) # actually a vector
+        merge_cand_mask = corr_mask
         n_cands = np.sum(merge_cand_mask)
         
         clus_id_paired_prev_all, clus_id_paired_post_all = np.zeros(n_neighborhood, dtype=int)+current_clus_id, neighborhood_clus_ids
