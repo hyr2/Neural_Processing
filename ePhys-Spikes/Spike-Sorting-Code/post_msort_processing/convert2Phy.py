@@ -292,7 +292,7 @@ def func_convert2Phy(session_folder):
 # plt.show()
 
 # Convert back to MS outputs
-def convert2MS(session_folder):
+def func_convert2MS(session_folder):
     firings_filepath = os.path.join(session_folder,"firings_clean_merged.mda")
     templates_filepath = os.path.join(session_folder,"templates_clean_merged.mda")
     

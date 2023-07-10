@@ -105,9 +105,9 @@ end
 
 % More curation code
 curation = 1;
-curation_mask = ones(size(spike_labels_unique));
 if curation
     curation_mask = and(curation_mask,pos_mask);
+    curation_mask = ones(size(spike_labels_unique));
     % extract accepted cluster locations & their responsiveness
     % response_mask = response_mask(curation_mask,:);   % Update to the response mask from python script population_analysis.py
     % clus_locations = clus_locations(curation_mask,:);

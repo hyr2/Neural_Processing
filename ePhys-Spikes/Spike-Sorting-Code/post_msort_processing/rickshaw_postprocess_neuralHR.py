@@ -20,7 +20,7 @@ from natsort import natsorted
 import matlab.engine
 sys.path.append(r'../../Time-Series/')
 from FR_TS_pop import *
-from convert2Phy import func_convert2Phy
+from convert2Phy import func_convert2Phy, func_convert2MS
 # Automate batch processing of the pre processing step
 
 # PHY manual curation flag
@@ -53,7 +53,7 @@ for iter, filename in enumerate(source_dir_list):
         # func_discard_noise_and_viz(Raw_dir)
 
         # Run code to apply curation mask and create new files called *_clean.*
-        func_convert2Phy(Raw_dir)
+        # func_convert2Phy(Raw_dir)
 
         # Do manual curation using PHY here -----
         
@@ -61,10 +61,10 @@ for iter, filename in enumerate(source_dir_list):
         func_convert2MS(Raw_dir)
 
         # Population analysis
-        # func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
+        func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
 
         # Calling matlab scripts from python
-        # eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,CHANNEL_MAP_FPATH,nargout=0)
+        eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,CHANNEL_MAP_FPATH,nargout=0)
 
         # delete converted_data.mda and filt.mda and raw data files (.rhd) 
         # os.remove(os.path.join(Raw_dir,'converted_data.mda'))
@@ -77,7 +77,7 @@ for iter, filename in enumerate(source_dir_list):
 eng.quit()
 
 moouse_id = input_dir.split('/')[-2]
-# combine_sessions(input_dir,moouse_id)
+combine_sessions(input_dir,moouse_id)
 
 # Params.json file:
 #     {
