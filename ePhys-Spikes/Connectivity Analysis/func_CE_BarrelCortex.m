@@ -42,14 +42,14 @@ elseif (chmap2x16 == false)  % 1x32 channel map
 end
 plotfolder = fullfile(datafolder,'Processed','cell_type');
 mkdir(plotfolder);
-templates = readmda(fullfile(datafolder, 'templates.mda'));
-firings = readmda(fullfile(datafolder, 'firings.mda'));
+templates = readmda(fullfile(datafolder, 'templates_clean_merged.mda'));
+firings = readmda(fullfile(datafolder, 'firings_clean_merged.mda'));
 chmap_mat = load(Chan_map_path,'Ch_Map_new');
 chmap_mat = chmap_mat.Ch_Map_new;
 Native_orders = readNPY(fullfile(datafolder,'native_ch_order.npy'));    
-curation_mask = logical(csvread(fullfile(datafolder, 'accept_mask.csv')));
-pos_mask = not(logical(csvread(fullfile(datafolder , 'positive_mask.csv' ))));
-response_mask = csvread(fullfile(datafolder,'Processed','count_analysis','cluster_response_mask.csv'));
+curation_mask = logical(csvread(fullfile(datafolder, 'accept_mask.csv')));  % deparcated
+pos_mask = not(logical(csvread(fullfile(datafolder , 'positive_mask.csv' )))); % deparcated
+response_mask = csvread(fullfile(datafolder,'Processed','count_analysis','cluster_response_mask.csv')); 
 % clus_locations = csvread(fullfile(datafolder, 'clus_locations.csv'));
 % disp(Location(1,:))
 n_ch = size(templates,1);
@@ -66,6 +66,7 @@ disp('------')
 spike_times_all = firings(2,idx) - START_TIME;
 disp(size(spike_times_all))
 spike_labels = firings(3,idx);
+spike_labels_unique = unique(spike_labels);
 ch_stamp = firings(1,idx); %primary channel
 spike_times_by_clus = cell(1, n_clus);
 ts_by_clus = cell(1, n_clus);
@@ -104,6 +105,7 @@ end
 
 % More curation code
 curation = 1;
+curation_mask = ones(size(spike_labels_unique));
 if curation
     curation_mask = and(curation_mask,pos_mask);
     % extract accepted cluster locations & their responsiveness

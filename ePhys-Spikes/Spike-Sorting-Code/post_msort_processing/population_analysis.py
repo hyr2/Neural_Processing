@@ -154,14 +154,6 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     SMOOTHING_SIZE = 11
     DURATION_OF_INTEREST = 2.5  # how many seconds to look at upon stim onset (this is the activation or inhibition window)
     # Setting up
-    # session_path_str = "NVC/BC7/12-17-2021"
-    # CHANNEL_MAP_FPATH = r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_ch_maps\128chMap_flex.mat" # BC7
-    # CHANNEL_MAP_FPATH = r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_ch_maps\chan_map_1x32_128ch_rigid.mat" # BC6
-    # CHANNEL_MAP_FPATH = r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_ch_maps\Mirro_Oversampling_hippo_map.mat" # B-BC5
-    # CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_1x32_128ch_rigid.mat'
-
-    # session_folder = input('Input the source directory containing spike sorted and curated dataset for a single session:\n')
-    # session_folder = '/home/hyr2-office/Documents/Data/NVC/RH-3/processed_data_rh3/10-19/'
     session_trialtimes = os.path.join(session_folder,'trials_times.mat')
     trial_mask_file = os.path.join(session_folder,'trial_mask.csv')
     result_folder = os.path.join(session_folder,'Processed', 'count_analysis')
@@ -200,40 +192,22 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         GH = 25
         GW_BWTWEENSHANKS = 250
 
-    # # Extracting data from summary file .xlsx
-    # df_exp_summary = pd.read_excel(dir_expsummary)
-    # arr_exp_summary = df_exp_summary.to_numpy()
-    # Num_chan = arr_exp_summary[0,0]         # Number of channels
-    # Notch_freq = arr_exp_summary[0,1]       # Notch frequencey selected (in Hz)
-    # Fs = arr_exp_summary[0,2]               # Sampling freq (in Hz)
-    # stim_start_time = arr_exp_summary[2,2]   # Stimulation start - 50ms of window
-    # stim_start_time_original = arr_exp_summary[2,2]# original stimulation start time
-    # n_stim_start = int(Fs * stim_start_time)# Stimulation start time in samples
-    # Ntrials = arr_exp_summary[2,4]          # Number of trials
-    # stim_end_time = arr_exp_summary[2,1] + stim_start_time  # End time of stimulation
-    # time_seq = arr_exp_summary[2,0]         # Time of one sequence in seconds
-    # Seq_perTrial =  arr_exp_summary[2,3]    # Number of sequences per trial
-    # total_time = time_seq * Seq_perTrial    # Total time of the trial
-    # print('Each sequence is: ', time_seq, 'sec')
-    # time_seq = int(np.ceil(time_seq * Fs/2) * 2)                # Time of one sequence in samples (rounded up to even)
-
     if not os.path.exists(result_folder):
         os.makedirs(result_folder)
     if not os.path.exists(result_folder_FR_avg):
         os.makedirs(result_folder_FR_avg)
     geom_path = os.path.join(session_folder, "geom.csv")
-    # curation_mask_path = os.path.join(session_folder, "cluster_rejection_mask.npz")
-    curation_mask_path = os.path.join(session_folder, 'accept_mask.csv')
+    curation_mask_path = os.path.join(session_folder, 'accept_mask.csv')        # deparcated
     NATIVE_ORDERS = np.load(os.path.join(session_folder, "native_ch_order.npy"))
-    axonal_mask = os.path.join(session_folder,'positive_mask.csv')
+    axonal_mask = os.path.join(session_folder,'positive_mask.csv')              # deparcated
 
     # macro definitions
     ANALYSIS_NOCHANGE = 0       # A better name is non-stimulus locked
     ANALYSIS_EXCITATORY = 1     # A better name is activated
     ANALYSIS_INHIBITORY = -1    # A better name is suppressed
 
-    # read cluster rejection data
-    curation_masks = np.squeeze(pd.read_csv(curation_mask_path,header = None).to_numpy())
+    # read cluster rejection data (# deparcated)
+    curation_masks = np.squeeze(pd.read_csv(curation_mask_path,header = None).to_numpy())   
     single_unit_mask = curation_masks
     # single_unit_mask = curation_masks['single_unit_mask']
     # multi_unit_mask = curation_masks['multi_unit_mask']
@@ -285,16 +259,18 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     trial_duration_in_samples = int(total_time*F_SAMPLE)
     window_in_samples = int(WINDOW_LEN_IN_SEC*F_SAMPLE)
     # read channel map
-    geom = pd.read_csv(os.path.join(session_folder, "geom.csv"), header=None).values
+    geom = pd.read_csv(geom_path, header=None).values
     n_ch_this_session = geom.shape[0]
     print(geom.shape)
     # exit(0)
     # read trials times
     trials_start_times = loadmat(session_trialtimes)['t_trial_start'].squeeze()
-    firings = readmda(os.path.join(session_folder, "firings.mda")).astype(np.int64)
+    firings = readmda(os.path.join(session_folder, "firings_clean_merged.mda")).astype(np.int64)
     # get spike stamp for all clusters (in SAMPLEs not seconds)
     spike_times_all = firings[1,:]
     spike_labels = firings[2,:]
+    spike_labels_unique = np.unique(spike_labels)
+    single_unit_mask = np.ones(spike_labels_unique.shape,dtype = bool)
     n_clus = np.max(spike_labels)
     print('Total number of clusters found: ',n_clus)
     spike_times_by_clus =[[] for i in range(n_clus)]
