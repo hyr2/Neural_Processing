@@ -10,7 +10,7 @@ Created on Sun Mar 19 14:57:09 2023
 # discard_noise_viz.py file and give the correct output files to be used for
 # manual curation in the software PHY
 
-import os, sys, json
+import os, sys, json, shutil
 from time import time
 sys.path.append(os.path.join(os.getcwd(),'utils'))
 sys.path.append(os.getcwd())
@@ -300,14 +300,20 @@ def convert2MS(session_folder):
     spike_clusters = np.load(os.path.join(session_folder,'phy_output','spike_clusters.npy'))
     spike_times = np.load(os.path.join(session_folder,'phy_output','spike_times.npy'))
     template_waveforms = readmda(os.path.join(session_folder, "templates_clean.mda")).astype(np.float64)
+    cluster_info_filepath = os.path.join(session_folder,'phy_output','cluster_info.tsv')
     cluster_id_orig = np.arange(0,template_waveforms.shape[2],1)                    # original cluster IDs
     
     assert spike_times.shape == spike_clusters.shape, f"Array dimensions for spike_clusters.npy are not the same as spike_times.npy in session {session_folder}"
     
-    cluster_info_df = pd.read_csv(os.path.join(session_folder,'phy_output','cluster_info.tsv'),sep = '\t')
-    cluster_label = cluster_info_df.group.to_numpy()
-    cluster_id = cluster_info_df.cluster_id.to_numpy()
-    n_spikes = cluster_info_df.n_spikes.to_numpy()
+    if os.path.isfile(cluster_info_filepath):
+        cluster_info_df = pd.read_csv(cluster_info_filepath,sep = '\t')
+        cluster_label = cluster_info_df.group.to_numpy()
+        cluster_id = cluster_info_df.cluster_id.to_numpy()
+        n_spikes = cluster_info_df.n_spikes.to_numpy()
+    else:
+        shutil.copy(os.path.join(session_folder,'firings_clean.mda'),os.path.join(session_folder,'firings_clean_merged.mda'))
+        shutil.copy(os.path.join(session_folder,'templates_clean.mda'),os.path.join(session_folder,'templates_clean_merged.mda'))
+        return None             # PHY curation not performed
     
     # Loading original firings_clean.mda
     firings_original = readmda(os.path.join(session_folder,'firings_clean.mda'))
@@ -355,8 +361,12 @@ def convert2MS(session_folder):
         # cluster_id_orig = np.delete(cluster_id_orig,noise_clusters,axis = 0)    
         cluster_id = cluster_id[np.logical_not(cluster_label == 'noise')]            # manually curated
         n_spikes = n_spikes[np.logical_not(cluster_label == 'noise')]                # manually curated
-        # firings_original = np.delete(firings_original, np.isin(firings_original[2,:] , noise_clusters), axis = 1)     # Removing Manually curated units                                      
-    
+        # firings_original = np.delete(firings_original, np.isin(firings_original[2,:] , noise_clusters), axis = 1)     # Removing Manually curated units    
+    else:
+        spike_clusters_new = spike_clusters
+        spike_times_new = spike_times
+        template_waveforms_new = template_waveforms_new
+        
     assert template_waveforms_new.shape[2] == cluster_id.shape[0]
     
     # Primary channels (updated)
@@ -371,13 +381,25 @@ def convert2MS(session_folder):
         tmp_indx_mask = (spike_clusters_new == data_l)
         local_pri_ch = pri_ch_LUT[iter_l]
         pri_ch_new[tmp_indx_mask] = local_pri_ch
+    pri_ch_new += 1                                               # firings.mda channel count starts from 1
+    spike_clusters_new += 1                                       # firings.mda channel count starts from 1
+    
+    # Generating new cluster IDs
+    cluster_id_new_final = np.arange(1,cluster_id.shape[0]+1,1)
+    cluster_id += 1
+    spike_clusters_new_final = np.zeros(np.shape(spike_clusters_new),dtype = np.int16)
+    for iter_l,data_l in enumerate(cluster_id):
+        tmp_indx_mask = (spike_clusters_new == data_l)
+        local_chan_id = cluster_id_new_final[iter_l]
+        spike_clusters_new_final[tmp_indx_mask] = local_chan_id
+        
     # Writing to disk
     firings = np.zeros([3,spike_times_new.shape[0]])
     firings[1,:] = spike_times_new
-    firings[2,:] = spike_clusters_new
+    firings[2,:] = spike_clusters_new_final
     firings[0,:] = pri_ch_new
     writemda64( firings, firings_filepath )
-    writemda64( template_waveforms_new, templates_filepath )
+    writemda64(template_waveforms_new, templates_filepath)
     
     # Check primary channels IDs (native channel order OR MS channel order) for the convention in firings.mda (ask Jiaao)
     
@@ -413,7 +435,6 @@ def GetMergeIDs(spike_clusterIDs_original,spike_clusterIDs_new):
     return df_output
         
         
-    
     
     
     
