@@ -50,7 +50,7 @@ Native_orders = readNPY(fullfile(datafolder,'native_ch_order.npy'));
 curation_mask = logical(csvread(fullfile(datafolder, 'accept_mask.csv')));
 pos_mask = not(logical(csvread(fullfile(datafolder , 'positive_mask.csv' ))));
 response_mask = csvread(fullfile(datafolder,'Processed','count_analysis','cluster_response_mask.csv'));
-clus_locations = csvread(fullfile(datafolder, 'clus_locations.csv'));
+% clus_locations = csvread(fullfile(datafolder, 'clus_locations.csv'));
 % disp(Location(1,:))
 n_ch = size(templates,1);
 n_clus = size(templates, 3);
@@ -108,7 +108,7 @@ if curation
     curation_mask = and(curation_mask,pos_mask);
     % extract accepted cluster locations & their responsiveness
     % response_mask = response_mask(curation_mask,:);   % Update to the response mask from python script population_analysis.py
-    clus_locations = clus_locations(curation_mask,:);
+    % clus_locations = clus_locations(curation_mask,:);
     shank_num = shank_num(curation_mask);
     spike_times_curated = [];
     spike_labels_curated = [];
