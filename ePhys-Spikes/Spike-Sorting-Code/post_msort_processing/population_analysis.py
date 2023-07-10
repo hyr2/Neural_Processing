@@ -13,6 +13,8 @@ from utils.read_stimtxt import read_stimtxt
 from Support import plot_all_trials, filterSignal_lowpass, filter_Savitzky_slow, filter_Savitzky_fast, zscore_bsl
 from sklearn.preprocessing import StandardScaler,MinMaxScaler
 import seaborn as sns
+from adaptation import adaptation
+
 
 # Plotting fonts
 sns.set_style('darkgrid') # darkgrid, white grid, dark, white and ticks
@@ -321,11 +323,12 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             trial_duration_in_samples, 
             window_in_samples
             )
-        firing_rate_series = firing_rate_series/WINDOW_LEN_IN_SEC       # This gives firing rate in Hz
-        firing_rate_avg = np.mean(firing_rate_series[TRIAL_KEEP_MASK, :], axis=0) # averaging over all trials
+        firing_rate_series = firing_rate_series[TRIAL_KEEP_MASK, :]/WINDOW_LEN_IN_SEC       # This gives firing rate in Hz
+        firing_rate_avg = np.mean(firing_rate_series, axis=0) # averaging over all trials
+        firing_rate_avg_nofilt = firing_rate_avg
         # firing_rate_avg = filterSignal_lowpass(firing_rate_avg, np.single(1/WINDOW_LEN_IN_SEC), axis_value = 0)
         firing_rate_avg = filter_Savitzky_slow(firing_rate_avg)
-        firing_rate_sum = np.sum(firing_rate_series[TRIAL_KEEP_MASK, :], axis=0)
+        firing_rate_sum = np.sum(firing_rate_series, axis=0)
         
         n_samples_baseline = int(np.ceil(stim_start_time/WINDOW_LEN_IN_SEC))
         n_samples_stim = int(np.ceil((stim_end_time-stim_start_time)/WINDOW_LEN_IN_SEC))
@@ -401,13 +404,13 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         # print(clus_property)
         
         # Computing number of spikes
-        firing_rate_series = firing_rate_series * WINDOW_LEN_IN_SEC # this is the number of spikes (not firing rate)
-        firing_rate_series_avg = np.sum(firing_rate_series[TRIAL_KEEP_MASK, :],axis = 0) # sum over accepted trials
+        firing_rate_series2 = firing_rate_series * WINDOW_LEN_IN_SEC    # Number of spikes
+        firing_rate_series_avg = np.sum(firing_rate_series2,axis = 0)
         Spikes_stim = np.sum(firing_rate_series_avg[t_8:t_4])
         Spikes_bsl = np.sum(firing_rate_series_avg[t_9:t_3])
         Spikes_num = np.array([Spikes_bsl,Spikes_stim])
 
-        return clus_property_1, firing_rate_avg, firing_rate_sum, Spikes_num
+        return clus_property_1, firing_rate_avg, firing_rate_sum, Spikes_num, firing_rate_series
 
 
     total_nclus_by_shank = np.zeros(4)
@@ -425,23 +428,28 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     FR_list_byshank_inh =  [ [] for i in range(4) ]  # create empty list
     list_all_clus = []
     iter_local = 0
+
+    adaptation_df = pd.DataFrame(columns=['cluster_ID', 'stim_response', 'trial_response'])
+
     for i_clus in range(n_clus):
         
         if single_unit_mask[i_clus] == True:
             # Need to add facilitating cell vs adapting cell vs no change cell
-            clus_property, firing_rate_avg, firing_rate_sum, Spikes_num = single_cluster_main(i_clus)
+            clus_property, firing_rate_avg, firing_rate_sum, Spikes_num, firing_rate_series = single_cluster_main(i_clus)
             t_axis = np.linspace(0,total_time,firing_rate_avg.shape[0])
             t_1 = np.squeeze(np.where(t_axis >= 8.5))[0]
             t_2 = np.squeeze(np.where(t_axis >= 12.5))[0]
             t_3 = np.squeeze(np.where(t_axis >= 2.35))[0]
             t_4 = np.squeeze(np.where(t_axis >= 3.75))[0]
-
+            
             # creating a dictionary for this cluster
             firing_stamp = spike_times_by_clus[i_clus]
             N_spikes_local = spike_times_by_clus[i_clus].size 
             prim_ch = pri_ch_lut[i_clus]
             # Get shank ID from primary channel for the cluster
             shank_num = get_shanknum_from_msort_id(prim_ch)
+
+
             i_clus_dict  = {}
             i_clus_dict['cluster_id'] = i_clus + 1 # to align with the discard_noise_viz.py code cluster order [folder: figs_allclus_waveforms]
             i_clus_dict['total_spike_count'] = firing_stamp.shape
@@ -461,23 +469,30 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
                 i_clus_dict['EventRelatedFR'] = np.nan
             
             list_all_clus.append(i_clus_dict)
+
             FR_series_all_clusters[iter_local].append(np.array(firing_rate_avg,dtype = float))
             # temporary
             # firing_rate_avg = 
             failed = (single_unit_mask[i_clus]==False)                       # SUA as well
-            print(i_clus)
+            #print(i_clus)
             if not(failed): 
+                
                 plot_all_trials(firing_rate_avg,1/WINDOW_LEN_IN_SEC,result_folder_FR_avg,i_clus_dict)           # Plotting function
-            
+                           
+
             if clus_property==ANALYSIS_EXCITATORY:
                 clus_response_mask[iter_local] = 1
             elif clus_property==ANALYSIS_INHIBITORY:
                 clus_response_mask[iter_local] = -1
             else:
-                clus_response_mask[iter_local] = 0
-                
+                clus_response_mask[iter_local] = 0         
+
+
             if not(failed) and clus_property==ANALYSIS_EXCITATORY:          # Extracting FR of only activated neurons
                 FR_list_byshank_act[shank_num].append(np.array(FR_series_all_clusters[iter_local],dtype = float))
+                stim_response, trial_response = adaptation(stim_start_time,stim_end_time,firing_rate_series)
+                if stim_response > 0:
+                    adaptation_df.loc[len(adaptation_df)] = {'cluster_ID': i_clus+1, 'stim_response':stim_response, 'trial_response':trial_response}
             elif not(failed) and clus_property==ANALYSIS_INHIBITORY:
                 FR_list_byshank_inh[shank_num].append(np.array(FR_series_all_clusters[iter_local],dtype = float))
             total_nclus_by_shank[shank_num] += 1
@@ -623,3 +638,4 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     }
     savemat(os.path.join(result_folder, "population_stat_responsive_only.mat"), data_dict)
     np.save(os.path.join(result_folder,'all_clus_property.npy'),list_all_clus)
+    adaptation_df.to_csv(os.path.join(result_folder,'adaptation.csv'))
