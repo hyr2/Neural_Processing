@@ -20,7 +20,11 @@ from natsort import natsorted
 import matlab.engine
 sys.path.append(r'../../Time-Series/')
 from FR_TS_pop import *
+from convert2Phy import func_convert2Phy
 # Automate batch processing of the pre processing step
+
+# PHY manual curation flag
+phy_flag = 1                        # indicates that PHY manual curation has been performed (we use it only for merging of clusters)
 
 # read parameters
 with open("../params.json", "r") as f:
@@ -46,25 +50,34 @@ for iter, filename in enumerate(source_dir_list):
         F_SAMPLE = float(data_pre_ms['SampleRate'])
 
         # Curation
-        func_discard_noise_and_viz(Raw_dir)
+        # func_discard_noise_and_viz(Raw_dir)
+
+        # Run code to apply curation mask and create new files called *_clean.*
+        func_convert2Phy(Raw_dir)
+
+        # Do manual curation using PHY here -----
+        
+        # Update firings.mda and other files here ----
+        
+
         # Population analysis
-        func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
+        # func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
 
         # Calling matlab scripts from python
-        eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,CHANNEL_MAP_FPATH,nargout=0)
+        # eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,CHANNEL_MAP_FPATH,nargout=0)
 
         # delete converted_data.mda and filt.mda and raw data files (.rhd) 
-        os.remove(os.path.join(Raw_dir,'converted_data.mda'))
-        os.remove(os.path.join(Raw_dir,'filt.mda'))
-        test = os.listdir(Raw_dir)
-        for item in test:
-            if item.endswith(".rhd"):
-                os.remove(os.path.join(Raw_dir, item))
+        # os.remove(os.path.join(Raw_dir,'converted_data.mda'))
+        # os.remove(os.path.join(Raw_dir,'filt.mda'))
+        # test = os.listdir(Raw_dir)
+        # for item in test:
+        #     if item.endswith(".rhd"):
+        #         os.remove(os.path.join(Raw_dir, item))
 
 eng.quit()
 
 moouse_id = input_dir.split('/')[-2]
-combine_sessions(input_dir,moouse_id)
+# combine_sessions(input_dir,moouse_id)
 
 # Params.json file:
 #     {
