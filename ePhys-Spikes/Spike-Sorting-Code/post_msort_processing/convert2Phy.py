@@ -14,6 +14,7 @@ import os, sys, json
 from time import time
 sys.path.append(os.path.join(os.getcwd(),'utils'))
 sys.path.append(os.getcwd())
+sys.path.append('../preprocess_rhd') 
 from itertools import groupby
 from copy import deepcopy
 import numpy as np
@@ -23,6 +24,7 @@ import scipy.signal as signal
 import pandas as pd
 from utils.Support import read_stimtxt
 from utils.read_mda import readmda
+from utils.mdaio import writemda64
 from Support import calc_key_metrics, calc_merge_candidates, makeSymmetric
 
 # session_folder = '/home/hyr2-office/Documents/Data/NVC/RH-7_REJECTED/10-27-22/'
@@ -291,11 +293,8 @@ def func_convert2Phy(session_folder):
 
 # Convert back to MS outputs
 def convert2MS(session_folder):
-    firings_filepath = os.path.join(session_folder, 'phy_output' ,"firings_clean_merged.mda")
-    templates_filepath = os.path.join(session_folder, 'phy_output' ,"templates_clean_merged.mda")
-     
-    
-    
+    firings_filepath = os.path.join(session_folder,"firings_clean_merged.mda")
+    templates_filepath = os.path.join(session_folder,"templates_clean_merged.mda")
     
     # Re-creating firings.mda and templates.mda
     spike_clusters = np.load(os.path.join(session_folder,'phy_output','spike_clusters.npy'))
@@ -305,43 +304,82 @@ def convert2MS(session_folder):
     
     assert spike_times.shape == spike_clusters.shape, f"Array dimensions for spike_clusters.npy are not the same as spike_times.npy in session {session_folder}"
     
-    # Rejecting noise clusters (manually labelled)
     cluster_info_df = pd.read_csv(os.path.join(session_folder,'phy_output','cluster_info.tsv'),sep = '\t')
     cluster_label = cluster_info_df.group.to_numpy()
     cluster_id = cluster_info_df.cluster_id.to_numpy()
     n_spikes = cluster_info_df.n_spikes.to_numpy()
     
-    noise_clusters = cluster_id[(cluster_label == 'noise')]                                                      # These are the noise clusters (from PHY curation)
-    
-    spike_clusters_new = np.delete( spike_clusters , np.isin(spike_clusters, noise_clusters) , axis = 0 )        # Removing Manually curated units
-    spike_times_new = np.delete( spike_times , np.isin(spike_clusters, noise_clusters) , axis = 0 )              # Removing Manually curated units
-    template_waveforms = np.delete(template_waveforms,noise_clusters,axis = 2)                                   # Removing Manually curated units
-    cluster_id_orig = np.delete(cluster_id_orig,noise_clusters,axis = 0)    
-    cluster_id = cluster_id[np.logical_not(cluster_label == 'noise')]            # manually curated
-    n_spikes = n_spikes[np.logical_not(cluster_label == 'noise')]                # manually curated
-    
     # Loading original firings_clean.mda
     firings_original = readmda(os.path.join(session_folder,'firings_clean.mda'))
     spike_clusterIDs_original = firings_original[2,:] - 1                                                   # firings.mda cluster IDs start from 1  (mountainsort convention)
     firings_original[2,:] = spike_clusterIDs_original
-    firings_original = np.delete(firings_original, np.isin(firings_original[2,:] , noise_clusters), axis = 1)     # Removing Manually curated units                                       
-    
-    assert spike_clusterIDs_original.shape == spike_clusters_new.shape
-    
-    # Get what clusters IDs were merged
-    GetMergeIDs(firings_original[2,:] , spike_clusters_new )
 
-    
-    
-    
+     # Get what clusters IDs were merged
+    df_phy_merge_info = GetMergeIDs(firings_original[2,:] , spike_clusters )
     
     # recompute the primary channel here
+    newIDs = df_phy_merge_info.newID.to_numpy()
+    oldIDs = df_phy_merge_info.oldIDs.tolist()
     
+    local_templates_newIDs = np.zeros([template_waveforms.shape[0],template_waveforms.shape[1], newIDs.shape[0]])
+    
+    for iter_l,data_l in enumerate(newIDs):
+        local_oldID = np.asarray(oldIDs[iter_l],dtype = np.int16)
+
+        local_nspikes = [(spike_clusterIDs_original == data_ll).sum() for data_ll in local_oldID]        # number of spikes
+        local_nspikes = np.asarray(local_nspikes,dtype = np.int32)
+        
+        weights_local = [local_nspikes[iter_ll]/local_nspikes.sum() for iter_ll in range(local_oldID.shape[0])]
+
+        # weighted average of the templates_waveforms 
+        local_templates_newIDs[:,:,iter_l] = np.average(template_waveforms[:,:,local_oldID],axis = 2,weights = weights_local )
+        
+    # New templates.mda    
+    template_waveforms_new = np.zeros([template_waveforms.shape[0],template_waveforms.shape[1], cluster_id.shape[0]])
+    for iter_l,data_l in enumerate(cluster_id):
+        if np.any(np.isin(cluster_id_orig,data_l)):
+            template_waveforms_new[:,:,iter_l] = template_waveforms[:,:,data_l]
+            # print(data_l)
+        else:
+            indx_tmp = np.squeeze(np.where(newIDs == data_l))
+            template_waveforms_new[:,:,iter_l] = local_templates_newIDs[:,:,indx_tmp]
+            # print(indx_tmp)
+    
+    
+    # Rejecting noise clusters here
+    noise_clusters = cluster_id[(cluster_label == 'noise')]                                                      # These are the noise clusters (from PHY curation)
+    if noise_clusters.any():
+        spike_clusters_new = np.delete( spike_clusters , np.isin(spike_clusters, noise_clusters) , axis = 0 )        # Removing Manually curated units
+        spike_times_new = np.delete( spike_times , np.isin(spike_clusters, noise_clusters) , axis = 0 )              # Removing Manually curated units
+        template_waveforms_new = np.delete(template_waveforms_new,noise_clusters,axis = 2)                                   # Removing Manually curated units
+        # cluster_id_orig = np.delete(cluster_id_orig,noise_clusters,axis = 0)    
+        cluster_id = cluster_id[np.logical_not(cluster_label == 'noise')]            # manually curated
+        n_spikes = n_spikes[np.logical_not(cluster_label == 'noise')]                # manually curated
+        # firings_original = np.delete(firings_original, np.isin(firings_original[2,:] , noise_clusters), axis = 1)     # Removing Manually curated units                                      
+    
+    assert template_waveforms_new.shape[2] == cluster_id.shape[0]
+    
+    # Primary channels (updated)
+    pri_ch_LUT = -1 * np.ones(np.shape(cluster_id))
+    pri_ch_new = -1 * np.ones(np.shape(spike_times_new))
+    for iter_l in range(cluster_id.shape[0]):
+        local_template = template_waveforms_new[:,:,iter_l] 
+        local_template = -1*np.abs(-1*local_template)       # only care about the negative part of the spike 
+        local_min_template = np.min(local_template[:,20:80],axis = 1)   # excluding the edges of the template waveform (in time)
+        pri_ch_LUT[iter_l] = np.argmin(local_min_template)        # primary channel (electrode that shows highest depolarization voltage)
+    for iter_l,data_l in enumerate(cluster_id): 
+        tmp_indx_mask = (spike_clusters_new == data_l)
+        local_pri_ch = pri_ch_LUT[iter_l]
+        pri_ch_new[tmp_indx_mask] = local_pri_ch
+    # Writing to disk
     firings = np.zeros([3,spike_times_new.shape[0]])
     firings[1,:] = spike_times_new
     firings[2,:] = spike_clusters_new
-    # firings[0,:] = prim_ch_new
-    # writemda64( firings, firings_filepath )
+    firings[0,:] = pri_ch_new
+    writemda64( firings, firings_filepath )
+    writemda64( template_waveforms_new, templates_filepath )
+    
+    # Check primary channels IDs (native channel order OR MS channel order) for the convention in firings.mda (ask Jiaao)
     
 def GetMergeIDs(spike_clusterIDs_original,spike_clusterIDs_new):
     # INPUT PARAMETERS
@@ -371,6 +409,8 @@ def GetMergeIDs(spike_clusterIDs_original,spike_clusterIDs_new):
         iter_c_orig = np.unique(spike_clusterIDs_original[tmp_indx])
         pd_tmp = pd.DataFrame({'newID':iter_c , 'oldIDs': [iter_c_orig.tolist()] })
         df_output = pd.concat((df_output,pd_tmp),axis = 0)                              # contains info for the merged cluster ID and the original cluster IDs
+        
+    return df_output
         
         
     
