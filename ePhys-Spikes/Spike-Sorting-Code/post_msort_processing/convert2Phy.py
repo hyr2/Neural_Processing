@@ -356,10 +356,11 @@ def func_convert2MS(session_folder):
     
     # Rejecting noise clusters here
     noise_clusters = cluster_id[(cluster_label == 'noise')]                                                      # These are the noise clusters (from PHY curation)
-    if noise_clusters.any():
+    # print(noise_clusters.any())
+    if noise_clusters.size != 0:
         spike_clusters_new = np.delete( spike_clusters , np.isin(spike_clusters, noise_clusters) , axis = 0 )        # Removing Manually curated units
         spike_times_new = np.delete( spike_times , np.isin(spike_clusters, noise_clusters) , axis = 0 )              # Removing Manually curated units
-        template_waveforms_new = np.delete(template_waveforms_new,noise_clusters,axis = 2)                                   # Removing Manually curated units
+        template_waveforms_new = np.delete(template_waveforms_new,np.where(np.in1d(cluster_id, noise_clusters)),axis = 2)                                   # Removing Manually curated units
         # cluster_id_orig = np.delete(cluster_id_orig,noise_clusters,axis = 0)    
         cluster_id = cluster_id[np.logical_not(cluster_label == 'noise')]            # manually curated
         n_spikes = n_spikes[np.logical_not(cluster_label == 'noise')]                # manually curated
