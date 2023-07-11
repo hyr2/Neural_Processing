@@ -47,7 +47,9 @@ def func_convert2Phy(session_folder):
     spike_clusters = firings[2,:].astype(dtype = 'uint32') - 1  # This is spike_clusters.npy
     
     nTemplates = np.max(spike_clusters) + 1                      # number of clusters found
-    nChan = np.amax(prim_ch)                                  # number of channels in the recording (effective)
+    channel_positions = pd.read_csv(os.path.join(session_folder,'geom.csv'), header=None).values
+    nChan = channel_positions.shape[0]                              # Minor fix for PHY error on stroke day or massive channel loss
+    # nChan = np.amax(prim_ch)                                     # number of channels in the recording (effective)
     
     # Needs to be fixed (read all_waveforms_by_cluster.npz)
     amplitudes = np.zeros([nSpikes,])
