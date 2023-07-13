@@ -185,8 +185,10 @@ plt.xlabel('Days')
 
 
 # Plotting of Burst Index longitudinal (no spatial info)
+df_all_clusters_main.loc[df_all_clusters_main['day'] == 47,'day'] = 49
+df_all_clusters_main.loc[df_all_clusters_main['day'] == 24,'day'] = 21
 filename_save = os.path.join(output_folder,'burst_index_BOX.svg')
-df_all_clusters_main_high = df_all_clusters_main[df_all_clusters_main['spont_FR'] > 1.5]            # only high spike count clusters considered for this analysis
+df_all_clusters_main_high = df_all_clusters_main[df_all_clusters_main['spont_FR'] > 1]            # only high spike count clusters considered for this analysis
 df_all_clusters_main_high_bsl = df_all_clusters_main_high[(df_all_clusters_main_high['day'] == -3) |(df_all_clusters_main_high['day'] == -2) ]
 df_all_clusters_main_high_bsl.loc[:,'day'] = 'Pre'
 df_all_clusters_main_high_recovery = df_all_clusters_main_high[(df_all_clusters_main_high['day'] == 7) |(df_all_clusters_main_high['day'] == 14) ]
@@ -203,8 +205,6 @@ plt.savefig(filename_save,format = 'svg')
 
 # Here Generating FR of all clusters and Population of all clusters 
 filename_save = os.path.join(output_folder,'avg_FR_all_clusters.svg')
-df_all_clusters_main.loc[df_all_clusters_main['day'] == 47,'day'] = 49
-df_all_clusters_main.loc[df_all_clusters_main['day'] == 24,'day'] = 21
 y_axis_data = df_all_clusters_main.groupby('day').mean()['spont_FR'].to_numpy()[:-1]
 y_axis_sem = df_all_clusters_main.groupby('day').sem()['spont_FR'].to_numpy()[:-1]
 day_axis = df_all_clusters_main.groupby('day').mean().index.to_numpy()[:-1]
@@ -218,19 +218,22 @@ y_pop_ = df_all_clusters_main.groupby('day').count()['spont_FR'].to_numpy()[:-1]
 plt.plot(day_axis,y_pop_)
 plt.title('Avg Population (all Clusters)')
 plt.savefig(filename_save,format = 'svg')
+plt.close()
+
 
 # Bursting Index by E and I cells
+plt.figure()
 filename_save = os.path.join(output_folder,'burst_index_alldays.svg')
-y = df_all_clusters_main_high.groupby(['day','celltype']).mean()['burst_i'].groupby('celltype').get_group('WI').to_numpy()
-y_e = df_all_clusters_main_high.groupby(['day','celltype']).sem()['burst_i'].groupby('celltype').get_group('WI').to_numpy()
-plt.errorbar(x = np.sort(df_all_clusters_main_high['day'].unique()), y= y, yerr  = y_e , color = 'g',lw = 2.9)
+# y = df_all_clusters_main_high.groupby(['day','celltype']).mean()['burst_i'].groupby('celltype').get_group('WI').to_numpy()
+# y_e = df_all_clusters_main_high.groupby(['day','celltype']).sem()['burst_i'].groupby('celltype').get_group('WI').to_numpy()
+# plt.errorbar(x = np.sort(df_all_clusters_main_high['day'].unique()), y= y, yerr  = y_e , color = 'g',lw = 2.9)
 y = df_all_clusters_main_high.groupby(['day','celltype']).mean()['burst_i'].groupby('celltype').get_group('NI').to_numpy()
 y_e = df_all_clusters_main_high.groupby(['day','celltype']).sem()['burst_i'].groupby('celltype').get_group('NI').to_numpy()
 plt.errorbar(x = np.sort(df_all_clusters_main_high['day'].unique()), y= y, yerr  = y_e , color = 'b',lw = 2.9)
 y = df_all_clusters_main_high.groupby(['day','celltype']).mean()['burst_i'].groupby('celltype').get_group('P').to_numpy()
 y_e = df_all_clusters_main_high.groupby(['day','celltype']).sem()['burst_i'].groupby('celltype').get_group('P').to_numpy()
 plt.errorbar(x = np.sort(df_all_clusters_main_high['day'].unique()), y= y, yerr  = y_e , color = 'r',lw = 2.9)
-plt.legend(['Wide Interneuron','FS/PV','Pyr'])
+plt.legend(['FS/PV','Pyr'])
 plt.savefig(filename_save,format = 'svg')
 
 df_local = df_all_clusters_main_high.groupby('celltype').get_group('P')[['day','burst_i']]  # for pyramidal
