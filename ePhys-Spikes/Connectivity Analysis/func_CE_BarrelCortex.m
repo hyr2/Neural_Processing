@@ -111,7 +111,7 @@ if curation
     % extract accepted cluster locations & their responsiveness
     % response_mask = response_mask(curation_mask,:);   % Update to the response mask from python script population_analysis.py
     % clus_locations = clus_locations(curation_mask,:);
-    shank_num = shank_num(curation_mask);
+    % shank_num = shank_num(curation_mask);
     spike_times_curated = [];
     spike_labels_curated = [];
     spike_labels_mapping = zeros(n_clus);
