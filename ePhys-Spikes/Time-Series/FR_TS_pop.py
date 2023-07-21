@@ -254,21 +254,21 @@ def combine_sessions(source_dir, str_ID):
     # source_dir_list = source_dir_list.tolist()
     # source_dir_list = natsorted(os.listdir(source_dir))
 
-    if (str_ID.lower() == 'RH-3'.lower()):
+    if (str_ID.lower() == 'processed_data_rh3'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,56]) 
-    elif (str_ID.lower() == 'BC7'.lower()):
+    elif (str_ID.lower() == 'processed_data_bc7'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,42]) 
     elif (str_ID.lower() == 'BC6'.lower()):
         linear_xaxis = np.array([-3,-2,2,9,14,21,28,35,49])
-    elif (str_ID.lower() == 'B-BC5'.lower()):
+    elif (str_ID.lower() == 'processed_data_bbc5'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,21,47]) 
-    elif (str_ID.lower() == 'RH-7'.lower()):
+    elif (str_ID.lower() == 'processed_data_rh7'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,24,28,35,42,49,56])
     elif (str_ID.lower() == 'BC8'.lower()):
         linear_xaxis = np.array([-3,-2,2,2,7,8,15,21,54])     
-    elif (str_ID.lower() == 'RH-8'.lower()):
+    elif (str_ID.lower() == 'processed_data_rh8'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,35,42,49,56])  
-    elif (str_ID.lower() == 'RH-9'.lower()):
+    elif (str_ID.lower() == 'processed_data_rh9'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,35,42,49])
     elif (str_ID.lower() == 'B-BC8'.lower()):
         linear_xaxis = np.array([-4,-3,-2,-1,3,7])
