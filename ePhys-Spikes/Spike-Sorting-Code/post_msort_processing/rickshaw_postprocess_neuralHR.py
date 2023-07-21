@@ -11,6 +11,7 @@ Created on Sun Nov  6 20:30:52 2022
 # This is a complete, fully automated script that is doing about a dozen of various spike analysis
 # plots being generated for our longitudinal ephys data. 
 # Make sure the working directory is where this script resides.
+# Make sure manual curation is complete before running this script (manual curation from PHY)
 
 import numpy as np
 from discard_noise_and_viz import *
@@ -48,14 +49,6 @@ for iter, filename in enumerate(source_dir_list):
         with open(file_pre_ms, 'r') as f:
             data_pre_ms = json.load(f)
         F_SAMPLE = float(data_pre_ms['SampleRate'])
-
-        # Curation
-        # func_discard_noise_and_viz(Raw_dir)
-
-        # Run code to apply curation mask and create new files called *_clean.*
-        # func_convert2Phy(Raw_dir)
-
-        # Do manual curation using PHY here -----
         
         # Update firings.mda and other files here ----
         func_convert2MS(Raw_dir)

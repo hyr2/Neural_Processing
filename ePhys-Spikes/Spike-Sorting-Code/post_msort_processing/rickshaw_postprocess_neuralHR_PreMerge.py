@@ -11,6 +11,7 @@ Created on Sun Nov  6 20:30:52 2022
 # This is a complete, fully automated script that is doing about a dozen of various spike analysis
 # plots being generated for our longitudinal ephys data. 
 # Make sure the working directory is where this script resides.
+# After this script runs (without error), use the phy_output contents to perform manual merging of oversplit clusters
 
 import numpy as np
 from discard_noise_and_viz import *
