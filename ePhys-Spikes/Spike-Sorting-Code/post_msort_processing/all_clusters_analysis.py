@@ -205,9 +205,9 @@ plt.savefig(filename_save,format = 'svg')
 
 # Here Generating FR of all clusters and Population of all clusters 
 filename_save = os.path.join(output_folder,'avg_FR_all_clusters.svg')
-y_axis_data = df_all_clusters_main.groupby('day').mean()['spont_FR'].to_numpy()[:-1]
-y_axis_sem = df_all_clusters_main.groupby('day').sem()['spont_FR'].to_numpy()[:-1]
-day_axis = df_all_clusters_main.groupby('day').mean().index.to_numpy()[:-1]
+y_axis_data = df_all_clusters_main.groupby('day').mean()['spont_FR'].to_numpy()
+y_axis_sem = df_all_clusters_main.groupby('day').sem()['spont_FR'].to_numpy()
+day_axis = df_all_clusters_main.groupby('day').mean().index.to_numpy()
 plt.errorbar(x = day_axis,y = y_axis_data,yerr = y_axis_sem,lw = 2.9,color = 'r')
 plt.grid()
 plt.title('Avg Spontaneous Firing Rate (all Clusters)')
