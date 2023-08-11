@@ -1,4 +1,4 @@
-function [BW,mask,save_flag] = batch_ROI(source_dir,Raw_dir,cam_in)
+function [BW,mask,coord_r,save_flag] = batch_ROI(source_dir,Raw_dir,cam_in)
 %BATCH_ROI Function is used to ask the user for drawing the ROIs
 %   INPUTS:
 %       source_dir : session ID as folder name 
@@ -39,11 +39,17 @@ else
 end
 amax = max(sample_img(:));
 amin = min(sample_img(:));
+% Define ROIs
 mask = drawROIs(sample_img,[amin,amax]);
 % Define a craniotomy
 BW = defineCraniotomy(sample_img,[amin amax]);
-% mat_dir = fullfile(mat_dir,'ROI.mat');
-% save(fullfile(mat_dir,'ROI.mat'),'BW','mask');
+% Define coordinate for centroid tracking
+fig = figure('Name', 'Select location for Centroid', 'NumberTitle', 'off','WindowState','maximized');
+imshow(sample_img);
+[x_r,y_r] = getpts(fig);
+coord_r = [x_r,y_r];  % reference coordinates
+close all;
+% set(fig,'WindowState','maximized');
 save_flag = 1;
 end
 
