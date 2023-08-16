@@ -1,6 +1,6 @@
 % Compute I/I_0 and save
 % Apply Craniatomy mask
-% 
+% Ask user to select reference coordinates (ie origin of the image)
 
 % ROI 1-4: shanks A to D
 % ROI 5  : Far Away (can be used for GSR)

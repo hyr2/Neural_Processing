@@ -22,7 +22,7 @@ iter_local_local = 1;
 vec_img = [2:3:29];      % averaging 580nm image for a good underlay image
 for iter_local = vec_img   
     thisImage = double(imread(fullfile(Raw_dir,files_raw(iter_local).name)));
-    if iter_local_local
+    if iter_local_local == 1
         sumImage = thisImage;
     else
         sumImage = sumImage + thisImage;
@@ -51,5 +51,9 @@ coord_r = [x_r,y_r];  % reference coordinates
 close all;
 % set(fig,'WindowState','maximized');
 save_flag = 1;
+% Saving averaged image at 580nm
+Avg_directory = fullfile(source_dir,'Processed','Average','sample_image.mat');
+save(Avg_directory,'sample_img');
+
 end
 
