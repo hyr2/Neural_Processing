@@ -38,11 +38,12 @@ sigma_2d = 7;
 c_limits_480 = [-0.03,-0.01]; % Should be dynamic?
 c_limits_580 = [-0.04,-0.01]; % Should be dynamic?
 c_limits_510 = [-0.03,-0.01]; % Should be dynamic?
-frames_load = [14:35];
+frames_load = [18:35];
 
 % Loading Trial mask file
 trial_mask = fullfile(source_dir,'trial_mask.csv');
 trial_mask = logical(readmatrix(trial_mask));
+fprintf('Number of accepted trials in current session %d \n ',sum(trial_mask));
 
 %% Loading ROI data
 mat_folder = fullfile(source_dir,'Processed','mat_files');
@@ -90,7 +91,7 @@ try
         % thresholdRange = [-0.01,-0.03]; % Example threshold range
         delRR_z = Zscore_nan(delRR);
         % ActMask_local = (delRR <= c_limits_480(2)) & (delRR >= c_limits_480(1));                % Binary mask absolute
-        ActMask_local_z = delRR_z < -3;     % Following threshold set by Zeiger et al (2021)    % Binary mask using Z score
+        ActMask_local_z = delRR_z < -2.5;     % Following threshold set by Zeiger et al (2021)    % Binary mask using Z score
         % Area_local_raw = sum(ActMask_local(:));
         % Area_local_Z = sum(ActMask_local_z);
         props = regionprops(ActMask_local_z,'Centroid','FilledArea');               % Find properties of the binary mask
@@ -194,7 +195,7 @@ try
         % thresholdRange = [-0.01,-0.03]; % Example threshold range
         delRR_z = Zscore_nan(delRR);
         % ActMask_local = (delRR <= c_limits_480(2)) & (delRR >= c_limits_480(1));                % Binary mask absolute
-        ActMask_local_z = delRR_z < -3;     % Following threshold set by Zeiger et al (2021)    % Binary mask using Z score
+        ActMask_local_z = delRR_z < -2.5;     % Following threshold set by Zeiger et al (2021)    % Binary mask using Z score
         % Area_local_raw = sum(ActMask_local(:));
         % Area_local_Z = sum(ActMask_local_z);
         props = regionprops(ActMask_local_z,'Centroid','FilledArea');               % Find properties of the binary mask
@@ -206,11 +207,32 @@ try
         elseif length(props) == 1
             Area_activationZ_local = props.FilledArea;
             CentroidsZ_local = props.Centroid;
-            Area_activationZ(iter_local_local) = Area_activationZ_local;
-            CentroidsZ(iter_local_local,:) = CentroidsZ_local;
-            wv_580_local.Area = Area_activationZ_local;
-            wv_580_local.Coord_c = CentroidsZ_local;
-            plot_overlay_auto_zscored_centroid(sample_img,ActMask_local_z,fullfile(output_folder,'580nm'),name_pic,wv_580_local);
+            % Find if activation areas found exist within the expected roi
+            if inpolygon(CentroidsZ_local(1),CentroidsZ_local(2),x_act,y_act) == 0
+                Area_activationZ(iter_local_local) = 0;
+                CentroidsZ(iter_local_local,:) = NaN(1,2);
+                continue;
+            else
+                Area_activationZ(iter_local_local) = Area_activationZ_local;
+                CentroidsZ(iter_local_local,:) = CentroidsZ_local;
+                wv_580_local.Area = Area_activationZ_local;
+                wv_580_local.Coord_c = CentroidsZ_local;
+                plot_overlay_auto_zscored_centroid(sample_img,ActMask_local_z,fullfile(output_folder,'580nm'),name_pic,wv_580_local);
+                continue;
+            end
+        end
+        tmp_a = [props.FilledArea];
+        tmp_cord = [props.Centroid];
+        tmp_cord = reshape(tmp_cord,2,length(props));
+        tmp_cord = tmp_cord';
+        in = zeros(length(tmp_cord),1);
+        for iter_local_iter = 1:length(tmp_cord)
+            in(iter_local_iter) = inpolygon(tmp_cord(iter_local_iter,1),tmp_cord(iter_local_iter,2),x_act,y_act);            % Find if activation areas found exist within the expected roi  
+        end
+        props = props(logical(in));
+        if isempty(props)       % no area of activation lies in the expected roi
+            Area_activationZ(iter_local_local) = 0;
+            CentroidsZ(iter_local_local,:) = NaN(1,2);
             continue;
         end
         tmp_a = [props.FilledArea];
@@ -231,7 +253,7 @@ try
     name_pic = strcat('580nm-Max_Area',num2str(iter_seq));
     delRR = squeeze(img_stack_local_filtered(iter_seq,:,:)); 
     delRR_z = Zscore_nan(delRR);
-    ActMask_local_z = delRR_z < -3;  
+    ActMask_local_z = delRR_z < -2.5;  
     plot_overlay_auto_zscored(sample_img,ActMask_local_z,fullfile(output_folder,'580nm'),name_pic);
     vec_loc = coord_c - coord_r;        
     wv_580.vec_rel = vec_loc;
@@ -244,6 +266,7 @@ catch exception     % Handle errors
     fprintf('Error in session ID: %s \n Error message: %s ',source_dir, exception.message);
 end
 
+%{
 %% Working on 510nm
 load(fullfile(mat_folder,'wv3nm_data.mat'))
 try 
@@ -323,4 +346,5 @@ try
 catch exception     % Handle errors
     fprintf('Error in session ID: %s \n Error message: %s ',source_dir, exception.message);
 end
+%}
 
