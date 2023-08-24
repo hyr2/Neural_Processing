@@ -13,6 +13,8 @@ from utils.read_stimtxt import read_stimtxt
 from Support import plot_all_trials, filterSignal_lowpass, filter_Savitzky_slow, filter_Savitzky_fast, zscore_bsl
 from sklearn.preprocessing import StandardScaler,MinMaxScaler
 import seaborn as sns
+from adaptation import adaptation
+
 
 # Plotting fonts
 sns.set_style('darkgrid') # darkgrid, white grid, dark, white and ticks
@@ -154,14 +156,6 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     SMOOTHING_SIZE = 11
     DURATION_OF_INTEREST = 2.5  # how many seconds to look at upon stim onset (this is the activation or inhibition window)
     # Setting up
-    # session_path_str = "NVC/BC7/12-17-2021"
-    # CHANNEL_MAP_FPATH = r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_ch_maps\128chMap_flex.mat" # BC7
-    # CHANNEL_MAP_FPATH = r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_ch_maps\chan_map_1x32_128ch_rigid.mat" # BC6
-    # CHANNEL_MAP_FPATH = r"D:\Rice-Courses\neuroeng_lab\codes\stroke_proj_postproc\data_ch_maps\Mirro_Oversampling_hippo_map.mat" # B-BC5
-    # CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_1x32_128ch_rigid.mat'
-
-    # session_folder = input('Input the source directory containing spike sorted and curated dataset for a single session:\n')
-    # session_folder = '/home/hyr2-office/Documents/Data/NVC/RH-3/processed_data_rh3/10-19/'
     session_trialtimes = os.path.join(session_folder,'trials_times.mat')
     trial_mask_file = os.path.join(session_folder,'trial_mask.csv')
     result_folder = os.path.join(session_folder,'Processed', 'count_analysis')
@@ -200,40 +194,22 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         GH = 25
         GW_BWTWEENSHANKS = 250
 
-    # # Extracting data from summary file .xlsx
-    # df_exp_summary = pd.read_excel(dir_expsummary)
-    # arr_exp_summary = df_exp_summary.to_numpy()
-    # Num_chan = arr_exp_summary[0,0]         # Number of channels
-    # Notch_freq = arr_exp_summary[0,1]       # Notch frequencey selected (in Hz)
-    # Fs = arr_exp_summary[0,2]               # Sampling freq (in Hz)
-    # stim_start_time = arr_exp_summary[2,2]   # Stimulation start - 50ms of window
-    # stim_start_time_original = arr_exp_summary[2,2]# original stimulation start time
-    # n_stim_start = int(Fs * stim_start_time)# Stimulation start time in samples
-    # Ntrials = arr_exp_summary[2,4]          # Number of trials
-    # stim_end_time = arr_exp_summary[2,1] + stim_start_time  # End time of stimulation
-    # time_seq = arr_exp_summary[2,0]         # Time of one sequence in seconds
-    # Seq_perTrial =  arr_exp_summary[2,3]    # Number of sequences per trial
-    # total_time = time_seq * Seq_perTrial    # Total time of the trial
-    # print('Each sequence is: ', time_seq, 'sec')
-    # time_seq = int(np.ceil(time_seq * Fs/2) * 2)                # Time of one sequence in samples (rounded up to even)
-
     if not os.path.exists(result_folder):
         os.makedirs(result_folder)
     if not os.path.exists(result_folder_FR_avg):
         os.makedirs(result_folder_FR_avg)
     geom_path = os.path.join(session_folder, "geom.csv")
-    # curation_mask_path = os.path.join(session_folder, "cluster_rejection_mask.npz")
-    curation_mask_path = os.path.join(session_folder, 'accept_mask.csv')
+    curation_mask_path = os.path.join(session_folder, 'accept_mask.csv')        # deparcated
     NATIVE_ORDERS = np.load(os.path.join(session_folder, "native_ch_order.npy"))
-    axonal_mask = os.path.join(session_folder,'positive_mask.csv')
+    axonal_mask = os.path.join(session_folder,'positive_mask.csv')              # deparcated
 
     # macro definitions
     ANALYSIS_NOCHANGE = 0       # A better name is non-stimulus locked
     ANALYSIS_EXCITATORY = 1     # A better name is activated
     ANALYSIS_INHIBITORY = -1    # A better name is suppressed
 
-    # read cluster rejection data
-    curation_masks = np.squeeze(pd.read_csv(curation_mask_path,header = None).to_numpy())
+    # read cluster rejection data (# deparcated)
+    curation_masks = np.squeeze(pd.read_csv(curation_mask_path,header = None).to_numpy())   
     single_unit_mask = curation_masks
     # single_unit_mask = curation_masks['single_unit_mask']
     # multi_unit_mask = curation_masks['multi_unit_mask']
@@ -285,16 +261,18 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     trial_duration_in_samples = int(total_time*F_SAMPLE)
     window_in_samples = int(WINDOW_LEN_IN_SEC*F_SAMPLE)
     # read channel map
-    geom = pd.read_csv(os.path.join(session_folder, "geom.csv"), header=None).values
+    geom = pd.read_csv(geom_path, header=None).values
     n_ch_this_session = geom.shape[0]
     print(geom.shape)
     # exit(0)
     # read trials times
     trials_start_times = loadmat(session_trialtimes)['t_trial_start'].squeeze()
-    firings = readmda(os.path.join(session_folder, "firings.mda")).astype(np.int64)
+    firings = readmda(os.path.join(session_folder, "firings_clean_merged.mda")).astype(np.int64)
     # get spike stamp for all clusters (in SAMPLEs not seconds)
     spike_times_all = firings[1,:]
     spike_labels = firings[2,:]
+    spike_labels_unique = np.unique(spike_labels)
+    single_unit_mask = np.ones(spike_labels_unique.shape,dtype = bool)
     n_clus = np.max(spike_labels)
     print('Total number of clusters found: ',n_clus)
     spike_times_by_clus =[[] for i in range(n_clus)]
@@ -345,11 +323,12 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             trial_duration_in_samples, 
             window_in_samples
             )
-        firing_rate_series = firing_rate_series/WINDOW_LEN_IN_SEC       # This gives firing rate in Hz
-        firing_rate_avg = np.mean(firing_rate_series[TRIAL_KEEP_MASK, :], axis=0) # averaging over all trials
+        firing_rate_series = firing_rate_series[TRIAL_KEEP_MASK, :]/WINDOW_LEN_IN_SEC       # This gives firing rate in Hz
+        firing_rate_avg = np.mean(firing_rate_series, axis=0) # averaging over all trials
+        firing_rate_avg_nofilt = firing_rate_avg
         # firing_rate_avg = filterSignal_lowpass(firing_rate_avg, np.single(1/WINDOW_LEN_IN_SEC), axis_value = 0)
         firing_rate_avg = filter_Savitzky_slow(firing_rate_avg)
-        firing_rate_sum = np.sum(firing_rate_series[TRIAL_KEEP_MASK, :], axis=0)
+        firing_rate_sum = np.sum(firing_rate_series, axis=0)
         
         n_samples_baseline = int(np.ceil(stim_start_time/WINDOW_LEN_IN_SEC))
         n_samples_stim = int(np.ceil((stim_end_time-stim_start_time)/WINDOW_LEN_IN_SEC))
@@ -425,13 +404,13 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         # print(clus_property)
         
         # Computing number of spikes
-        firing_rate_series = firing_rate_series * WINDOW_LEN_IN_SEC # this is the number of spikes (not firing rate)
-        firing_rate_series_avg = np.sum(firing_rate_series[TRIAL_KEEP_MASK, :],axis = 0) # sum over accepted trials
+        firing_rate_series2 = firing_rate_series * WINDOW_LEN_IN_SEC    # Number of spikes
+        firing_rate_series_avg = np.sum(firing_rate_series2,axis = 0)
         Spikes_stim = np.sum(firing_rate_series_avg[t_8:t_4])
         Spikes_bsl = np.sum(firing_rate_series_avg[t_9:t_3])
         Spikes_num = np.array([Spikes_bsl,Spikes_stim])
 
-        return clus_property_1, firing_rate_avg, firing_rate_sum, Spikes_num
+        return clus_property_1, firing_rate_avg, firing_rate_sum, Spikes_num, firing_rate_series
 
 
     total_nclus_by_shank = np.zeros(4)
@@ -449,23 +428,28 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     FR_list_byshank_inh =  [ [] for i in range(4) ]  # create empty list
     list_all_clus = []
     iter_local = 0
+
+    adaptation_df = pd.DataFrame(columns=['cluster_ID', 'stim_response', 'trial_response'])
+
     for i_clus in range(n_clus):
         
         if single_unit_mask[i_clus] == True:
             # Need to add facilitating cell vs adapting cell vs no change cell
-            clus_property, firing_rate_avg, firing_rate_sum, Spikes_num = single_cluster_main(i_clus)
+            clus_property, firing_rate_avg, firing_rate_sum, Spikes_num, firing_rate_series = single_cluster_main(i_clus)
             t_axis = np.linspace(0,total_time,firing_rate_avg.shape[0])
             t_1 = np.squeeze(np.where(t_axis >= 8.5))[0]
             t_2 = np.squeeze(np.where(t_axis >= 12.5))[0]
             t_3 = np.squeeze(np.where(t_axis >= 2.35))[0]
             t_4 = np.squeeze(np.where(t_axis >= 3.75))[0]
-
+            
             # creating a dictionary for this cluster
             firing_stamp = spike_times_by_clus[i_clus]
             N_spikes_local = spike_times_by_clus[i_clus].size 
             prim_ch = pri_ch_lut[i_clus]
             # Get shank ID from primary channel for the cluster
             shank_num = get_shanknum_from_msort_id(prim_ch)
+
+
             i_clus_dict  = {}
             i_clus_dict['cluster_id'] = i_clus + 1 # to align with the discard_noise_viz.py code cluster order [folder: figs_allclus_waveforms]
             i_clus_dict['total_spike_count'] = firing_stamp.shape
@@ -485,23 +469,30 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
                 i_clus_dict['EventRelatedFR'] = np.nan
             
             list_all_clus.append(i_clus_dict)
+
             FR_series_all_clusters[iter_local].append(np.array(firing_rate_avg,dtype = float))
             # temporary
             # firing_rate_avg = 
             failed = (single_unit_mask[i_clus]==False)                       # SUA as well
-            print(i_clus)
+            #print(i_clus)
             if not(failed): 
+                
                 plot_all_trials(firing_rate_avg,1/WINDOW_LEN_IN_SEC,result_folder_FR_avg,i_clus_dict)           # Plotting function
-            
+                           
+
             if clus_property==ANALYSIS_EXCITATORY:
                 clus_response_mask[iter_local] = 1
             elif clus_property==ANALYSIS_INHIBITORY:
                 clus_response_mask[iter_local] = -1
             else:
-                clus_response_mask[iter_local] = 0
-                
+                clus_response_mask[iter_local] = 0         
+
+
             if not(failed) and clus_property==ANALYSIS_EXCITATORY:          # Extracting FR of only activated neurons
                 FR_list_byshank_act[shank_num].append(np.array(FR_series_all_clusters[iter_local],dtype = float))
+                stim_response, trial_response = adaptation(stim_start_time,stim_end_time,firing_rate_series)
+                if stim_response > 0:
+                    adaptation_df.loc[len(adaptation_df)] = {'cluster_ID': i_clus+1, 'stim_response':stim_response, 'trial_response':trial_response}
             elif not(failed) and clus_property==ANALYSIS_INHIBITORY:
                 FR_list_byshank_inh[shank_num].append(np.array(FR_series_all_clusters[iter_local],dtype = float))
             total_nclus_by_shank[shank_num] += 1
@@ -647,3 +638,4 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     }
     savemat(os.path.join(result_folder, "population_stat_responsive_only.mat"), data_dict)
     np.save(os.path.join(result_folder,'all_clus_property.npy'),list_all_clus)
+    adaptation_df.to_csv(os.path.join(result_folder,'adaptation.csv'))

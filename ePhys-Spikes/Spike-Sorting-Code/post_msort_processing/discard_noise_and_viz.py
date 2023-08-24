@@ -470,12 +470,24 @@ def postprocess_one_session(SESSION_FOLDER, session_newsavefolder, PARAMS, COMMO
     # reject by spatial spread of less than the designated ADJACENT_RADIUS_SQUARED
     geom = pd.read_csv(MAP_PATH, header=None).values
     tmp_clus_ids = np.arange(n_clus)[cluster_accept_mask]
+    tmp_xcoord_shanks = []
+    for iter_l_l in np.squeeze(geom[:,0]):
+        tmp_xcoord_shanks.append(get_shanknum_from_coordinate(int(iter_l_l)))
+    tmp_xcoord_shanks = np.array(tmp_xcoord_shanks,dtype=np.int8)
     for i_clus in tmp_clus_ids:
         prim_ch = pri_ch_lut[i_clus]
         prim_x, prim_y = geom[prim_ch, :]
+        print(i_clus,'\t',prim_x,'\t',prim_y)
         p2p_by_channel = template_p2ps[:, i_clus]
         p2p_prim = np.max(p2p_by_channel)
         p2p_near = p2p_by_channel > p2p_prim*PARAMS['P2P_PROPORTION_THRESH']
+        shank_ID_prim = get_shanknum_from_coordinate(int(prim_x))        # primary channel's shank number
+        
+        mask_shank = (tmp_xcoord_shanks == shank_ID_prim)
+        p2p_near = np.logical_and(mask_shank,p2p_near)  # electrodes on the same shank and having considerably large amplitude
+
+        # x_local_cluster = geom[p2p_near,0]
+        
         if np.any((geom[p2p_near,0]-prim_x)**2 + (geom[p2p_near,1]-prim_y)**2 >= PARAMS['ADJACENCY_RADIUS_SQUARED']):
             cluster_accept_mask[i_clus] = False
             violation_log[i_clus] += 8
@@ -723,8 +735,6 @@ def postprocess_one_session(SESSION_FOLDER, session_newsavefolder, PARAMS, COMMO
     fig_size_scale = 1
     
     
-    
-    
     def single_process_plot_func(i_clus_begin, i_clus_end):
         """plot [i_clus_begin, i_clus_end) in a for loop"""
         if CHANNELMAP2X16:
@@ -762,7 +772,7 @@ def postprocess_one_session(SESSION_FOLDER, session_newsavefolder, PARAMS, COMMO
 
 def func_discard_noise_and_viz(SESSION_FOLDER):
 
-    # def func_discard_noise_and_viz(SESSION_FOLDER, ):
+    # def func_discard_noise_and_viz(SESSION_FOLDER, )
 
     # Files and inputs 
     # SESSION_FOLDER = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/spikesort_out/Haad/bc7/2021-12-06"
@@ -803,17 +813,16 @@ def func_discard_noise_and_viz(SESSION_FOLDER):
         GH = 25
         GW_BETWEENSHANK = 300
 
-
     if not os.path.exists(session_newsavefolder):
         os.makedirs(session_newsavefolder)
 
     COMMON_AVG_REREFERENCE = True
-    ADJACENCY_RADIUS_SQUARED = 200**2 # um^2, [consistent with mountainsort shell script](not anymore)
-    SNR_THRESH = 2.0    # SNR increased from 1.5
-    AMP_THRESH = 50 # 35 for Anesthetized # 50 for awake
-    FIRING_RATE_THRESH = 0.1 # 0.1 Hz and below over the 20 min session of trial based whisker stimulation
-    P2P_PROPORTION_THRESH = 0.2         # For spatial screening (p2p threshold %) AKA isolation in space
-    ISI_VIOLATION_RATIO = 0.0303         # ratio of spikes violating the inter spike interval criterion (3% criteria)
+    ADJACENCY_RADIUS_SQUARED = 200**2   # um^2, [consistent with mountainsort shell script](not anymore)
+    SNR_THRESH = 2.0                    # SNR increased from 1.5
+    AMP_THRESH = 50                     # 35 for Anesthetized # 50 for awake
+    FIRING_RATE_THRESH = 0.1            # 0.1 Hz and below over the 20 min session of trial based whisker stimulation
+    P2P_PROPORTION_THRESH = 0.25        # For spatial screening (p2p threshold %) AKA isolation in space
+    ISI_VIOLATION_RATIO = 0.0303        # ratio of spikes violating the inter spike interval criterion (3% criteria)
     PARAMS = {}
     PARAMS['F_SAMPLE'] = F_SAMPLE
     PARAMS['ADJACENCY_RADIUS_SQUARED'] = ADJACENCY_RADIUS_SQUARED

@@ -9,7 +9,7 @@ function mask = defineCraniotomy(SC,r)
 % Suppress warnings about figure size
 warning('off', 'Images:initSize:adjustingMag');
 
-figure('Name', 'Define the craniotomy area (Press ESC to skip)', 'NumberTitle', 'off');
+figure('Name', 'Define the craniotomy area (Press ESC to skip)', 'NumberTitle', 'off','WindowState','maximized');
 mask = roipoly(mat2gray(SC, r));
 close(gcf);
 

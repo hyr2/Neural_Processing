@@ -10,10 +10,11 @@ function ROI = drawROIs(SC, r)
 
   ROI = [];
   button = 'Yes';
-  figure('Name', 'Draw an ROI', 'NumberTitle', 'off');
+  
   while strcmp(button,'Yes')
-
+    
     % Have user define polygonal ROI
+    figure('Name', 'Draw an ROI', 'NumberTitle', 'off','WindowState','maximized');
     this_ROI = roipoly(SC);
     
     % If not empty, append to the ROI list and overlay on figure

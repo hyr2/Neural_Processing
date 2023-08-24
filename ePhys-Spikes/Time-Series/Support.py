@@ -251,7 +251,7 @@ def fill_missing_FR(data_in,day_local_axis,day_axis_ideal):
     return out_arr
     
 
-def interp_session_loss(data_in, day_local_axis, day_axis_ideal):
+def interp_session_loss(data_in, day_local_axis, day_axis_ideal,int_flag = True):
     """
     NTERP_SESSION_LOSS Interpolate data values of missing sessions in a
     longitudinal stroke study
@@ -277,11 +277,17 @@ def interp_session_loss(data_in, day_local_axis, day_axis_ideal):
     # if before day 28 (performing nearest neighbour)    
     f_data_out = interpolate.interp1d(day_local_axis[local_indx],data_in[local_indx,:],kind = 'nearest',axis = 0, fill_value='extrapolate')
     local_indx = np.squeeze(np.where(day_axis_ideal < 28 ))
-    out_arr = np.rint(f_data_out(day_axis_ideal[local_indx]))
+    if int_flag:
+        out_arr = np.rint(f_data_out(day_axis_ideal[local_indx]))
+    else:
+        out_arr = f_data_out(day_axis_ideal[local_indx])
     
     # if after day 28 (performing average value of post day 28)
     local_indx = np.squeeze(np.where(day_local_axis >= 28 ))
-    avg_local = np.rint(np.nanmean(np.reshape(data_in[local_indx,:],[local_indx.size,YY_dim]),axis = 0))
+    if int_flag:
+        avg_local = np.rint(np.nanmean(np.reshape(data_in[local_indx,:],[local_indx.size,YY_dim]),axis = 0))
+    else:
+        avg_local = np.nanmean(np.reshape(data_in[local_indx,:],[local_indx.size,YY_dim]),axis = 0)
     tmp_indx = np.isin(day_axis_ideal,day_local_axis[local_indx])
     tmp_indx = ~tmp_indx[6:]    # day 28 is a hard coded (requested by Dr.Lan)
     out_arr_28 = np.zeros([tmp_indx.size,YY_dim])

@@ -46,82 +46,112 @@ def process_postproc_data(session_spk_dir: str, mdaclean_temp_dir: str, session_
     else:
         GW_BETWEENSHANK = 300
     # ch2shank is the map of each channel to corresponding shank. Each entry is in {0,1,2,3}.
-    ch2shank = pd.read_csv(os.path.join(mdaclean_temp_dir, "ch2shank.csv"), header=None).values.squeeze()
-    template_waveforms = readmda(os.path.join(mdaclean_temp_dir, "templates_clean.mda")).astype(np.int64)
-    map_clean2original_labels = pd.read_csv(os.path.join(mdaclean_temp_dir, "map_clean2original_labels.csv"), header=None).values.squeeze()
+    ch2shank = pd.read_csv(os.path.join(mdaclean_temp_dir,'Processed','connectomes', "ch2shank.csv"), header=None).values.squeeze()
+    template_waveforms = readmda(os.path.join(mdaclean_temp_dir,'Processed','connectomes', "templates_clean.mda")).astype(np.int64)
+    map_clean2original_labels = pd.read_csv(os.path.join(mdaclean_temp_dir,'Processed','connectomes', "map_clean2original_labels.csv"), header=None).values.squeeze()
     template_peaks_single_sided = np.max(np.abs(template_waveforms), axis=1) # (n_ch, n_clus)
     pri_ch_lut = np.argmax(template_peaks_single_sided, axis=0) # (n_clus)
     n_units = pri_ch_lut.shape[0]
     spike_counts = spike_counts[map_clean2original_labels-1].astype(np.int64)
     ret["spike_counts"] = spike_counts
 
-    mono_res_mat = loadmat(os.path.join(session_connec_dir, "mono_res.cellinfo.mat"))
+    mono_res_mat = loadmat(os.path.join(session_connec_dir,'Processed','connectomes',"mono_res.cellinfo.mat"))
     ccg_binsize_ms = mono_res_mat["mono_res"][0][0]['binSize'][0][0]*1000
     ccg_nbins = mono_res_mat["mono_res"][0][0]['ccgR'].shape[0]
     ret["ccg_bincenters_ms"] = (np.arange(ccg_nbins)-(ccg_nbins//2))*ccg_binsize_ms
     ret["ccg"] = mono_res_mat["mono_res"][0][0]['ccgR'].transpose([1,2,0]).copy(order="C") # force contiguous (n_units, n_units, ccg_nbins) memory layout
-    synchrony_savepath = os.path.join(session_connec_dir, "synchrony.npz")
-    if not os.path.exists(synchrony_savepath):
-        print("Start calculating synchrony")
-        ts = time()
-        sm, phi, plo = get_synchrony_matrix(ret["ccg"], ret["spike_counts"], ret["ccg_bincenters_ms"], 15, 200, rng)
-        te = time()-ts
-        print("Synchrony calculation time:", te)
-        ret["synchrony_val_matrix"] = sm
-        ret["synchrony_phi_matrix"] = phi
-        ret["synchrony_plo_matrix"] = plo
-        np.savez(
-            synchrony_savepath,
-            synchrony_val_matrix=sm,
-            synchrony_phi_matrix=phi,
-            synchrony_plo_matrix=plo
-        )
+    synchrony_savepath = os.path.join(session_connec_dir,'Processed','connectomes',"synchrony.npz")
+    # if not os.path.exists(synchrony_savepath):
+    print("Start calculating synchrony")
+    ts = time()
+    sm, phi, plo = get_synchrony_matrix(ret["ccg"], ret["spike_counts"], ret["ccg_bincenters_ms"], 15, 200, rng)
+    te = time()-ts
+    print("Synchrony calculation time:", te)
+    ret["synchrony_val_matrix"] = (sm + sm.T)/2         # averaging A>B and B>A
+    ret["synchrony_phi_matrix"] = (phi + phi.T)/2       # averaging A>B and B>A
+    ret["synchrony_plo_matrix"] = (plo + plo.T)/2 
+    np.savez(
+        synchrony_savepath,
+        synchrony_val_matrix=sm,
+        synchrony_phi_matrix=phi,
+        synchrony_plo_matrix=plo
+    )
 
-        plt.figure()
-        plt.subplot(1,2,1)
-        z1 = plt.imshow(sm, cmap="hot", vmin=0.0, vmax=1.0)
-        plt.colorbar(z1, ax=plt.gca())
-        plt.title("Synchrony matrix")
-        plt.subplot(1,2,2)
-        z2 = plt.imshow(phi, cmap="hot", vmin=0.0, vmax=1.0)
-        plt.colorbar(z2, ax=plt.gca())
-        plt.title("Percentage of randomly shuffled\nsynchrony larger than observed")
-        plt.savefig(os.path.join(session_connec_dir, "synchrony.png"))
-        # plt.show()
-        plt.close()
-    else:
-        tmp = np.load(synchrony_savepath)
-        ret["synchrony_val_matrix"] = tmp["synchrony_val_matrix"]
-        ret["synchrony_phi_matrix"] = tmp["synchrony_phi_matrix"]
-        ret["synchrony_plo_matrix"] = tmp["synchrony_plo_matrix"]
+        # plt.figure()
+        # plt.subplot(1,2,1)
+        # z1 = plt.imshow(sm, cmap="hot", vmin=0.0, vmax=1.0)
+        # plt.colorbar(z1, ax=plt.gca())
+        # plt.title("Synchrony matrix")
+        # plt.subplot(1,2,2)
+        # z2 = plt.imshow(phi, cmap="hot", vmin=0.0, vmax=1.0)
+        # plt.colorbar(z2, ax=plt.gca())
+        # plt.title("Percentage of randomly shuffled\nsynchrony larger than observed")
+        # plt.savefig(os.path.join(session_connec_dir, "synchrony.png"))
+        # # plt.show()
+        # plt.close()
+    # else:
+    #     tmp = np.load(synchrony_savepath)
+    #     ret["synchrony_val_matrix"] = tmp["synchrony_val_matrix"]
+    #     ret["synchrony_phi_matrix"] = tmp["synchrony_phi_matrix"]
+    #     ret["synchrony_plo_matrix"] = tmp["synchrony_plo_matrix"]
     # TODO 1. bucket the synchrony values by shank regions
     # TODO (LATER) 2. get masked array of only the significant synchronies 
     # TODO 3. get average synchrony matrix of (n_regions, n_regions)
+    
     unit_shanks = ch2shank[pri_ch_lut] # (n_units,)
     unit_regions = np.array([shank_def[sk_] for sk_ in unit_shanks])
     region_synchronies = np.zeros((3,3))
     regions = list(CFG.ShankLoc)[:-1] # Each element is type IntEnum; not counting the bad ones
+    tmp_N_by_region = np.zeros([4,4],dtype = np.int16) # number of clusters in each shank  
+    tmp_synch_by_shank = np.nan * np.ones([4,4],dtype = float)
     # assert len(regions)==3
-    for i_r_, region_i_ in enumerate(regions):
-        unit_mask_in_region_i = (unit_regions==region_i_)
+    for i_r_ in range(4):
+        unit_mask_in_region_i = (unit_shanks == i_r_)
         if np.sum(unit_mask_in_region_i)==0:
             continue
         tmp_synmat_i_ = ret["synchrony_val_matrix"][unit_mask_in_region_i, :]
-        for j_r_, region_j_ in enumerate(regions[i_r_:], i_r_):
-            # TODO if `region_i_==region_j_` then only select non-diagonal values
-            if i_r_==j_r_:
+        for j_r_ in range(4):
+            # the case for within shank
+            if j_r_ == i_r_:
                 tmp_synmat_j_ = tmp_synmat_i_[:, unit_mask_in_region_i]
                 nt = tmp_synmat_j_.shape[0]
-                if nt<=1:
+                if nt <= 1:
                     continue
-                region_synchronies[i_r_, i_r_] = np.sum(np.tril(tmp_synmat_j_, k=-1)) * 2 / (nt * (nt-1))
-            else:
-                unit_mask_in_region_j = (unit_regions==region_j_)
+                tmp_N_by_region[i_r_,j_r_] = nt * (nt - 1)                              # normalization factor 
+                tmp_synch_by_shank[i_r_,j_r_] = np.sum(np.tril(tmp_synmat_j_, k=-1)) / (nt * (nt - 1)/2 )   # average synchrony within the shank
+            else: # case of cross-shank synchrony 
+                unit_mask_in_region_j = (unit_shanks == j_r_)
                 if np.sum(unit_mask_in_region_j)==0:
                     continue
                 tmp_synmat_j_ = tmp_synmat_i_[:, unit_mask_in_region_j]
-                region_synchronies[i_r_, j_r_] = np.mean(tmp_synmat_j_)
-                region_synchronies[j_r_, i_r_] = region_synchronies[i_r_, j_r_]
+                nt = tmp_synmat_j_.size
+                tmp_N_by_region[i_r_,j_r_] = nt                                         # normalization factor 
+                tmp_N_by_region[j_r_,i_r_] = nt                                         # normalization factor 
+                tmp_synch_by_shank[i_r_,j_r_] = np.mean(tmp_synmat_j_)                  # average synchrony across shanks
+                tmp_synch_by_shank[j_r_,i_r_] = tmp_synch_by_shank[i_r_,j_r_]
+    
+    # for i_r_, region_i_ in enumerate(regions):
+    #     unit_mask_in_region_i = (unit_regions==region_i_)
+    #     if np.sum(unit_mask_in_region_i)==0:
+    #         continue
+    #     tmp_synmat_i_ = ret["synchrony_val_matrix"][unit_mask_in_region_i, :]
+    #     for j_r_, region_j_ in enumerate(regions[i_r_:], i_r_):
+    #         # TODO if `region_i_==region_j_` then only select non-diagonal values
+    #         if i_r_==j_r_:
+    #             tmp_synmat_j_ = tmp_synmat_i_[:, unit_mask_in_region_i]
+    #             nt = tmp_synmat_j_.shape[0]
+    #             if nt<=1:
+    #                 continue
+    #             region_synchronies[i_r_, i_r_] = np.sum(np.tril(tmp_synmat_j_, k=-1)) * 2 / (nt * (nt-1))
+    #         else:
+    #             unit_mask_in_region_j = (unit_regions==region_j_)
+    #             if np.sum(unit_mask_in_region_j)==0:
+    #                 continue
+    #             tmp_synmat_j_ = tmp_synmat_i_[:, unit_mask_in_region_j]
+    #             region_synchronies[i_r_, j_r_] = np.mean(tmp_synmat_j_)
+    #             region_synchronies[j_r_, i_r_] = region_synchronies[i_r_, j_r_]
+    ret["shanks_avg_synch_mat"] = tmp_synch_by_shank
+    ret["conn_norm"] = tmp_N_by_region              # number of clusters found in each shank
     ret['region_avg_synchrony_mat'] = region_synchronies
     ret['regions'] = regions
 
@@ -130,22 +160,39 @@ def process_postproc_data(session_spk_dir: str, mdaclean_temp_dir: str, session_
 
 def get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_module, rng):
     # data_dicts = []
+    dict_all_sessions = {}
     region_conn_mats_dict = OrderedDict()
+    tmp_avg_synch_shank = np.zeros([len(session_reldirs),4,4],dtype = float)
+    tmp_conn_norm = np.zeros([len(session_reldirs),4,4],dtype = np.int16)
     for i_session, session_reldir in enumerate(session_reldirs):
         session_spk_dir_   = os.path.join(cfg_module.spk_inpdir, session_reldir)
         mdaclean_temp_dir_ = os.path.join(cfg_module.mda_tempdir, session_reldir)
         monosyn_conn_dir_  = os.path.join(cfg_module.con_resdir, session_reldir)
-        data_dict = process_postproc_data(session_spk_dir_, mdaclean_temp_dir_, monosyn_conn_dir_, cfg_module.shank_defs[animal_id], rng)
-
+        data_dict = process_postproc_data(session_spk_dir_, mdaclean_temp_dir_, monosyn_conn_dir_, cfg_module.shank_defs[animal_id], apply_curation)
+        
+        tmp_avg_synch_shank[i_session,:,:] = data_dict['shanks_avg_synch_mat']
+        tmp_conn_norm[i_session,:,:] = data_dict['conn_norm']
+        
         region_conn_mats_dict[session_ids[i_session]] = data_dict["region_avg_synchrony_mat"]
-    return region_conn_mats_dict
+    
+    dict_all_sessions['shanks_avg_synch_mat'] = tmp_avg_synch_shank
+    dict_all_sessions['conn_norm'] = tmp_conn_norm
+    
+    return region_conn_mats_dict, dict_all_sessions
 
 def get_connec_data_all_animal(animal_session_id_dict, animal_session_reldir_dict, cfg_module, rng):
     animal_conn_mats_dict = OrderedDict()
+    list_folders = os.listdir(cfg_module.spk_inpdir)
     for animal_id in animal_session_id_dict.keys():
         session_ids = animal_session_id_dict[animal_id]
         session_reldirs = animal_session_reldir_dict[animal_id]
-        animal_conn_mats_dict[animal_id] = get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_module, rng)
+        animal_conn_mats_dict[animal_id], animal_conn_mats_dict2_local = get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_module, apply_curation)
+        # saving for the animal
+        for filename_local in list_folders:
+            if animal_id in filename_local:
+                filename_save = os.path.join(cfg_module.spk_inpdir,filename_local,'jiaao_synch_out.npz')
+                np.savez(filename_save,shanks_avg_synch_mat = animal_conn_mats_dict2_local['shanks_avg_synch_mat'], 
+                         conn_norm = animal_conn_mats_dict2_local['conn_norm'])
     return animal_conn_mats_dict
 
 
@@ -272,7 +319,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # parser.add_argument('--nocurate', action="store_true", default=False)
     parser.add_argument('--seed', type=int, default=43)
-    parser.add_argument('--noplot', action="store_true", default=False)
+    parser.add_argument('--noplot', action="store_true", default=True)
     args = parser.parse_args()
     # arg_apply_curation = not(args.nocurate)
     animal_session_id_dict = OrderedDict()

@@ -21,11 +21,12 @@
 
 % clear all;
 % input parameters:
-% source_dir = 'C:\Data\RH-8\12-1-22';
+% source_dir = 'C:\Data\RH-9\22-12-16';
 wv_3 = '510';   % The 3rd wavelength was 510nm or 632nm
 cam_in = '0';   % Is this the Andor Camera? [1,0] 0: Hamamatsu Camera (installed on 2022-08)
 dry = 0;        % Dont do dry run. Dry run --> just overall intensity plot.nothing else
-c_limits = [-0.025, -0.007]; % for overlay range
+c_limits = [-0.015, -0.0025]; % for overlay range
+% c_limits = [-0.015,-0.0040];    % For anesthetized
 fps_local = 5.555; % fps for video (the true FPS of the recorded data)
 
 % selpath = uigetdir('Select source directory containing scans');
@@ -114,14 +115,14 @@ amin = min(sumImage(:));
 % If ROI argument is not provided, prompt user to define
 % ROI_selector = input('Do you want to use a pre-defined ROI? [1,0] \n');
 % ROI_selector = logical(ROI_selector);
-ROI_selector = 1;  % run using Zidong_IOS_Full.m    
+ROI_selector = 0;  % run using Zidong_IOS_Full.m    
 if ROI_selector
 %     ROI_loc = input('Path to ROI.mat file\n','s');
     ROI_loc = fullfile(source_dir,'Processed','mat_files');
     ROI_loc = fullfile(ROI_loc,'ROI.mat');
     load(ROI_loc,'mask','BW');
   if size(mask, 1) ~= X || size(mask, 2) ~= Y
-    error('ROI dimensions (%dx%d) do not match intrinsic data (%dx%d)', size(mask,1), size(mask, 2), X, Y);
+    error('ROI dimensions (%d x %d) do not match intrinsic data (%d x %d)', size(mask,1), size(mask, 2), X, Y);
   end
 else
     mask = drawROIs(sumImage,[amin,amax]);
@@ -163,7 +164,7 @@ else
 end
 sample_img = double(sample_img .* BW);
 tmp_std = std(sample_img(:),'omitnan');
-amin = mean(sample_img(:),'omitnan') - tmp_std;
+amin = mean(sample_img(:),'omitnan') - 1.25*tmp_std;
 amax = mean(sample_img(:),'omitnan') + 2.25*tmp_std;
 F = SpeckleFigure(sample_img, [amin,amax], 'visible', true);
 F.showROIs(mask);
@@ -173,112 +174,112 @@ global_t_stack = zeros(eff_num_trials,len_trials,number_wavelength);
 % dry = input('Quick run for trial summary? [0/1]\n');
 dry = logical(dry);
 single_trial_rois = [];
-%% Blue 480 nm
-output_video = fullfile(output_dir_avg,'480nm');
-if ~exist(output_video, 'dir')
-   mkdir(output_video)
-end
-Data_all_blue = cell(eff_num_trials,len_trials);
-% single_trial_rois = zeros(N_ROI, eff_num_trials,len_trials);
-TS_480 = zeros(eff_num_trials,len_trials,N_ROI);  % array for single trial data storage
-% Loop over trials
-iter_trial_local = 0;
-for iter_trial = 1:num_trials
-    temp_start = start_trial(iter_trial); 
-    if any(trials_reject == iter_trial)
-        continue;
-    else
-        iter_trial_local = iter_trial_local + 1;
-    end
-    % Reading wavelength 1 data: blue 480 nm
-    for iter_seq = 1:len_trials
-        index = temp_start + (iter_seq-1)*number_wavelength;
-        file = files_raw(index).name;
-        filePath = fullfile(Raw_dir,file);
-        Data = imread(filePath);
-        if cam_in == 1
-            rawData = image_transform_B(Data);
-        else
-            rawData = image_transform_A(Data);
-        end
-        rawData(BW == false) = 0;           % applying craniotomy
-        global_t_stack(iter_trial_local,iter_seq,1) = mean(rawData(:));
-        Data_all_blue{iter_trial_local,iter_seq}=rawData;
-%         for ii_roi = 1:N_ROI
-%             TS_480(iter_trial,iter_seq,ii_roi) = mean(rawData(mask(:,:,ii_roi)));
+% %% Blue 480 nm
+% output_video = fullfile(output_dir_avg,'480nm');
+% if ~exist(output_video, 'dir')
+%    mkdir(output_video)
+% end
+% Data_all_blue = cell(eff_num_trials,len_trials);
+% % single_trial_rois = zeros(N_ROI, eff_num_trials,len_trials);
+% TS_480 = zeros(eff_num_trials,len_trials,N_ROI);  % array for single trial data storage
+% % Loop over trials
+% iter_trial_local = 0;
+% for iter_trial = 1:num_trials
+%     temp_start = start_trial(iter_trial); 
+%     if any(trials_reject == iter_trial)
+%         continue;
+%     else
+%         iter_trial_local = iter_trial_local + 1;
+%     end
+%     % Reading wavelength 1 data: blue 480 nm
+%     for iter_seq = 1:len_trials
+%         index = temp_start + (iter_seq-1)*number_wavelength;
+%         file = files_raw(index).name;
+%         filePath = fullfile(Raw_dir,file);
+%         Data = imread(filePath);
+%         if cam_in == 1
+%             rawData = image_transform_B(Data);
+%         else
+%             rawData = image_transform_A(Data);
 %         end
-    end
-end
-
-if ~dry
-    % Spatial Gaussian Filtering (sigma = 40 um)
-    d2_spatial_avg_mat = spatial_gauss_filt(Data_all_blue(:,pk_indx),sigma_2d);
-    d2_spatial_avg_bsl = spatial_gauss_filt(Data_all_blue(:,bsl_indx),sigma_2d);
-    d2_spatial_avg_bsl = reshape(mean(d2_spatial_avg_bsl,2,'omitnan'),[eff_num_trials,X,Y]);
-    % compute deltaR/R
-    for iter_trial = 1:eff_num_trials
-        for iter_seq = 1:length(pk_indx)
-            bsl_blue_local = d2_spatial_avg_bsl(iter_trial,:,:);
-            bsl_blue_local = reshape(bsl_blue_local,[X,Y]);
-            d2_spatial_avg_mat(iter_trial,iter_seq,:,:) = (reshape(d2_spatial_avg_mat(iter_trial,iter_seq,:,:),[X,Y]))./bsl_blue_local;
-        end
-    end
-    % averaging over trials
-    gauss_filtered_blue_pk = reshape(mean(d2_spatial_avg_mat,1,'omitnan'),[length(pk_indx),X,Y]);
-
-    % GSR (Global Signal Regression)
-    % Due to memory constraints, the loops are run separately.
-    % for iter_trial=1:num_trials
-    %     R_data_blue{1,iter_trial} = GSR_main(Data_all_blue(iter_trial,:),global_t_stack(iter_trial,:,1));   % 480 nm
-    % end
-    % clear Data_all_blue
-
-    % DeltaR/R computation MAIN PLOTS
-    % Low Pass filtering 
-    fcutlow = 2;    % cutoff frequency
-    Fs = 1/seq_period;        % Sampling frequency
-    lowpass_filter = designfilt('lowpassiir', 'FilterOrder', order, ...
-                                'HalfPowerFrequency', fcutlow, ...
-                                'SampleRate', Fs, 'DesignMethod', ...
-                                'butter');
-    R_data_blue = filter_LowPass(Data_all_blue,lowpass_filter);
-    Avg_blue = zeros(len_trials,X,Y);
-
-    % Trial Averaging and I/I_0
-    for iter_trial = 1:eff_num_trials
-        bsl_blue_local = R_data_blue(iter_trial,bsl_indx,:,:);
-        bsl_blue_local = reshape(mean(bsl_blue_local,2,'omitnan'),X,Y);
-        for iter_seq = 1:len_trials
-            R_data_blue(iter_trial,iter_seq,:,:) = (reshape(R_data_blue(iter_trial,iter_seq,:,:),X,Y))./bsl_blue_local;
-        end
-        % Storing individual trials data (but time series extracted due to
-        % storage constraints):
-        [TS_480_tmp,~] = Time_Series_extract_single(reshape(R_data_blue(iter_trial,:,:,:),[len_trials,X,Y]),mask,len_trials,X,Y);
-        TS_480(iter_trial,:,:) = TS_480_tmp;
-    end
-    % Saving image files here
-    for iter_seq = 1:len_trials             % taking average over trials
-        Avg_blue(iter_seq,:,:) = reshape(mean(R_data_blue(:,iter_seq,:,:),1,'omitnan'),[X,Y]);
-%         [~] =
-%         cal_dr_r_indi_green(reshape(Avg_blue(iter_seq,:,:)-1,[X,Y]),output_video,'Blue-',num2str(iter_seq));
-%         % skip saving images
-    end
-    % clear R_data_blue
-    
-    % Generate video
-    Avg_blue = permute(Avg_blue,[2,3,1]);
-%     Generate_video_stack(Avg_blue-1,fps_local,seq_period,output_video,sample_img,'label','\DeltaR_n','sc_range',[amin,amax],'overlay_range',[-0.025 -0.01],'show_scalebar',false);
-    Avg_blue = permute(Avg_blue,[3,1,2]);
-
-    % store .mat
-    mat_dir = fullfile(output_dir,'mat_files');
-    
-    if ~exist(mat_dir, 'dir')
-       mkdir(mat_dir)
-    end
-    save(fullfile(mat_dir,'data_blue.mat'),'Avg_blue','gauss_filtered_blue_pk');
-%     save(fullfile(single_trial_dir,'TS_480.mat'),'TS_480');
-end
+%         rawData(BW == false) = 0;           % applying craniotomy
+%         global_t_stack(iter_trial_local,iter_seq,1) = mean(rawData(:));
+%         Data_all_blue{iter_trial_local,iter_seq}=rawData;
+% %         for ii_roi = 1:N_ROI
+% %             TS_480(iter_trial,iter_seq,ii_roi) = mean(rawData(mask(:,:,ii_roi)));
+% %         end
+%     end
+% end
+% 
+% if ~dry
+%     % Spatial Gaussian Filtering (sigma = 40 um)
+%     d2_spatial_avg_mat = spatial_gauss_filt(Data_all_blue(:,pk_indx),sigma_2d);
+%     d2_spatial_avg_bsl = spatial_gauss_filt(Data_all_blue(:,bsl_indx),sigma_2d);
+%     d2_spatial_avg_bsl = reshape(mean(d2_spatial_avg_bsl,2,'omitnan'),[eff_num_trials,X,Y]);
+%     % compute deltaR/R
+%     for iter_trial = 1:eff_num_trials
+%         for iter_seq = 1:length(pk_indx)
+%             bsl_blue_local = d2_spatial_avg_bsl(iter_trial,:,:);
+%             bsl_blue_local = reshape(bsl_blue_local,[X,Y]);
+%             d2_spatial_avg_mat(iter_trial,iter_seq,:,:) = (reshape(d2_spatial_avg_mat(iter_trial,iter_seq,:,:),[X,Y]))./bsl_blue_local;
+%         end
+%     end
+%     % averaging over trials
+%     gauss_filtered_blue_pk = reshape(mean(d2_spatial_avg_mat,1,'omitnan'),[length(pk_indx),X,Y]);
+% 
+%     % GSR (Global Signal Regression)
+%     % Due to memory constraints, the loops are run separately.
+%     % for iter_trial=1:num_trials
+%     %     R_data_blue{1,iter_trial} = GSR_main(Data_all_blue(iter_trial,:),global_t_stack(iter_trial,:,1));   % 480 nm
+%     % end
+%     % clear Data_all_blue
+% 
+%     % DeltaR/R computation MAIN PLOTS
+%     % Low Pass filtering 
+%     fcutlow = 1.5;    % cutoff frequency
+%     Fs = 1/seq_period;        % Sampling frequency
+%     lowpass_filter = designfilt('lowpassiir', 'FilterOrder', order, ...
+%                                 'HalfPowerFrequency', fcutlow, ...
+%                                 'SampleRate', Fs, 'DesignMethod', ...
+%                                 'butter');
+%     R_data_blue = filter_LowPass(Data_all_blue,lowpass_filter);
+%     Avg_blue = zeros(len_trials,X,Y);
+% 
+%     % Trial Averaging and I/I_0
+%     for iter_trial = 1:eff_num_trials
+%         bsl_blue_local = R_data_blue(iter_trial,bsl_indx,:,:);
+%         bsl_blue_local = reshape(mean(bsl_blue_local,2,'omitnan'),X,Y);
+%         for iter_seq = 1:len_trials
+%             R_data_blue(iter_trial,iter_seq,:,:) = (reshape(R_data_blue(iter_trial,iter_seq,:,:),X,Y))./bsl_blue_local;
+%         end
+%         % Storing individual trials data (but time series extracted due to
+%         % storage constraints):
+%         [TS_480_tmp,~] = Time_Series_extract_single(reshape(R_data_blue(iter_trial,:,:,:),[len_trials,X,Y]),mask,len_trials,X,Y);
+%         TS_480(iter_trial,:,:) = TS_480_tmp;
+%     end
+%     % Saving image files here
+%     for iter_seq = 1:len_trials             % taking average over trials
+%         Avg_blue(iter_seq,:,:) = reshape(mean(R_data_blue(:,iter_seq,:,:),1,'omitnan'),[X,Y]);
+% %         [~] =
+% %         cal_dr_r_indi_green(reshape(Avg_blue(iter_seq,:,:)-1,[X,Y]),output_video,'Blue-',num2str(iter_seq));
+% %         % skip saving images
+%     end
+%     % clear R_data_blue
+%     
+%     % Generate video
+%     Avg_blue = permute(Avg_blue,[2,3,1]);
+% %     Generate_video_stack(Avg_blue-1,fps_local,seq_period,output_video,sample_img,'label','\DeltaR_n','sc_range',[amin,amax],'overlay_range',[-0.025 -0.01],'show_scalebar',false);
+%     Avg_blue = permute(Avg_blue,[3,1,2]);
+% 
+%     % store .mat
+%     mat_dir = fullfile(output_dir,'mat_files');
+%     
+%     if ~exist(mat_dir, 'dir')
+%        mkdir(mat_dir)
+%     end
+% %     save(fullfile(mat_dir,'data_blue.mat'),'Avg_blue','gauss_filtered_blue_pk');
+% %     save(fullfile(single_trial_dir,'TS_480.mat'),'TS_480');
+% end
 %% Amber 580 nm
 % clearvars -except global_t_stack mat_dir dry TS_480 ;
 clearvars Avg_blue Data Data_all_blue BW bsl_blue_local gauss_filtered_blue_pk mask R_data_blue rawData TS_480_tmp
@@ -350,7 +351,7 @@ if ~dry
     % end
 
     % Low Pass filtering 
-    fcutlow = 2;    % cutoff frequency
+    fcutlow = 1.5;    % cutoff frequency
     Fs = 1/seq_period;        % Sampling frequency
     lowpass_filter = designfilt('lowpassiir', 'FilterOrder', order, ...
                                 'HalfPowerFrequency', fcutlow, ...
@@ -388,10 +389,18 @@ if ~dry
             close all;
         end
         Avg_amber(iter_seq,:,:) = reshape(mean(R_data_amber(:,iter_seq,:,:),1,'omitnan'),[X,Y]);
-%         [~] =
-%         cal_dr_r_indi_amber(reshape(Avg_amber(iter_seq,:,:)-1,[X,Y]),output_video,'Amber-',num2str(iter_seq));
+%         [~] = cal_dr_r_indi_amber(reshape(Avg_amber(iter_seq,:,:)-1,[X,Y]),output_video,'Amber-',num2str(iter_seq),sample_img);
 %         % skip saving
     end
+    % loop for nice overlay images
+    Avg_amber = twoD_gauss(Avg_amber,sigma_2d/2); % 3D matrix (trial averaged image time stack)
+    for iter_seq = [1:len_trials]
+        name_pic = strcat('Amber-',num2str(iter_seq));
+        delRR = squeeze(Avg_amber(iter_seq,:,:)-1); 
+        plot_overlay(sample_img,delRR,c_limits,[amin,amax],output_video,name_pic);
+    end
+
+    close all;
     % Generate video
     Avg_amber = permute(Avg_amber,[2,3,1]);
     Generate_video_stack(Avg_amber-1,fps_local,seq_period,output_video,sample_img,BW,'label','\DeltaR_n','overlay_range',[-0.025,-0.009],'show_scalebar',false,'sc_range',[amin,amax],'show_timestamp',false);  % good overlay range for 580 nm and our current whisker stim (2.7 sec at 11.1 Hz)
@@ -401,7 +410,7 @@ if ~dry
     if ~exist(mat_dir, 'dir')
        mkdir(mat_dir)
     end
-    save(fullfile(mat_dir,'data_amber.mat'),'Avg_amber','gauss_filtered_amber_pk');
+%     save(fullfile(mat_dir,'data_amber.mat'),'Avg_amber','gauss_filtered_amber_pk');
 end
 
 %% Green 510 nm or Red 632 nm
@@ -471,7 +480,7 @@ if ~dry
     % end
 
     % Low Pass filtering 
-    fcutlow = 2;    % cutoff frequency
+    fcutlow = 1.5;    % cutoff frequency
     Fs = 1/seq_period;        % Sampling frequency
     lowpass_filter = designfilt('lowpassiir', 'FilterOrder', order, ...
                                 'HalfPowerFrequency', fcutlow, ...
@@ -514,7 +523,7 @@ if ~dry
     if ~exist(mat_dir, 'dir')
        mkdir(mat_dir)
     end
-    save(fullfile(mat_dir,'data_wv3.mat'),'Avg_wv3','gauss_filtered_wv3_pk');
+%     save(fullfile(mat_dir,'data_wv3.mat'),'Avg_wv3','gauss_filtered_wv3_pk');
 end
 %% Saving data (single trial ROIs)
 IOS_singleTrial = {};
@@ -564,7 +573,7 @@ for iter_roi = 1:N_ROI
     ios_trials_local(:,:,3) = TS_wv3(:,:,iter_roi);   % Either 632 nm or 510 nm (depends on the date of data acquisition) 
 %     ios_trials_local(:,:,4) = [];     
 %     ios_trials_local(:,:,5) = [];
-    save(filename_save,"ios_trials_local");
+%     save(filename_save,"ios_trials_local");
 end
 
 %% Plot g(t) for all trials
