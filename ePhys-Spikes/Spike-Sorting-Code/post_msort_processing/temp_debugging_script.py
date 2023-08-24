@@ -16,9 +16,7 @@ from natsort import natsorted
 
 # Raw_dir = '/home/hyr2-office/Documents/Data/NVC/RH-7_REJECTED/10-27-22/'
 # CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_2x16_flex_Pavlo.mat'
-input_dir = '/home/hyr2-office/Documents/Data/NVC/BHC-7/'
-
-
+input_dir = '/home/hyr2-office/Documents/Data/NVC/Main-Animals/processed_data_rh8/'
 
 
 # func_discard_noise_and_viz(Raw_dir)
