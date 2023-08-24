@@ -75,8 +75,8 @@ def filterSignal_notch(input_signal, Fs, C0 = 60, axis_value = 0):
 # Low pass <1 Hz
 def filterSignal_lowpass_new(input_signal, Fs, axis_value = 0):
     signal_out = np.empty((input_signal.shape),dtype=np.single)
-    cutoff_low = 0.1                 # Low pass freq for LFP band
-    sos = signal.butter(15, cutoff_low, btype = 'lowpass', output = 'sos', fs = Fs)  # IIR filter
+    cutoff_low = 0.075                 # Low pass freq for LFP band
+    sos = signal.butter(9, cutoff_low, btype = 'lowpass', output = 'sos', fs = Fs)  # IIR filter
     signal_out = signal.sosfiltfilt(sos, input_signal, axis = axis_value)
     return signal_out
 
