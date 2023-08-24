@@ -7,6 +7,10 @@ function [BW,mask,coord_r,save_flag] = batch_ROI(source_dir,Raw_dir,cam_in)
 
 save_flag = 0;
 mat_dir = fullfile(source_dir,'Processed','mat_files');
+Avg_directory = fullfile(source_dir,'Processed','Average');
+if ~isfolder(Avg_directory)
+    mkdir(Avg_directory);
+end
 if ~isfolder(mat_dir)
     mkdir(mat_dir);
 else    % exit function if ROI.mat already exists
