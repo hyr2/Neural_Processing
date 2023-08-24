@@ -3,4 +3,5 @@ All of the code that was developed during my time at Rice University while pursu
 
 This repo also contains image processing codes for hyperspectral intrinsic imaging as well as laser speckle contrast imaging.
 
-Acknowledgements: Jiaao Zhang
+Acknowledgements: Haad Y. Rathore, Jiaao Zhang
+;)

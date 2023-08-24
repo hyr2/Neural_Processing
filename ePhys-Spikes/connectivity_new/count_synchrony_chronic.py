@@ -158,7 +158,7 @@ def process_postproc_data(session_spk_dir: str, mdaclean_temp_dir: str, session_
     return ret
 
 
-def get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_module, apply_curation):
+def get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_module, rng):
     # data_dicts = []
     dict_all_sessions = {}
     region_conn_mats_dict = OrderedDict()
@@ -180,7 +180,7 @@ def get_connec_data_single_animal(animal_id, session_reldirs, session_ids, cfg_m
     
     return region_conn_mats_dict, dict_all_sessions
 
-def get_connec_data_all_animal(animal_session_id_dict, animal_session_reldir_dict, cfg_module, apply_curation):
+def get_connec_data_all_animal(animal_session_id_dict, animal_session_reldir_dict, cfg_module, rng):
     animal_conn_mats_dict = OrderedDict()
     list_folders = os.listdir(cfg_module.spk_inpdir)
     for animal_id in animal_session_id_dict.keys():

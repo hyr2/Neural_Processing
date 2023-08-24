@@ -1,9 +1,9 @@
 from enum import IntEnum
 
 cellexp_path = "/home/xlruut/jiaao_workspace/stuff/CellExplorer/CellExplorer"
-mda_tempdir = "/storage/SSD_2T/barrel_tempfolder/"
-spk_inpdir  = "/storage/SSD_2T/barrel_data_proc/"
-con_resdir  = "/storage/SSD_2T/barrel_connectivity_data"
+mda_tempdir = "/storage/SSD_2T/barrel_data_all/barrel_tempfolder/"
+spk_inpdir  = "/storage/SSD_2T/barrel_data_all/barrel_data_proc/"
+con_resdir  = "/storage/SSD_2T/barrel_data_all/barrel_connectivity_data_bin400us_no-axons"
 # mda_reldirs = [
 #     "RH-9/22-12-14",
 #     "RH-9/22-12-15",
@@ -132,6 +132,7 @@ strokedays["bc7"] = "2021-12-10"
 curate_params = {
     "PARAM_SPK_COUNT_TH": 300, # for rejection of sparse spikes
     "PARAM_CCG_COUNT_TH": 300,  # for rejection of sparse CCGs
-    "PARAM_ACG_CONTRAST_TH": 8.0,   # for rejection of double counted units
-    "PARAM_CCG_CONTRAST_TH": 30.0    # for rejection of duplicate unit pairs
+    "PARAM_ACG_CONTRAST_TH": 30.0,   # for rejection of double counted units
+    "PARAM_CCG_CONTRAST_TH": 30.0,    # for rejection of duplicate unit pairs
+    "PARAM_TEMPLATE_SIMILARITY_TH": 0.95,
 }

@@ -1,6 +1,7 @@
 from typing import Union
 import numpy as np
 import networkx as nx
+import networkx.algorithms.isomorphism as isomorphism
 
 def create_graph(n_units: int, edge_table: np.ndarray):
     '''
@@ -14,16 +15,17 @@ def create_graph(n_units: int, edge_table: np.ndarray):
     g.add_edges_from(edge_table_n)
     return g
 
-def create_graph_no_orphans(edge_table: np.ndarray):
+def create_graph_no_orphans(edge_table: np.ndarray, directed: bool, prop_name: str):
     '''
     create a graph with and edges defined in `edge_table` and involved nodes.
     `edge_table` has shape (n_edges, 3) where each row is
-    (source id, sink id, connection_type)
+    (source id, sink id, prop_value)
     '''
-    g = nx.DiGraph()
-    i_units = set(edge_table[:,0]) | set(edge_table[:,1])
-    g.add_nodes_from(i_units)
-    edge_table_n = [(u, v, {"type": x}) for (u,v,x) in edge_table]
+    if directed:
+        g = nx.DiGraph()
+    else:
+        g = nx.Graph()
+    edge_table_n = [(u, v, {prop_name: x}) for (u,v,x) in edge_table]
     g.add_edges_from(edge_table_n)
     return g
 
@@ -75,3 +77,81 @@ def plot_graph(g, node_shanks, node_depths, ax):
     )
     ax.set_xlim([-1.25, 1.25])
     ax.set_ylim([-1.25, 1.25])
+
+def match_microcircuits(g, gsubs):
+    """
+    g: connectivity graph
+    gsubs: list or dictionary of "microcircuits" (a small networkx graph)
+    For each pattern `gsub` in `gsubs`, returns a list of subgraphs of `g` 
+    that matches `gsub` in both topology and edge type.
+    Return type is list or dictionary depending on `gsubs` type.
+    """
+    edge_match_func = lambda e1, e2: e1["type"]==e2["type"]
+    if isinstance(gsubs, dict):
+        ret_dict = {}
+        for name, gsub in gsubs.items():
+            gm = isomorphism.DiGraphMatcher(g, gsub, edge_match=edge_match_func)
+            ret_dict[name] = list(gm.subgraph_isomorphisms_iter())
+        return ret_dict
+    elif isinstance(gsubs, list):
+        ret_list = []
+        for gsub in gsubs:
+            gm = isomorphism.DiGraphMatcher(g, gsub, edge_match=edge_match_func)
+            ret_list.append(list(gm.subgraph_isomorphisms_iter()))
+        return ret_list
+
+# microcircuit templates, only involving 2 or 3 edges
+MICROCIRCUIT_EDGETABLES = {
+    "ff_exc_2": [[0,1,1],[1,2,1]],             # 0 --< 1 --< 2
+    "ff_inh_2": [[0,1,1],[1,2,-1]],            # 0 --< 1 --| 2
+    "fb_inh_3": [[0,1,1],[1,2,1],[2,0,-1]],    # 0 --< 1 --< 2 --| 0
+    "fb_inh_2": [[0,1,1],[1,0,-1]],            # 0 --< 1 --| 0
+    "fb_exc_3": [[0,1,1],[1,2,1],[2,0,1]],     # 0 --< 1 --< 2 --< 0
+    "fb_exc_2": [[0,1,1],[1,0,1]],             # 0 --< 1 --< 0
+}
+MICROCIRCUIT_NXGRAPHS = dict()
+for k, e in MICROCIRCUIT_EDGETABLES.items():
+    g = nx.DiGraph()
+    eb = [(u, v, {"type": x}) for (u,v,x) in e]
+    g.add_edges_from(eb)
+    MICROCIRCUIT_NXGRAPHS[k] = g
+    
+# def calc_hits(g, normalize=None, return_node_keys=False):
+#     assert normalize in ["sum", "ssq", None]
+#     # n_nodes = len(g.nodes)
+#     v0 = dict((node, 1.0) for node in g.nodes)
+#     if normalize=="sum":
+#         dict_hu, dict_au = nx.hits(g, normalized=True, nstart=v0)
+#     else:
+#         dict_hu, dict_au = nx.hits(g, normalized=False, nstart=v0)
+#     hu = np.array(list(dict_hu.values()))
+#     au = np.array(list(dict_au.values()))
+#     # correctly assume the hub and authority scores are presented in the same
+#     # node order. See https://networkx.org/documentation/stable/_modules/networkx/algorithms/link_analysis/hits_alg.html#hits
+    
+#     if normalize=="ssq":
+#         hu /= np.sqrt(np.sum(hu**2))
+#         au /= np.sqrt(np.sum(au**2))
+    
+#     if return_node_keys:
+#         return list(dict_hu.keys()), hu, au
+#     return hu, au
+
+def calc_hits(g):
+    a_ = nx.adjacency_matrix(g).todense()
+    w_h, v_h = np.linalg.eigh(np.dot(a_, a_.T))
+    h = v_h[:, np.argmax(w_h)] # (n_nodes, )
+    h[np.isclose(h, 0)] = 0 # numerical correction
+    if np.any(h<0):
+        h *= -1
+    if np.any(h<0):
+        raise AssertionError("Hub score should be all positive\n", h)
+
+    w_a, v_a = np.linalg.eigh(np.dot(a_.T, a_))
+    a = v_a[:, np.argmax(w_a)]
+    a[np.isclose(a, 0)] = 0 # numerical correction
+    if np.any(a<0):
+        a *= -1
+    if np.any(a<0):
+        raise AssertionError("Authority score should be all positive\n", a)
+    return h, a
