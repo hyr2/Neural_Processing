@@ -196,16 +196,15 @@ plt.ylim(0,2)
 plt.savefig(os.path.join(filename_save,'rh7-10-17-22-cluster184_FR.svg'),format = 'svg')
 # filename_save = '/home/hyr2-office/Documents/Paper/Single-Figures-SVG/Fig2/subfigures/'
 
-# For spike overlap plots
-filename_save = '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig2/tmp_combined/'
-source_dir = '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig2/tmp_bc7/21-12-31/'
+
 
 y1 = []     # baseline average waveforms
 ywk5 = []   # for wk 3
 
 # Here plotting the waveforms of these clusters
 # ss = np.load('/home/hyr2-office/Documents/Data/NVC/RH-7/10-17-22/all_waveforms_by_cluster.npz',allow_pickle = True)
-cluster_ID = [50,18,1,3,5,125,44]  # For baseline 12-09-21 BC7
+cluster_ID = [1,3,5,125,44]  # For baseline 12-09-21 BC7
+colors_clusters_bsl = ['#00008B','#FF2400','#00008B','#FF2400','#FF2400']
 for iter_l in cluster_ID:
     pri_ch = np.unique(Firings_bsl[0,Firings_bsl[2,:] == iter_l]) # primary channel (starts from 1)
     pri_ch = np.squeeze(pri_ch) - 1
@@ -218,12 +217,16 @@ for iter_l in cluster_ID:
     # plt.axis('off')
     # plt.savefig(os.path.join(filename_save,'bc7-12-09-21_'+str(cluster_ID)+'.svg'),format = 'svg')
     
+# For spike overlap plots
+filename_save = '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig2/tmp_combined/'
+source_dir = '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig2/tmp_bc7/21-12-31/'
 Firings_bsl = readmda(os.path.join(source_dir,'firings_clean_merged.mda'))
 file_pre_ms = os.path.join(source_dir,'pre_MS.json')
 trials_bsl = loadmat(os.path.join(source_dir,'trials_times.mat'))['t_trial_start'].squeeze()
 geom = pd.read_csv(os.path.join(source_dir,'geom.csv'),header=None).to_numpy()
 templates = readmda(os.path.join(source_dir,'templates_clean_merged.mda'))
-cluster_ID = [42,87,1,3,5,66,31]
+cluster_ID = [1,3,5,66,31]
+colors_clusters = ['#6F8FAF','#F88379','#6F8FAF','#F88379','#F88379']
 for iter_l in cluster_ID:
     pri_ch = np.unique(Firings_bsl[0,Firings_bsl[2,:] == iter_l]) # primary channel (starts from 1)
     pri_ch = np.squeeze(pri_ch) - 1
@@ -241,10 +244,20 @@ for iter_l in cluster_ID:
 # color = '#0302f6' and #aaa9f5 for FS/PV
 x_axis = np.linspace(0,3.33e-3,num = 100) 
 for iter_l in range(len(cluster_ID)):
-    plt.figure()
-    plt.plot(x_axis*1000,ywk5[iter_l],color = '#f30101',linewidth = 3.2)
-    plt.plot(x_axis*1000,y1[iter_l],color = '#f69c9c',linewidth = 2.8)
-    plt.axis('off')
-    plt.savefig(os.path.join(filename_save,'bc7-12-09-21_'+str(iter_l)+'.svg'),format = 'svg')
-
+    f, a = plt.subplots(1,2)
+    plt.subplots_adjust(wspace=0.05, hspace=0.05)
+    axes = a.flatten()
+    axes[1].plot(x_axis*1000,ywk5[iter_l],color = colors_clusters[iter_l],linewidth = 3.2)      # Week5 12-31 Post Stroke
+    axes[0].plot(x_axis*1000,y1[iter_l],color = colors_clusters_bsl[iter_l],linewidth = 3.2)    # Baseline 12-09
+    
+    # axes[0].set_xlim([])
+    axes[0].set_ylim([-193,54])
+    # axes[1].set_xlim([])
+    axes[1].set_ylim([-193,54])
+    axes[1].axis('off')
+    axes[0].axis('off')
+    
+    f.set_size_inches((10, 6), forward=False)
+    plt.savefig(os.path.join(filename_save,'bc7-bsl_wk5_compared'+str(iter_l)+'.svg'),format = 'svg')
+    plt.close(f)
 
