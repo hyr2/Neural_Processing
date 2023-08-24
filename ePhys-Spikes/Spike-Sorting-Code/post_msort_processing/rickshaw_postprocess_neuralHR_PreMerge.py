@@ -22,6 +22,7 @@ import matlab.engine
 sys.path.append(r'../../Time-Series/')
 from FR_TS_pop import *
 from convert2Phy import func_convert2Phy, func_convert2MS
+from apply_curation_and_save import clean_mdas_main
 # Automate batch processing of the pre processing step
 
 # PHY manual curation flag
@@ -34,6 +35,7 @@ with open("../params.json", "r") as f:
 input_dir = params['spikesort_dir']
 CHANNEL_MAP_FPATH = params['CHANNEL_MAP_FPATH']
 source_dir_list = natsorted(os.listdir(input_dir))
+mda_reldirs = []
 
 # Start matlab engine and change directory to code file
 eng = matlab.engine.start_matlab()
@@ -44,30 +46,38 @@ for iter, filename in enumerate(source_dir_list):
     print(iter, ' ',filename)
     Raw_dir = os.path.join(input_dir, filename)
     if os.path.isdir(Raw_dir):
-
+        mda_reldirs.append(Raw_dir)
         file_pre_ms = os.path.join(Raw_dir,'pre_MS.json')
         with open(file_pre_ms, 'r') as f:
             data_pre_ms = json.load(f)
         F_SAMPLE = float(data_pre_ms['SampleRate'])
-
+                         
         # Curation
-        func_discard_noise_and_viz(Raw_dir)
-
-        # Run code to apply curation mask and create new files called *_clean.*
-        func_convert2Phy(Raw_dir)
-
-        # Do manual curation using PHY here -----
-
+        # func_discard_noise_and_viz(Raw_dir)
+        
         # delete converted_data.mda and filt.mda and raw data files (.rhd) 
-        os.remove(os.path.join(Raw_dir,'converted_data.mda'))
-        os.remove(os.path.join(Raw_dir,'filt.mda'))
-        test = os.listdir(Raw_dir)
-        for item in test:
-            if item.endswith(".rhd"):
-                os.remove(os.path.join(Raw_dir, item))
+        # os.remove(os.path.join(Raw_dir,'converted_data.mda'))
+        # os.remove(os.path.join(Raw_dir,'filt.mda'))
+        # test = os.listdir(Raw_dir)
+        # for item in test:
+        #     if item.endswith(".rhd"):
+        #         os.remove(os.path.join(Raw_dir, item))
 
+# Applying curation masks to generate "*_clean" files
+clean_mdas_main(mda_reldirs,mda_reldirs)                       #(script is called clean_firings_mda.py written by JiaaoZ)
 
-# Params.json file:
+# Iterate over all sessions to perform conversion of data into PHY compatible files
+for iter, filename in enumerate(source_dir_list):
+    print(iter, ' ',filename)
+    Raw_dir = os.path.join(input_dir, filename)
+    if os.path.isdir(Raw_dir):
+        func_convert2Phy(Raw_dir)
+        
+# At the end of this code, you must perform manual curation using PHY ----- *******************                
+        
+        
+
+# Sample Params.json file for reference:
 #     {
 #     "raw_dir": "/home/hyr2-office/Documents/Data/NVC/B-BC5/",
 #     "spikesort_dir": "/home/hyr2-office/Documents/Data/NVC/B-BC5/",
