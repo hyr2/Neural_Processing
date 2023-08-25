@@ -230,12 +230,12 @@ def extract_spikes(clus_property_local):
     spont_FR = np.zeros([len(clus_property_local),],dtype = float)
     event_FR = np.zeros([len(clus_property_local),],dtype = float)
     for itr in range(len(clus_property_local)):
-        N_stim[itr] = clus_property_local[itr]['N_spikes_stim']
-        N_bsl[itr] = clus_property_local[itr]['N_spikes_bsl']
+        N_stim[itr] = clus_property_local[itr]['N_spikes_stim']     # Number of spikes during stimulation(Trial averaged)
+        N_bsl[itr] = clus_property_local[itr]['N_spikes_bsl']       # Number of spikes pre-stimulation(Trial averaged)
         cluster_propery[itr] = clus_property_local[itr]['clus_prop']
         shank_num[itr] = clus_property_local[itr]['shank_num']
-        spont_FR[itr] = clus_property_local[itr]['spont_FR']    # in Hz
-        event_FR[itr] = clus_property_local[itr]['EventRelatedFR']    # in Hz
+        spont_FR[itr] = clus_property_local[itr]['spont_FR']    # in Hz (Trial averaged)
+        event_FR[itr] = clus_property_local[itr]['EventRelatedFR']    # in Hz (Trial averaged)
     return (cluster_propery,N_stim,N_bsl,shank_num,spont_FR,event_FR)
     
 
@@ -274,6 +274,8 @@ def combine_sessions(source_dir, str_ID):
         linear_xaxis = np.array([-4,-3,-2,-1,3,7])
     elif (str_ID.lower() == 'BHC-7'.lower()):
         linear_xaxis = np.array([-3,-2,-1,7,14])
+    elif (str_ID.lower() == 'processed_data_rh11'.lower()):
+        linear_xaxis = np.array([-3,-2,-1,2,7,14,15,21,22,28,29,35])
     else:
         sys.exit('No string matched with: ' + str_ID)
             
@@ -368,6 +370,8 @@ def combine_sessions(source_dir, str_ID):
     # celltype_inhib = np.zeros([len(pop_stats),3])
     T2P_allsessions = []    # list of 1D numpy arrays
     main_df = deepcopy(df_all_clusters_main)
+    avg_spont_FR = []
+    avg_stim_FR = []
     for iter in range(len(pop_stats)):
         # population extraction from dictionaries
         
@@ -415,6 +419,11 @@ def combine_sessions(source_dir, str_ID):
         inhibitory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_inhib'],pop_stats_cell[iter]['shank_num'])
         # Saving spike counts
         (cluster_property,N_stim,N_bsl,shank_num,spont_FR,event_FR) = extract_spikes(clus_property[iter])
+        
+        # Avg Spont FR (Tonic activity) 
+        avg_spont_FR.append(np.mean(spont_FR))
+        # Avg during stim FR (phasic activity)
+        avg_stim_FR.append(np.nanmean(event_FR))
         
         # Spike analysis (neural activity) [each animal has an equal footing ie data is prepared for averaging over animals]
         (activity_nor_local,activity_non_local,activity_non_abs_local,activity_spont_local,activity_event_local) = sort_by_shank_neuralAct(shank_num,np.squeeze(cluster_property == -1),N_bsl,N_stim,spont_FR,event_FR)
@@ -577,9 +586,10 @@ def combine_sessions(source_dir, str_ID):
     full_mouse_ephys['activity_spont'] = activity_spont
     full_mouse_ephys['activity_event'] = activity_event
     full_mouse_ephys['all_clusters'] = all_clusters
-    # full_mouse_ephys['T2P'] = T2P_allsessions
-    # full_mouse_ephys['total_activity_act'] = total_activity_act
     full_mouse_ephys['FR_act'] = act_FR
+    full_mouse_ephys['spont_FR_avg'] = np.array(avg_spont_FR, dtype='float32')
+    full_mouse_ephys['stim_FR_avg'] = np.array(avg_stim_FR, dtype='float32')
+    
     sio.savemat(os.path.join(source_dir,'full_mouse_ephys.mat'), full_mouse_ephys)
     np.savez(os.path.join(source_dir,'full_mouse_T2P.npz'),T2P = np.array(T2P_allsessions,dtype = object))        # saving as object
     main_df.to_pickle(os.path.join(source_dir,'all_cluster.pkl'))           # info for all clusters in this mouse (all sessions). A complete dataframe. No extra info needed
