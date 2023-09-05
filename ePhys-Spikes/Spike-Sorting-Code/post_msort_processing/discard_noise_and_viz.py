@@ -47,6 +47,7 @@ from utils.waveform_metrics import calc_t2p
 #     return firing_rate_series
 
 
+
 def decoding_algo_curation(val):
     decoded_str= ""
     final_str= ""
@@ -374,6 +375,15 @@ def plot_single_cluster_2x16(i_clus_plot, template_waveforms, fig_size_scale, pr
 
 def postprocess_one_session(SESSION_FOLDER, session_newsavefolder, PARAMS, COMMON_AVG_REREFERENCE, CHANNELMAP2X16, GH, GW_BETWEENSHANK, FIGDIRNAME, TAVD_NSAMPLE, N_PROCESSES, F_SAMPLE, NO_READING_FILTMDA):
     
+    def get_shanknum_from_coordinate(x, y=None):
+        "get shank number from coordinate"
+        if isinstance(x, int):
+            return int(x/GW_BETWEENSHANK)
+        elif isinstance(x, np.ndarray) and x.shape==(2,):
+            return int(x[0]/GW_BETWEENSHANK)
+        else:
+            raise ValueError("wrong input")
+
     """ main function for post processing and visualization"""
     session_folder_load = session_newsavefolder
     MAP_PATH = os.path.join(session_folder_load, "geom.csv")
@@ -477,7 +487,7 @@ def postprocess_one_session(SESSION_FOLDER, session_newsavefolder, PARAMS, COMMO
     for i_clus in tmp_clus_ids:
         prim_ch = pri_ch_lut[i_clus]
         prim_x, prim_y = geom[prim_ch, :]
-        print(i_clus,'\t',prim_x,'\t',prim_y)
+        # print(i_clus,'\t',prim_x,'\t',prim_y)
         p2p_by_channel = template_p2ps[:, i_clus]
         p2p_prim = np.max(p2p_by_channel)
         p2p_near = p2p_by_channel > p2p_prim*PARAMS['P2P_PROPORTION_THRESH']
