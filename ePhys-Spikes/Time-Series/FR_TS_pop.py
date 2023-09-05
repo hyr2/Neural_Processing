@@ -415,8 +415,10 @@ def combine_sessions(source_dir, str_ID):
         (celltype_shank[iter,:],list_celltype) = sort_cell_type(tmp,tmp_shank)
         celltype_total[iter,:] = np.sum(celltype_shank[iter,:],axis = 1)
         # excitatory and inhibitory neuron populations
-        excitatory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_excit'],tmp_shank)
-        inhibitory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_inhib'],tmp_shank)
+        excitatory_cell[iter,:] = celltype_shank[iter,0,:]
+        inhibitory_cell[iter,:] = celltype_shank[iter,1,:]
+        # excitatory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_excit'],tmp_shank)
+        # inhibitory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_inhib'],tmp_shank)
         # Saving spike counts
         (cluster_property,N_stim,N_bsl,shank_num,spont_FR,event_FR) = extract_spikes(clus_property[iter])
         
