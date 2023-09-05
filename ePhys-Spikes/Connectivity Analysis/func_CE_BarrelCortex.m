@@ -50,6 +50,7 @@ Native_orders = readNPY(fullfile(datafolder,'native_ch_order.npy'));
 curation_mask = logical(csvread(fullfile(datafolder, 'accept_mask.csv')));  % deparcated
 pos_mask = not(logical(csvread(fullfile(datafolder , 'positive_mask.csv' )))); % deparcated
 response_mask = csvread(fullfile(datafolder,'Processed','count_analysis','cluster_response_mask.csv')); 
+clus_loc = csvread(fullfile(datafolder,'clus_locations_clean_merged.csv'));
 % clus_locations = csvread(fullfile(datafolder, 'clus_locations.csv'));
 % disp(Location(1,:))
 n_ch = size(templates,1);
@@ -98,9 +99,10 @@ if min(chmap_mat(:)) == 1
 end
 shank_num = int8 (-1 * ones(1,n_clus));
 for i_clus = 1:n_clus   % each cluster in mountainsort output is assigned a shank here
-    prim_ch = pri_ch_lut(i_clus);   % this is the Mountainsort channel ID (starts from 1)]
+    % prim_ch = pri_ch_lut(i_clus);   % this is the Mountainsort channel ID (starts from 1)]
 %     disp(get_shanknum_from_msort_id(prim_ch,Native_orders,chmap_mat,chmap2x16))
-    shank_num(i_clus) = int8(get_shanknum_from_msort_id(prim_ch,Native_orders,chmap_mat,chmap2x16)); % function used to get shank ID    
+    % shank_num(i_clus) = int8(get_shanknum_from_msort_id(prim_ch,Native_orders,chmap_mat,chmap2x16)); % function used to get shank ID  
+    shank_num(i_clus) = floorDiv(clus_loc(i_clus,1),250) + 1;
 end
 
 % More curation code
@@ -235,7 +237,7 @@ acg_metrics = calc_ACG_metrics(spikes,Fs,'showFigures',false);
 fit_params = fit_ACG(acg_metrics.acg_narrow,false);
 cell_metrics.acg_tau_rise = fit_params.acg_tau_rise;
 
-preferences.putativeCellType.troughToPeak_boundary=0.47;       % From CE website (edited for Barrel Cortex)
+preferences.putativeCellType.troughToPeak_boundary=0.45;       % From CE website (edited for Barrel Cortex)
 preferences.putativeCellType.acg_tau_rise_boundary=6;           % From CE website
 cell_metrics.putativeCellType = celltype_classification.standard(cell_metrics,preferences);
 celltype = cell_metrics.putativeCellType;
@@ -248,8 +250,8 @@ thetaModulationIndex = acg_metrics.thetaModulationIndex;
 tau_rise = fit_params.acg_tau_rise;
 % Addition based on excitatory vs inhibitory (based on waveform shape which is same as CCG based)
 % values modified for Barrel cortex data from the original value of 0.55ms
-type_excit = (cell_metrics.troughToPeak > 0.47);    % Buzsaki lab (https://www.cell.com/neuron/pdfExtended/S0896-6273(18)31085-7)
-type_inhib = (cell_metrics.troughToPeak <= 0.47);
+type_excit = (cell_metrics.troughToPeak > 0.45);    % Buzsaki lab (https://www.cell.com/neuron/pdfExtended/S0896-6273(18)31085-7)
+type_inhib = (cell_metrics.troughToPeak <= 0.45);
 
 idx_act = (type_excit == 1);     
 idx_inhib = (type_inhib == 1);  

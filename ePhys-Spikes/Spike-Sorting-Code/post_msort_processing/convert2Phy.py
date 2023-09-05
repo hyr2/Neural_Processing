@@ -297,6 +297,7 @@ def func_convert2Phy(session_folder):
 def func_convert2MS(session_folder):
     firings_filepath = os.path.join(session_folder,"firings_clean_merged.mda")
     templates_filepath = os.path.join(session_folder,"templates_clean_merged.mda")
+    clus_locations_filepath = os.path.join(session_folder,"clus_locations_clean_merged.csv")
     
     # Re-creating firings.mda and templates.mda
     spike_clusters = np.load(os.path.join(session_folder,'phy_output','spike_clusters.npy'))
@@ -307,6 +308,9 @@ def func_convert2MS(session_folder):
     
     assert spike_times.shape == spike_clusters.shape, f"Array dimensions for spike_clusters.npy are not the same as spike_times.npy in session {session_folder}"
     
+    # Reading clust locations 
+    clus_locations_clean = pd.read_csv(os.path.join(session_folder,'clus_locations_clean.csv'),header = None)
+    clus_locations_clean_np = clus_locations_clean.to_numpy()
     if os.path.isfile(cluster_info_filepath):
         cluster_info_df = pd.read_csv(cluster_info_filepath,sep = '\t')
         cluster_label = cluster_info_df.group.to_numpy()
@@ -315,6 +319,7 @@ def func_convert2MS(session_folder):
     else:
         shutil.copy(os.path.join(session_folder,'firings_clean.mda'),os.path.join(session_folder,'firings_clean_merged.mda'))
         shutil.copy(os.path.join(session_folder,'templates_clean.mda'),os.path.join(session_folder,'templates_clean_merged.mda'))
+        shutil.copy(os.path.join(session_folder,'clus_locations_clean.csv'),clus_locations_filepath)
         return None             # PHY curation not performed
     
     # Loading original firings_clean.mda
@@ -342,15 +347,18 @@ def func_convert2MS(session_folder):
         # weighted average of the templates_waveforms 
         local_templates_newIDs[:,:,iter_l] = np.average(template_waveforms[:,:,local_oldID],axis = 2,weights = weights_local )
         
-    # New templates.mda    
+    # New templates.mda   and cluster locations 
+    clus_locations_clean_merged_np = np.zeros([cluster_id.shape[0],2])
     template_waveforms_new = np.zeros([template_waveforms.shape[0],template_waveforms.shape[1], cluster_id.shape[0]])
     for iter_l,data_l in enumerate(cluster_id):
         if np.any(np.isin(cluster_id_orig,data_l)):
             template_waveforms_new[:,:,iter_l] = template_waveforms[:,:,data_l]
+            clus_locations_clean_merged_np[iter_l,:] = clus_locations_clean_np[data_l,:]
             # print(data_l)
         else:
             indx_tmp = np.squeeze(np.where(newIDs == data_l))
             template_waveforms_new[:,:,iter_l] = local_templates_newIDs[:,:,indx_tmp]
+            clus_locations_clean_merged_np[iter_l,:] = clus_locations_clean_np[int(oldIDs[indx_tmp][0]),:]          # A rough location for the merged clusters 
             # print(indx_tmp)
     
     
@@ -361,6 +369,7 @@ def func_convert2MS(session_folder):
         spike_clusters_new = np.delete( spike_clusters , np.isin(spike_clusters, noise_clusters) , axis = 0 )        # Removing Manually curated units
         spike_times_new = np.delete( spike_times , np.isin(spike_clusters, noise_clusters) , axis = 0 )              # Removing Manually curated units
         template_waveforms_new = np.delete(template_waveforms_new,np.where(np.in1d(cluster_id, noise_clusters)),axis = 2)                                   # Removing Manually curated units
+        clus_locations_clean_merged_np_new = np.delete(clus_locations_clean_merged_np , np.where(np.in1d(cluster_id, noise_clusters)), axis = 0)
         # cluster_id_orig = np.delete(cluster_id_orig,noise_clusters,axis = 0)    
         cluster_id = cluster_id[np.logical_not(cluster_label == 'noise')]            # manually curated
         n_spikes = n_spikes[np.logical_not(cluster_label == 'noise')]                # manually curated
@@ -369,7 +378,9 @@ def func_convert2MS(session_folder):
         spike_clusters_new = spike_clusters
         spike_times_new = spike_times
         template_waveforms_new = template_waveforms_new
-        
+        clus_locations_clean_merged_np_new = clus_locations_clean_merged_np
+    
+    df_clus_loc = pd.DataFrame(clus_locations_clean_merged_np_new,columns = ['X','Y'])
     assert template_waveforms_new.shape[2] == cluster_id.shape[0]
     
     # Primary channels (updated)
@@ -403,6 +414,7 @@ def func_convert2MS(session_folder):
     firings[0,:] = pri_ch_new
     writemda64( firings, firings_filepath )
     writemda64(template_waveforms_new, templates_filepath)
+    df_clus_loc.to_csv(clus_locations_filepath, index = None, header = None)
     
     # Check primary channels IDs (native channel order OR MS channel order) for the convention in firings.mda (ask Jiaao)
     

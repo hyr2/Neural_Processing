@@ -35,7 +35,7 @@ def sort_by_shank(type_local,shank_num_local):
     #    shank_num_local: an array the same size as type_local containing the shank info of each cell/cluster 
     output_main = np.zeros([4,])
     for iter in range(4):
-        output_local = np.logical_and(type_local,shank_num_local == iter+1) 
+        output_local = np.logical_and(type_local,shank_num_local == iter)     
         output_main[iter] = np.sum(output_local)
         
     return output_main
@@ -233,7 +233,7 @@ def extract_spikes(clus_property_local):
         N_stim[itr] = clus_property_local[itr]['N_spikes_stim']     # Number of spikes during stimulation(Trial averaged)
         N_bsl[itr] = clus_property_local[itr]['N_spikes_bsl']       # Number of spikes pre-stimulation(Trial averaged)
         cluster_propery[itr] = clus_property_local[itr]['clus_prop']
-        shank_num[itr] = clus_property_local[itr]['shank_num']
+        shank_num[itr] = clus_property_local[itr]['shank_num']       # starts from 0
         spont_FR[itr] = clus_property_local[itr]['spont_FR']    # in Hz (Trial averaged)
         event_FR[itr] = clus_property_local[itr]['EventRelatedFR']    # in Hz (Trial averaged)
     return (cluster_propery,N_stim,N_bsl,shank_num,spont_FR,event_FR)
@@ -415,8 +415,8 @@ def combine_sessions(source_dir, str_ID):
         (celltype_shank[iter,:],list_celltype) = sort_cell_type(tmp,tmp_shank)
         celltype_total[iter,:] = np.sum(celltype_shank[iter,:],axis = 1)
         # excitatory and inhibitory neuron populations
-        excitatory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_excit'],pop_stats_cell[iter]['shank_num'])
-        inhibitory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_inhib'],pop_stats_cell[iter]['shank_num'])
+        excitatory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_excit'],tmp_shank)
+        inhibitory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_inhib'],tmp_shank)
         # Saving spike counts
         (cluster_property,N_stim,N_bsl,shank_num,spont_FR,event_FR) = extract_spikes(clus_property[iter])
         
@@ -580,15 +580,15 @@ def combine_sessions(source_dir, str_ID):
     full_mouse_ephys['celltype_total'] = celltype_total
     full_mouse_ephys['celltype_shank'] = celltype_shank
     full_mouse_ephys['clus_N'] = clus_N
-    full_mouse_ephys['activity_nor'] = activity_nor
-    full_mouse_ephys['activity_non'] = activity_non
+    full_mouse_ephys['activity_nor'] = activity_nor             # Normalized change in number of spikes during stimulation
+    full_mouse_ephys['activity_non'] = activity_non             # Change in number of spikes during stimulation
     full_mouse_ephys['activity_non_abs'] = activity_non_abs
-    full_mouse_ephys['activity_spont'] = activity_spont
-    full_mouse_ephys['activity_event'] = activity_event
+    full_mouse_ephys['activity_spont'] = activity_spont         # Average FR over all clusters in each session before stim
+    full_mouse_ephys['activity_event'] = activity_event         # Min/Max FR over all clusters in each session during stim
     full_mouse_ephys['all_clusters'] = all_clusters
     full_mouse_ephys['FR_act'] = act_FR
-    full_mouse_ephys['spont_FR_avg'] = np.array(avg_spont_FR, dtype='float32')
-    full_mouse_ephys['stim_FR_avg'] = np.array(avg_stim_FR, dtype='float32')
+    full_mouse_ephys['spont_FR_avg'] = np.array(avg_spont_FR, dtype='float32')      # Average FR over all clusters in each session before stim
+    full_mouse_ephys['stim_FR_avg'] = np.array(avg_stim_FR, dtype='float32')        # Min/Max FR over all clusters in each session during stim
     
     sio.savemat(os.path.join(source_dir,'full_mouse_ephys.mat'), full_mouse_ephys)
     np.savez(os.path.join(source_dir,'full_mouse_T2P.npz'),T2P = np.array(T2P_allsessions,dtype = object))        # saving as object

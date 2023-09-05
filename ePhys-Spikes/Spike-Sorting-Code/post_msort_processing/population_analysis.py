@@ -258,6 +258,9 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         else:
             raise ValueError("wrong input")
 
+    # Read cluster locations
+    clus_loc = pd.read_csv(os.path.join(session_folder,'clus_locations_clean_merged.csv'),header = None)
+    clus_loc = clus_loc.to_numpy()
     trial_duration_in_samples = int(total_time*F_SAMPLE)
     window_in_samples = int(WINDOW_LEN_IN_SEC*F_SAMPLE)
     # read channel map
@@ -389,10 +392,10 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         clus_property_1 = 0
         if max_zscore_stim > 2.5:
             if indx == 0 and N_spikes_local>(Ntrials*3) and (np.abs(max_z) > np.abs(min_z)):
-                print('activated neuron')
+                # print('activated neuron')
                 clus_property_1 = 1
             elif indx == 1 and N_spikes_local>(Ntrials*3) and (np.abs(max_z) < np.abs(min_z)):
-                print('suppressed neuron')
+                # print('suppressed neuron')
                 clus_property_1 = -1
         # print(clus_property)
         # if pval_2t > .01:
@@ -447,15 +450,16 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             # creating a dictionary for this cluster
             firing_stamp = spike_times_by_clus[i_clus]
             N_spikes_local = spike_times_by_clus[i_clus].size 
-            prim_ch = pri_ch_lut[i_clus]
+            shank_num = int(clus_loc[i_clus,0] // 250)      # starts from 0
+            # prim_ch = pri_ch_lut[i_clus]
             # Get shank ID from primary channel for the cluster
-            shank_num = get_shanknum_from_msort_id(prim_ch)
+            # shank_num = get_shanknum_from_msort_id(prim_ch)
 
 
             i_clus_dict  = {}
             i_clus_dict['cluster_id'] = i_clus + 1 # to align with the discard_noise_viz.py code cluster order [folder: figs_allclus_waveforms]
             i_clus_dict['total_spike_count'] = firing_stamp.shape
-            i_clus_dict['prim_ch_coord'] = geom[prim_ch, :]
+            i_clus_dict['prim_ch_coord'] =  np.nan #geom[prim_ch, :]
             i_clus_dict['shank_num'] = shank_num
             i_clus_dict['clus_prop'] = clus_property
             i_clus_dict['N_spikes'] = N_spikes_local
