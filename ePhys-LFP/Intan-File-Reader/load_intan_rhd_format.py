@@ -2,15 +2,50 @@
 #
 # Michael Gibson 17 July 2015
 # Modified Adrian Foy February 2021
+# Modified jz103 Dec 20 2021
+# Modified jz103 Feb 10 2022
 
 import sys, struct, math, os, time
 import numpy as np
+sys.path.append(os.path.join(os.getcwd(),'intanutil'))
+# import read_header
+# import get_bytes_per_data_block
+# import read_one_data_block
+# import data_to_result
 
 from intanutil.read_header import read_header
 from intanutil.get_bytes_per_data_block import get_bytes_per_data_block
 from intanutil.read_one_data_block import read_one_data_block
-from intanutil.notch_filter import notch_filter
+# from .intanutil.notch_filter import notch_filter
 from intanutil.data_to_result import data_to_result
+
+
+def get_n_samples_in_data(filename):
+    ''' 
+        copied from read_data to get number of samples stored in the .rhd file before actually reading it
+        jiaaoZ Feb 10 2022
+    '''
+    fid = open(filename, 'rb')
+    filesize = os.path.getsize(filename)
+
+    header = read_header(fid, verbose=False)
+    # Determine how many samples the data file contains.
+    bytes_per_block = get_bytes_per_data_block(header)
+
+    # How many data blocks remain in this file?
+    data_present = False
+    bytes_remaining = filesize - fid.tell()
+    if bytes_remaining > 0:
+        data_present = True
+
+    if bytes_remaining % bytes_per_block != 0:
+        raise Exception('Something is wrong with file size : should have a whole number of data blocks')
+
+    num_data_blocks = int(bytes_remaining / bytes_per_block)
+
+    num_amplifier_samples = header['num_samples_per_data_block'] * num_data_blocks
+    return header['num_amplifier_channels'], num_amplifier_samples
+
 
 
 def read_data(filename):
@@ -166,7 +201,10 @@ def read_data(filename):
         data['t_board_adc'] = data['t_amplifier']
         data['t_dig'] = data['t_amplifier']
         data['t_temp_sensor'] = data['t_supply_voltage']
-
+        
+        # NO NOTCHING FOR LUANLAB STROKE EXPERIEMENTS: make sure to do it after the data are read
+        # NOT SURE ABOUT THE POSSIBLE IMPLICATIONS OF DOING IT BY THE CHUNK 
+        # - make sure to apply notch after the entire data are read in downstream processing
         # If the software notch filter was selected during the recording, apply the
         # same notch filter to amplifier data here.
         # if header['notch_filter_frequency'] > 0 and header['version']['major'] < 3:
@@ -186,6 +224,7 @@ def read_data(filename):
 
     # Move variables to result struct.
     result = data_to_result(header, data, data_present)
+    result['sample_rate'] = header['sample_rate'] # added by jz103 March 29 2022
 
     print('Done!  Elapsed time: {0:0.1f} seconds'.format(time.time() - tic))
     return result

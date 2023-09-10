@@ -2,11 +2,12 @@
 #
 # Michael Gibson 23 April 2015
 # Modified Adrian Foy Sep 2018
+# Modified jiaaoZ Feb 10 2022
 
 import sys, struct
-from intanutil.qstring import read_qstring
+from .qstring import read_qstring
 
-def read_header(fid):
+def read_header(fid, verbose=True):
     """Reads the Intan File Format header from the given file."""
 
     # Check 'magic number' at beginning of file to make sure this is an Intan
@@ -19,10 +20,11 @@ def read_header(fid):
     version = {}
     (version['major'], version['minor']) = struct.unpack('<hh', fid.read(4)) 
     header['version'] = version
-
-    print('')
-    print('Reading Intan Technologies RHD2000 Data File, Version {}.{}'.format(version['major'], version['minor']))
-    print('')
+    
+    if verbose:
+        print('')
+        print('Reading Intan Technologies RHD2000 Data File, Version {}.{}'.format(version['major'], version['minor']))
+        print('')
 
     freq = {}
 
@@ -87,7 +89,8 @@ def read_header(fid):
     # Read signal summary from data file header.
 
     number_of_signal_groups, = struct.unpack('<h', fid.read(2))
-    print('n signal groups {}'.format(number_of_signal_groups))
+    if verbose:
+        print('n signal groups {}'.format(number_of_signal_groups))
 
     for signal_group in range(1, number_of_signal_groups + 1):
         signal_group_name = read_qstring(fid)

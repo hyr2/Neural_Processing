@@ -88,22 +88,6 @@ def filterSignal_lowpassLFP(input_signal, Fs, axis_value = 0):
     signal_out = signal.sosfiltfilt(sos, input_signal, axis = axis_value)
     return signal_out
 
-# 30 - 90 Hz
-def filterSignal_Gamma(input_signal, Fs, axis_value = 0):
-    signal_out = np.empty((input_signal.shape),dtype=np.single)
-    # if len(input_signal.shape) != 1:
-    #     axis_value = 1
-    # else:
-    #     axis_value = 0
-    cutoff_high = 90                 # High pass freq for LFP band
-    cutoff_low = 30                  # Low pass freq for LFP band
-    # cutoff = cutoff / (0.5*Fs)
-    sos = signal.butter(8, [cutoff_low,cutoff_high], btype = 'bandpass', output = 'sos', fs = Fs)  # IIR filter
-    
-    
-    signal_out = signal.sosfiltfilt(sos, input_signal, axis = axis_value)
-    return signal_out
-
 # 8 - 80 Hz
 def filterSignal_BP_LFP(input_signal, Fs, axis_value = 0):
     signal_out = np.empty((input_signal.shape),dtype=np.single)
@@ -140,7 +124,7 @@ def filterSignal_MUA(input_signal,Fs, axis_value = 0):
     # signal_out = signal.filtfilt(b,a, input_signal, axis = axis_value)
     # signal_out = signal.sosfiltfilt(SoS,input_signal, axis = axis_value) * np.prod(ScaleValues)
     cutoff = np.array([300,3000])
-    sos = signal.butter(10, cutoff, btype = 'bandpass', output = 'sos', fs = Fs)  # IIR filter
+    sos = signal.butter(20, cutoff, btype = 'bandpass', output = 'sos', fs = Fs)  # IIR filter
     signal_out = signal.sosfiltfilt(sos, input_signal, axis = axis_value)
     return signal_out
 
