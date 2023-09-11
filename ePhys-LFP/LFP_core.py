@@ -166,7 +166,7 @@ t_baseline_cwt = np.reshape(t_baseline_cwt,(t_baseline_cwt.size,))
 psd = np.square(np.abs(cwt_arr_G))    # PSD 
 psd_bsl = np.mean(psd[:,t_baseline_cwt,:], axis = 1)    # avg baseline psd
 psd = psd.transpose(1, 0, 2)
-delta_PSD = psd - psd_bsl
+delta_PSD = (psd - psd_bsl)/psd_bsl
 
 avg_trial = np.mean(delta_PSD,axis = 1)
 
