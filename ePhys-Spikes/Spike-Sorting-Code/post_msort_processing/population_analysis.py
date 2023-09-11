@@ -340,11 +340,11 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         t_1 = np.squeeze(np.where(t_axis >= 1.4))[0]      # stim start set to 2.45 seconds
         t_2 = np.squeeze(np.where(t_axis >= 2.0))[0]      # end of bsl region (actual value is 2.5s but FR starts to increase before. Maybe anticipatory spiking due to training)
         t_3 = np.squeeze(np.where(t_axis <= 2.1))[-1]        # stim end set to 5.15 seconds
-        t_4 = np.squeeze(np.where(t_axis <= 3.95))[-1]
+        t_4 = np.squeeze(np.where(t_axis <= 4.02))[-1]
         t_5 = np.squeeze(np.where(t_axis <= 8))[-1]        # post stim quiet period
         t_6 = np.squeeze(np.where(t_axis <= 9.5))[-1]
         t_7 = np.squeeze(np.where(t_axis <= 4.5))[-1]
-        t_8 = np.squeeze(np.where(t_axis <= 2.45))[-1]       
+        t_8 = np.squeeze(np.where(t_axis <= 2.520))[-1]       
         t_9 = np.squeeze(np.where(t_axis <= 0.6))[-1]       
         # Zscore
         bsl_mean = np.mean(np.hstack((firing_rate_avg[t_1:t_2],firing_rate_avg[t_5:t_6]))) # baseline is pre and post stim
@@ -407,7 +407,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         # print(clus_property)
         
         # Computing number of spikes
-        firing_rate_series2 = firing_rate_series * WINDOW_LEN_IN_SEC    # Number of spikes
+        firing_rate_series2 = firing_rate_series * WINDOW_LEN_IN_SEC    # Number of spikes (histogram over for all trials)
         firing_rate_series_avg = np.mean(firing_rate_series2,axis = 0)  # Avg number of spikes over accepted trials
         Spikes_stim = np.sum(firing_rate_series_avg[t_8:t_4])   # 1.5 sec
         Spikes_bsl = np.sum(firing_rate_series_avg[t_9:t_3])    # 1.5 sec

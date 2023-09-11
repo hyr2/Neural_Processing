@@ -256,30 +256,72 @@ def combine_sessions(source_dir, str_ID):
 
     if (str_ID.lower() == 'processed_data_rh3'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,56]) 
+        dict_shank_spatial_info = {
+            '0':'NaN',
+            '1':'L300',
+            '2':'G300',
+            '3':'NaN'
+        }
     elif (str_ID.lower() == 'processed_data_bc7'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,42]) 
+        dict_shank_spatial_info = {
+            '0':'L300',
+            '1':'G300',
+            '2':'S2',
+            '3':'S2'
+        }
     elif (str_ID.lower() == 'BC6'.lower()):
         linear_xaxis = np.array([-3,-2,2,9,14,21,28,35,49])
     elif (str_ID.lower() == 'processed_data_bbc5'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,21,47]) 
+        dict_shank_spatial_info = {
+            '0':'NaN',
+            '1':'NaN',
+            '2':'L300',
+            '3':'NaN'
+        }
     elif (str_ID.lower() == 'processed_data_rh7'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,24,28,35,42,49,56])
+        dict_shank_spatial_info = {
+            '0':'G300',
+            '1':'L300',
+            '2':'L300',
+            '3':'S2'
+        }
     elif (str_ID.lower() == 'BC8'.lower()):
-        linear_xaxis = np.array([-3,-2,2,2,7,8,15,21,54])     
+        linear_xaxis = np.array([-3,-2,2,2,7,8,15,21,54])
     elif (str_ID.lower() == 'processed_data_rh8'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,35,42,49,56])  
+        dict_shank_spatial_info = {
+            '0':'L300',
+            '1':'L300',
+            '2':'NaN',
+            '3':'S2'
+        }
     elif (str_ID.lower() == 'processed_data_rh9'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,35,42,49])
+        dict_shank_spatial_info = {
+            '0':'L300',
+            '1':'L300',
+            '2':'G300',
+            '3':'NaN'
+        }
     elif (str_ID.lower() == 'B-BC8'.lower()):
         linear_xaxis = np.array([-4,-3,-2,-1,3,7])
     elif (str_ID.lower() == 'BHC-7'.lower()):
         linear_xaxis = np.array([-3,-2,-1,7,14])
     elif (str_ID.lower() == 'processed_data_rh11'.lower()):
         linear_xaxis = np.array([-3,-2,-1,2,7,14,15,21,22,28,29,35])
+        dict_shank_spatial_info = {
+            '0':'G300',
+            '1':'L300',
+            '2':'L300',
+            '3':'S2'
+        }
     else:
         sys.exit('No string matched with: ' + str_ID)
             
-    
+           
     # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14','Day 21','Day 28','Day 56']  # RH3 (reject baselines 0 and 2)
     # linear_xaxis = np.array([-2,-1,2,7,14,21,28,56]) 
     # x_ticks_labels = ['bl-1','bl-2','Day 2','Day 7','Day 14 ','Day 21','Day 28','Day 42'] # BC7 (reject baseline 0)
@@ -308,9 +350,9 @@ def combine_sessions(source_dir, str_ID):
         if os.path.isdir(os.path.join(source_dir,name)):
             folder_loc_mat = os.path.join(source_dir,name)
             if os.path.isdir(folder_loc_mat):
-                pop_stats[iter] = sio.loadmat(os.path.join(folder_loc_mat,'Processed/count_analysis/population_stat_responsive_only.mat'))
-                clus_property[iter] = np.load(os.path.join(folder_loc_mat,'Processed/count_analysis/all_clus_property.npy'),allow_pickle=True)
-                pop_stats_cell[iter] = sio.loadmat(os.path.join(folder_loc_mat,'Processed/cell_type/pop_celltypes.mat'))
+                pop_stats[iter] = sio.loadmat(os.path.join(folder_loc_mat,'Processed/count_analysis/population_stat_responsive_only.mat'))      # comes from population_analysis.py 
+                clus_property[iter] = np.load(os.path.join(folder_loc_mat,'Processed/count_analysis/all_clus_property.npy'),allow_pickle=True)  # comes from population_analysis.py
+                pop_stats_cell[iter] = sio.loadmat(os.path.join(folder_loc_mat,'Processed/cell_type/pop_celltypes.mat'))                        # comes from cell explorer MATLAB
                 names_datasets.append(name)
                 iter += 1
             
@@ -372,7 +414,7 @@ def combine_sessions(source_dir, str_ID):
     main_df = deepcopy(df_all_clusters_main)
     avg_spont_FR = []
     avg_stim_FR = []
-    for iter in range(len(pop_stats)):
+    for iter in range(len(pop_stats)):          # loop over sessions of a single animal
         # population extraction from dictionaries
         
         # FR goes up (activated neurons)
@@ -486,7 +528,7 @@ def combine_sessions(source_dir, str_ID):
         df_all_clusters_D = sort_single_shank_neuralAct_allclus(shank_num, mask_local_list, N_bsl, N_stim, df_all_clusters_D,shank_ID = 3,session_ID = iter,x_ticks_labels = x_ticks_labels)
         
         
-        # number of clusters
+        # number of clusters (total irrespective of the shank ID)
         clus_N[iter,0] = (cluster_property == -1).sum()     # number of suppressed clusters
         clus_N[iter,1] = (cluster_property == 1).sum()      # number of activated clusters
         clus_N[iter,2] = (np.squeeze(pop_stats_cell[iter]['type_excit']) == 1).sum()
@@ -506,6 +548,8 @@ def combine_sessions(source_dir, str_ID):
         burst_I_arr = np.squeeze(pop_stats_cell[iter]['burstIndex_Royer2012'])      # burst index (following Buzsaki 2017 paper definition: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5293146/pdf/nihms836070.pdf)
         # Dataframe for all clusters
         # tmp_df = df_all_clusters_main
+        for iter_local in range(shank_num.shape[0]):
+            print(shank_num[iter_local])
         
         tmp_df = pd.DataFrame(
             {
@@ -515,8 +559,16 @@ def combine_sessions(source_dir, str_ID):
                 "celltype": list_celltype,
                 "response": cluster_property,
                 "T2P": T2P_arr,
-                "spont_FR": spont_FR,
-                "event_FR": event_FR,
+                "spont_FR": spont_FR, # the spont FR pre stim 
+                "event_FR": event_FR, # Peak FR during stim (for inhibited cells, this would be the minimum FR)
+                "N_bsl" : N_bsl,    # Total spikes in 1.5 sec duration
+                "N_stim" : N_stim,  # Total spikes in 1.5 sec duration
+                "burstN" : [],     #during stimulation only (average over trials) [exact times: 2.5s to 3.5s mark]
+                "burstL" : [],     #during stimulation only (length averaged over all events irrespective of trials) [exact times: 2.5s to 3.5s mark]
+                "burstFR": [],     #during stimulation only (FR averaged over all events irrespective of trials) [exact times: 2.5s to 3.5s mark]
+                # "burstN_fix_stim" : [],     
+                # "burstN_log_bsl" : [],      # log method: during baseline only (average over trials) [time is pre stim and almost equal to stim time : 1.5s to 2.5 s]
+                # "burstN_fix_bsl" : [],
                 "burst_i": burst_I_arr,
                 "tau_r": tau_refractory_arr,
                 "wav_assym": wv_asym_arr

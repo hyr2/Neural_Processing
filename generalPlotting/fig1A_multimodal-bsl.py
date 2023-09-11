@@ -16,7 +16,7 @@ sys.path.append('/home/hyr2/Documents/git/Neural_Processing/ePhys-LFP/')
 from Support import *
 
 # Input processed data from IOS matlab scripts (IOS_process_2.m)
-source_dir = '/home/hyr2/Documents/Data/IOS_imaging/rh8/22-12-03'
+source_dir = '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig1/data/fig1A/'
 
 wv_580_bsl1 = io.loadmat(os.path.join(source_dir,'580nm_processed.mat'))
 wv_580_bsl1 = wv_580_bsl1['ROI_time_series_img']
@@ -28,7 +28,7 @@ time_axis_ios = np.linspace(0,13.5,75)
 
 
 # Input processed data from rickshaw_postprocessing.py (for firing rates of single units)
-pickle_file_path = '/home/hyr2/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig1/data/fig1A/FR_all.pkl'
+pickle_file_path = '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig1/data/fig1A/FR_all.pkl'
 with open(pickle_file_path, 'rb') as file:
     # Load the data from the pickle file
     FR_dict = pickle.load(file)
@@ -38,15 +38,15 @@ avg_FR = FR_dict['FR']
 
 
 # Input processed data from LFP_core.py (for PSD analysis of LFP data)
-pickle_file_path = '/home/hyr2/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig1/data/fig1A/shankA.pkl'
+pickle_file_path = '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig1/data/fig1A/shankA.pkl'
 with open(pickle_file_path, 'rb') as file:
     # Load the data from the pickle file
     shankA = pickle.load(file)
-pickle_file_path = '/home/hyr2/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig1/data/fig1A/shankC.pkl'
+pickle_file_path = '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig1/data/fig1A/shankC.pkl'
 with open(pickle_file_path, 'rb') as file:
     # Load the data from the pickle file
     shankC = pickle.load(file)
-pickle_file_path = '/home/hyr2/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig1/data/fig1A/shankD.pkl'
+pickle_file_path = '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig1/data/fig1A/shankD.pkl'
 with open(pickle_file_path, 'rb') as file:
     # Load the data from the pickle file
     shankD = pickle.load(file)
@@ -64,7 +64,7 @@ plt.plot(time_axis_FR,avg_FR[:,22]/np.amax(avg_FR[:,22]),linewidth = 2.75, color
 # plt.plot(time_axis_ios,wv_580_bsl1[:,6])
 plt.xlim(0.5,13)
 sns.despine()
-filename_save = '/home/hyr2/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig1/subfigures/all_modality.png'
+filename_save = '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig1/subfigures/all_modality.png'
 plt.savefig(filename_save)
 
 
