@@ -51,7 +51,7 @@ for iter, filename in enumerate(source_dir_list):
         F_SAMPLE = float(data_pre_ms['SampleRate'])
         
         # Update firings.mda and other files here ----
-        func_convert2MS(Raw_dir)
+        # func_convert2MS(Raw_dir)
 
         # Population analysis
         func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)

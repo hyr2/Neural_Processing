@@ -13,8 +13,8 @@ Created on Sun Mar 19 14:57:09 2023
 import os, sys, json, shutil
 from time import time
 sys.path.append(os.path.join(os.getcwd(),'utils'))
-sys.path.append(os.getcwd())
-sys.path.append('../preprocess_rhd') 
+# sys.path.append(os.getcwd())
+# sys.path.append('../preprocess_rhd') 
 from itertools import groupby
 from copy import deepcopy
 import numpy as np

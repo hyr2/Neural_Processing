@@ -53,7 +53,7 @@ for iter, filename in enumerate(source_dir_list):
         F_SAMPLE = float(data_pre_ms['SampleRate'])
                          
         # Curation
-        # func_discard_noise_and_viz(Raw_dir)
+        func_discard_noise_and_viz(Raw_dir)
         
         # delete converted_data.mda and filt.mda and raw data files (.rhd) 
         # os.remove(os.path.join(Raw_dir,'converted_data.mda'))

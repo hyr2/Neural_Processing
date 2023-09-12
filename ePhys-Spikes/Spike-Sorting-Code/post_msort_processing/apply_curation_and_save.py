@@ -111,7 +111,7 @@ def clean_mdas(msort_path, postproc_path, mda_savepath):
     # clusters to keep: both (1) spiking and (2) accepted by curation criteria
     clean_mask = np.logical_and(spiking_mask, accept_mask)
     clean_mask = np.logical_and(clean_mask, np.logical_not(positive_mask))
-    # get primayr channel; channel index starts from 0 here
+    # get primary channel; channel index starts from 0 here
     pri_ch_lut = -1 * np.ones(n_clus, dtype=int)
     template_peaks_single_sided = np.max(np.abs(template_waveforms), axis=1) # (n_ch, n_clus)
     pri_ch_lut = np.argmax(template_peaks_single_sided, axis=0) # (n_clus)
