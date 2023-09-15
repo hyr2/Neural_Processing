@@ -58,7 +58,7 @@ tmp_std = std(sample_img(:),'omitnan');
 amin = mean(sample_img(:),'omitnan') - 1.5*tmp_std;
 amax = mean(sample_img(:),'omitnan') + 2.75*tmp_std;
 
-%% User draws activation area region
+%% User draws activation area region (where do you expect the activation to be located?)
 [activation_region,x_act,y_act] = defineArea(sample_img,[amin amax]);
 
 %% Working on 480nm

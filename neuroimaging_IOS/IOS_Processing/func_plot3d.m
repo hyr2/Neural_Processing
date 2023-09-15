@@ -12,6 +12,8 @@ end
 z_axis = xaxis_in';
 x_axis = 8e-3 * vec_rel(:,1); % in mm
 y_axis = 8e-3 * vec_rel(:,2); % in mm
+x_bsl = (x_axis(1) + x_axis(2))/2;
+x_axis = x_axis - x_bsl;
 area = area/max(area);
 colors = [0,0,1;0,0,1];
 s2 = zeros(9,3);
@@ -43,7 +45,7 @@ mkdir(filename_fig)
 view(0, 0); % Change the view angle
 z_axis([3]) = [];   % ignore day 2
 x_axis([3]) = [];   % ignore day 2
-degree = 5;
+degree = 4;
 coeef = polyfit(z_axis,x_axis,degree);
 z_range = linspace(min(z_axis),max(z_axis),50);
 x_fit = polyval(coeef,z_range);
@@ -55,14 +57,19 @@ y_val = zeros(1,length(z_range));
 % plot(gca,x_axis, z_axis, 'o', 'MarkerFaceColor', 'b', 'MarkerEdgeColor', 'b');
 hold on;
 plot3(ax,smoother_x_fit,y_val, z_range, 'Color', '#686869' , 'LineWidth', 2.5);
-grid on;
+grid off;
+xlim([-1,1]);
+set(gca,'ZTickLabel',[]);
 set(ax,'FontSize',24)
+set(ax,'ZColor','none');
 saveas(fig,fullfile(filename_fig,'X.png'),'png');
 close(fig);
 %% performing fit for Y axis
 z_axis = xaxis_in';
 x_axis = 8e-3 * vec_rel(:,1); % in mm
 y_axis = 8e-3 * vec_rel(:,2); % in mm
+y_bsl = (y_axis(1) + y_axis(2))/2;
+y_axis = y_axis - y_bsl;
 area = area/max(area);
 colors = [0,0,1;0,0,1];
 s2 = zeros(9,3);
@@ -99,7 +106,10 @@ smoother_y_fit = smoothdata(y_fit,'loess',10);
 x_val = zeros(1,length(z_range));
 hold on;
 plot3(ax,x_val,smoother_y_fit, z_range, 'Color', '#686869', 'LineWidth', 2.5);
-grid on;
+grid off;
+ylim([-1,1]);
+set(gca,'ZTickLabel',[]);
+set(ax,'ZColor','none');
 set(ax,'FontSize',24)
 saveas(fig,fullfile(filename_fig,'Y.png'),'png');
 close(fig);
