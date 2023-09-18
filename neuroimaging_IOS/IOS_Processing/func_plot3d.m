@@ -1,4 +1,4 @@
-function [] = func_plot3d(struct_in,xaxis_in,filename_fig)
+function [] = func_plot3d(struct_in,xaxis_in,filename_fig,bsl_indx)
 
 % Plotting the activation area center 
 area = zeros(1,length(struct_in));
@@ -16,7 +16,8 @@ x_bsl = (x_axis(1) + x_axis(2))/2;
 x_axis = x_axis - x_bsl;
 area = area/max(area);
 colors = [0,0,1;0,0,1];
-s2 = zeros(9,3);
+sz_tmp = size(area,2) - size(bsl_indx,2);
+s2 = zeros(sz_tmp,3);
 colors = vertcat(colors,s2);
 
 scatter3(x_axis,y_axis,z_axis,area*500,colors,'filled');
@@ -59,9 +60,11 @@ hold on;
 plot3(ax,smoother_x_fit,y_val, z_range, 'Color', '#686869' , 'LineWidth', 2.5);
 grid off;
 xlim([-1,1]);
+zlim([-6,56]);
 set(gca,'ZTickLabel',[]);
 set(ax,'FontSize',24)
 set(ax,'ZColor','none');
+set(fig,'Position',[50 50 400 800])
 saveas(fig,fullfile(filename_fig,'X.png'),'png');
 close(fig);
 %% performing fit for Y axis
@@ -72,7 +75,8 @@ y_bsl = (y_axis(1) + y_axis(2))/2;
 y_axis = y_axis - y_bsl;
 area = area/max(area);
 colors = [0,0,1;0,0,1];
-s2 = zeros(9,3);
+sz_tmp = size(area,2) - size(bsl_indx,2);
+s2 = zeros(sz_tmp,3);
 colors = vertcat(colors,s2);
 
 scatter3(x_axis,y_axis,z_axis,area*500,colors,'filled');
@@ -108,9 +112,11 @@ hold on;
 plot3(ax,x_val,smoother_y_fit, z_range, 'Color', '#686869', 'LineWidth', 2.5);
 grid off;
 ylim([-1,1]);
+zlim([-6,56]);
 set(gca,'ZTickLabel',[]);
 set(ax,'ZColor','none');
 set(ax,'FontSize',24)
+set(fig,'Position',[50 50 400 800])
 saveas(fig,fullfile(filename_fig,'Y.png'),'png');
 close(fig);
 

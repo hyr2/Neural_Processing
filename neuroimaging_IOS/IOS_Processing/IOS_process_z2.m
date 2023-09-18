@@ -1,4 +1,4 @@
-% Assumes IOS_process_z2.m has already been run. 
+% Assumes IOS_process_z1.m has already been run. 
 % AnimalID/
 % │
 % ├── SessionID1/
