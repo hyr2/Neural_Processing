@@ -338,7 +338,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         burst_cfgs["max_short_isi_ms"] = 0.050  # 50 ms (after empirical observations)
         burst_cfgs["max_long_isi_ms"] = 0.120   # 120ms (after empirical observations)
         
-        bust_dict = SingleUnit_burst(firing_stamp,trials_start_times,stim_start_time,stim_end_time,bsl_start_time,Fs,TRIAL_KEEP_MASK,burst_cfgs)
+        burst_dict = SingleUnit_burst(firing_stamp,trials_start_times,stim_start_time,stim_end_time,bsl_start_time,Fs,TRIAL_KEEP_MASK,burst_cfgs)
         
         
         
@@ -436,7 +436,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         Spikes_bsl = np.sum(firing_rate_series_avg[t_9:t_3])    # 1.5 sec
         Spikes_num = np.array([Spikes_bsl,Spikes_stim])
 
-        return clus_property_1, firing_rate_avg, firing_rate_sum, Spikes_num, firing_rate_series, bust_dict
+        return clus_property_1, firing_rate_avg, firing_rate_sum, Spikes_num, firing_rate_series, burst_dict
 
 
     total_nclus_by_shank = np.zeros(4)
@@ -455,7 +455,6 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     list_all_clus = []
     iter_local = 0
 
-    adaptation_df = pd.DataFrame(columns=['cluster_ID', 'stim_response', 'trial_response'])
 
     for i_clus in range(n_clus):
         
@@ -467,6 +466,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             t_2 = np.squeeze(np.where(t_axis >= 12.5))[0]
             t_3 = np.squeeze(np.where(t_axis >= 2.35))[0]
             t_4 = np.squeeze(np.where(t_axis >= 3.75))[0]
+            t_5 = 2.45
             
             t_bsl_start = np.squeeze(np.where(t_axis >= 0.25))[0]
             t_bsl_end = np.squeeze(np.where(t_axis >= 2.25))[0]
@@ -499,7 +499,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             
             i_clus_dict.update(burst_dict)
             
-            list_all_clus.append(i_clus_dict)
+            # list_all_clus.append(i_clus_dict)
 
             FR_series_all_clusters[iter_local].append(np.array(firing_rate_avg,dtype = float))
             # temporary
@@ -521,19 +521,37 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
 
             if not(failed) and clus_property==ANALYSIS_EXCITATORY:          # Extracting FR of only activated neurons
                 FR_list_byshank_act[shank_num].append(np.array(FR_series_all_clusters[iter_local],dtype = float))
-                stim_response, trial_response = adaptation(stim_start_time,stim_end_time,firing_rate_series)
-                if stim_response > 0:
-                    adaptation_df.loc[len(adaptation_df)] = {'cluster_ID': i_clus+1, 'stim_response':stim_response, 'trial_response':trial_response}
+                stim_response, stim_response_end, trial_response = adaptation(t_5,stim_end_time,firing_rate_series)
+                i_clus_dict['adapt_time_avg'] = stim_response        # adaptation based on time (start vs avg of stim)
+                i_clus_dict['adapt_time_end'] = stim_response_end    # adaptation based on time (start vs end of stim)
+                i_clus_dict['adapt_trial'] = trial_response       # adaptation based on trials (start vs end of trials)
             elif not(failed) and clus_property==ANALYSIS_INHIBITORY:
                 FR_list_byshank_inh[shank_num].append(np.array(FR_series_all_clusters[iter_local],dtype = float))
+                i_clus_dict['adapt_time_avg'] = np.nan
+                i_clus_dict['adapt_time_end'] = np.nan
+                i_clus_dict['adapt_trial'] = np.nan
+            else:
+                i_clus_dict['adapt_time_avg'] = np.nan
+                i_clus_dict['adapt_time_end'] = np.nan
+                i_clus_dict['adapt_trial'] = np.nan
+
+            # if not(failed): 
+                
+                # plot_all_trials(firing_rate_avg,1/WINDOW_LEN_IN_SEC,result_folder_FR_avg,i_clus_dict)           # Plotting function
+            
+            # Append to output dataframe of all units in current session
+            list_all_clus.append(i_clus_dict)
+
             total_nclus_by_shank[shank_num] += 1
             if clus_property != ANALYSIS_NOCHANGE:
                 # print("t=%.2f, p=%.4f"%(t_stat, pval_2t))
                 if failed:
                     print("NOTE---- bad cluster with significant response to stim")
-            if failed:
+            if failed: # Not a single unit
+                iter_local = iter_local+1
                 continue
-        
+                
+
             
             if clus_property==ANALYSIS_EXCITATORY:
                 act_nclus_by_shank[shank_num] += 1
@@ -669,4 +687,4 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     }
     savemat(os.path.join(result_folder, "population_stat_responsive_only.mat"), data_dict)
     np.save(os.path.join(result_folder,'all_clus_property.npy'),list_all_clus)
-    adaptation_df.to_csv(os.path.join(result_folder,'adaptation.csv'))
+
