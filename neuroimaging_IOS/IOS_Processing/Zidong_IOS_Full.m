@@ -1,7 +1,7 @@
 clear 
 close all;
 % Partial Automation (ie batch process) IOS imaging files
-parent_directory = '/home/hyr2-office/Documents/Data/IOS_imaging/rh9/';
+parent_directory = '/home/hyr2-office/Documents/Data/IOS_imaging/rh11/';
 file_X = dir_sorted(parent_directory);
 file_X = {file_X.name};
 file_X =  file_X(~ismember(file_X,{'.','..'}));
