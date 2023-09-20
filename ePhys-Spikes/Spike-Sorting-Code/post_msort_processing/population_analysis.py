@@ -14,6 +14,8 @@ from Support import plot_all_trials, filterSignal_lowpass, filter_Savitzky_slow,
 from sklearn.preprocessing import StandardScaler,MinMaxScaler
 import seaborn as sns
 from adaptation import adaptation
+sys.path.append('/home/hyr2-office/Documents/git/Neural_SP/Unreleased-Code-ePhys/bursts/')
+from burst_analysis import *
 
 
 # Plotting fonts
@@ -180,11 +182,18 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     total_time = time_seq * Seq_perTrial
     print('Each sequence is: ', time_seq, 'sec')
     time_seq = int(np.ceil(time_seq * Fs/2))
-    
+   
+    # read trials times
+    trials_start_times = loadmat(session_trialtimes)['t_trial_start'].squeeze()
+
     # Trial mask (only for newer animals)
-    trial_mask = pd.read_csv(trial_mask_file, header=None, index_col=False,dtype = bool)
-    TRIAL_KEEP_MASK = trial_mask[0].to_numpy(dtype = bool)
-    TRIAL_KEEP_MASK = np.ones([Ntrials,],dtype = bool)
+    if os.path.isfile(trial_mask_file):
+        trial_mask = pd.read_csv(trial_mask_file, header=None, index_col=False,dtype = bool)
+        TRIAL_KEEP_MASK = trial_mask.to_numpy(dtype = bool)
+        TRIAL_KEEP_MASK = np.squeeze(TRIAL_KEEP_MASK)
+    else:
+        TRIAL_KEEP_MASK = np.ones([trials_start_times.shape[0],],dtype = bool)
+    # TRIAL_KEEP_MASK = np.ones([Ntrials,],dtype = bool)
 
     # Channel mapping
     if (CHMAP2X16 == True):    # 2x16 channel map
@@ -199,9 +208,9 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     if not os.path.exists(result_folder_FR_avg):
         os.makedirs(result_folder_FR_avg)
     geom_path = os.path.join(session_folder, "geom.csv")
-    curation_mask_path = os.path.join(session_folder, 'accept_mask.csv')        # deparcated
+    # curation_mask_path = os.path.join(session_folder, 'accept_mask.csv')        # deparcated
     NATIVE_ORDERS = np.load(os.path.join(session_folder, "native_ch_order.npy"))
-    axonal_mask = os.path.join(session_folder,'positive_mask.csv')              # deparcated
+    # axonal_mask = os.path.join(session_folder,'positive_mask.csv')              # deparcated
 
     # macro definitions
     ANALYSIS_NOCHANGE = 0       # A better name is non-stimulus locked
@@ -209,13 +218,13 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     ANALYSIS_INHIBITORY = -1    # A better name is suppressed
 
     # read cluster rejection data (# deparcated)
-    curation_masks = np.squeeze(pd.read_csv(curation_mask_path,header = None).to_numpy())   
-    single_unit_mask = curation_masks
+    # curation_masks = np.squeeze(pd.read_csv(curation_mask_path,header = None).to_numpy())   
+    # single_unit_mask = curation_masks
     # single_unit_mask = curation_masks['single_unit_mask']
     # multi_unit_mask = curation_masks['multi_unit_mask']
-    mask_axonal = np.squeeze(pd.read_csv(axonal_mask,header = None).to_numpy())  # axonal spikes
-    mask_axonal = np.logical_not(mask_axonal)
-    single_unit_mask = np.logical_and(mask_axonal,single_unit_mask)     # updated single unit mask
+    # mask_axonal = np.squeeze(pd.read_csv(axonal_mask,header = None).to_numpy())  # axonal spikes
+    # mask_axonal = np.logical_not(mask_axonal)
+    # single_unit_mask = np.logical_and(mask_axonal,single_unit_mask)     # updated single unit mask
     
     chmap_mat = loadmat(CHANNEL_MAP_FPATH)['Ch_Map_new']
     # print(list(chmap_mat.keys()))
@@ -268,8 +277,6 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     n_ch_this_session = geom.shape[0]
     print(geom.shape)
     # exit(0)
-    # read trials times
-    trials_start_times = loadmat(session_trialtimes)['t_trial_start'].squeeze()
     firings = readmda(os.path.join(session_folder, "firings_clean_merged.mda")).astype(np.int64)
     # get spike stamp for all clusters (in SAMPLEs not seconds)
     spike_times_all = firings[1,:]
@@ -295,6 +302,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
                 break
             else:
                 tmp_cnt += 1
+    burst_cfgs = {}
 
 
     def get_single_cluster_spikebincouts_all_trials(firing_stamp, t_trial_start, trial_duration_in_samples, window_in_samples):
@@ -319,7 +327,22 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     def single_cluster_main(i_clus):
         
         firing_stamp = spike_times_by_clus[i_clus] 
-        N_spikes_local = spike_times_by_clus[i_clus].size 
+        N_spikes_local = spike_times_by_clus[i_clus].size
+        
+        stim_start_time =  n_stim_start     # number of samples after which stim begins
+        stim_end_time = n_stim_start + (Fs * 1.5) # 1.5 s post stim start is set as the stim end time. We only consider the first 1500ms 
+        bsl_start_time = Fs*0.5     # start of baseline period
+        # Spike time stamps 
+        burst_cfgs["detection_method"] = "log_isi"
+        burst_cfgs["min_spikes_per_burst"] = 3
+        burst_cfgs["max_short_isi_ms"] = 0.050  # 50 ms (after empirical observations)
+        burst_cfgs["max_long_isi_ms"] = 0.120   # 120ms (after empirical observations)
+        
+        bust_dict = SingleUnit_burst(firing_stamp,trials_start_times,stim_start_time,stim_end_time,bsl_start_time,Fs,TRIAL_KEEP_MASK,burst_cfgs)
+        
+        
+        
+        # Firing rate series
         firing_rate_series = get_single_cluster_spikebincouts_all_trials(
             firing_stamp, 
             trials_start_times, 
@@ -413,7 +436,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         Spikes_bsl = np.sum(firing_rate_series_avg[t_9:t_3])    # 1.5 sec
         Spikes_num = np.array([Spikes_bsl,Spikes_stim])
 
-        return clus_property_1, firing_rate_avg, firing_rate_sum, Spikes_num, firing_rate_series
+        return clus_property_1, firing_rate_avg, firing_rate_sum, Spikes_num, firing_rate_series, bust_dict
 
 
     total_nclus_by_shank = np.zeros(4)
@@ -438,7 +461,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         
         if single_unit_mask[i_clus] == True:
             # Need to add facilitating cell vs adapting cell vs no change cell
-            clus_property, firing_rate_avg, firing_rate_sum, Spikes_num, firing_rate_series = single_cluster_main(i_clus)
+            clus_property, firing_rate_avg, firing_rate_sum, Spikes_num, firing_rate_series, burst_dict = single_cluster_main(i_clus)
             t_axis = np.linspace(0,total_time,firing_rate_avg.shape[0])
             t_1 = np.squeeze(np.where(t_axis >= 8.5))[0]
             t_2 = np.squeeze(np.where(t_axis >= 12.5))[0]
@@ -454,11 +477,11 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             # prim_ch = pri_ch_lut[i_clus]
             # Get shank ID from primary channel for the cluster
             # shank_num = get_shanknum_from_msort_id(prim_ch)
-
+            
 
             i_clus_dict  = {}
             i_clus_dict['cluster_id'] = i_clus + 1 # to align with the discard_noise_viz.py code cluster order [folder: figs_allclus_waveforms]
-            i_clus_dict['total_spike_count'] = firing_stamp.shape
+            i_clus_dict['total_spike_count'] = firing_stamp.shape[0]
             i_clus_dict['prim_ch_coord'] =  np.nan #geom[prim_ch, :]
             i_clus_dict['shank_num'] = shank_num
             i_clus_dict['clus_prop'] = clus_property
@@ -474,6 +497,8 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             else: 
                 i_clus_dict['EventRelatedFR'] = np.nan
             
+            i_clus_dict.update(burst_dict)
+            
             list_all_clus.append(i_clus_dict)
 
             FR_series_all_clusters[iter_local].append(np.array(firing_rate_avg,dtype = float))
@@ -481,9 +506,9 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             # firing_rate_avg = 
             failed = (single_unit_mask[i_clus]==False)                       # SUA as well
             #print(i_clus)
-            if not(failed): 
+            # if not(failed): 
                 
-                plot_all_trials(firing_rate_avg,1/WINDOW_LEN_IN_SEC,result_folder_FR_avg,i_clus_dict)           # Plotting function
+                # plot_all_trials(firing_rate_avg,1/WINDOW_LEN_IN_SEC,result_folder_FR_avg,i_clus_dict)           # Plotting function
                            
 
             if clus_property==ANALYSIS_EXCITATORY:

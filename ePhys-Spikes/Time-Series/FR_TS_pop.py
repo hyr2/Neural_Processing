@@ -238,6 +238,22 @@ def extract_spikes(clus_property_local):
         event_FR[itr] = clus_property_local[itr]['EventRelatedFR']    # in Hz (Trial averaged)
     return (cluster_propery,N_stim,N_bsl,shank_num,spont_FR,event_FR)
     
+def extract_bursts(clus_property_local):
+    n_clusters = len(clus_property_local)
+    burstN = np.zeros([n_clusters,],dtype = float)
+    burstN_bsl = np.zeros([n_clusters,],dtype = float)
+    burstL = np.zeros([n_clusters,],dtype = float)
+    burstL_bsl = np.zeros([n_clusters,],dtype = float)
+    burstFR = np.zeros([n_clusters,],dtype = float)
+    burstFR_bsl = np.zeros([n_clusters,],dtype = float)
+    for itr in range(n_clusters):
+        burstN[itr] = clus_property_local[itr]['burstN']
+        burstN_bsl[itr] = clus_property_local[itr]['burstN_bsl']
+        burstL[itr] = clus_property_local[itr]['burstL']
+        burstL_bsl[itr] = clus_property_local[itr]['burstL_bsl']
+        burstFR[itr] = clus_property_local[itr]['burstFR']
+        burstFR_bsl[itr] = clus_property_local[itr]['burstFR_bsl']
+    return (burstN,burstN_bsl,burstL,burstL_bsl,burstFR,burstFR_bsl)    
 
 def combine_sessions(source_dir, str_ID):
     # source_dir : source directory global (ie for mouse instead of a single session)
@@ -311,7 +327,7 @@ def combine_sessions(source_dir, str_ID):
     elif (str_ID.lower() == 'BHC-7'.lower()):
         linear_xaxis = np.array([-3,-2,-1,7,14])
     elif (str_ID.lower() == 'processed_data_rh11'.lower()):
-        linear_xaxis = np.array([-3,-2,-1,2,7,14,15,21,22,28,29,35])
+        linear_xaxis = np.array([-3,-2,2,7,14,21,28,35,42])
         dict_shank_spatial_info = {
             '0':'G300',
             '1':'L300',
@@ -463,7 +479,7 @@ def combine_sessions(source_dir, str_ID):
         # inhibitory_cell[iter,:] = sort_by_shank(pop_stats_cell[iter]['type_inhib'],tmp_shank)
         # Saving spike counts
         (cluster_property,N_stim,N_bsl,shank_num,spont_FR,event_FR) = extract_spikes(clus_property[iter])
-        
+        (burstN,burstN_bsl,burstL,burstL_bsl,burstFR,burstFR_bsl) = extract_bursts(clus_property[iter])
         # Avg Spont FR (Tonic activity) 
         avg_spont_FR.append(np.mean(spont_FR))
         # Avg during stim FR (phasic activity)
@@ -563,12 +579,12 @@ def combine_sessions(source_dir, str_ID):
                 "event_FR": event_FR, # Peak FR during stim (for inhibited cells, this would be the minimum FR)
                 "N_bsl" : N_bsl,    # Total spikes in 1.5 sec duration
                 "N_stim" : N_stim,  # Total spikes in 1.5 sec duration
-                "burstN" : [],     #during stimulation only (average over trials) [exact times: 2.5s to 3.5s mark]
-                "burstL" : [],     #during stimulation only (length averaged over all events irrespective of trials) [exact times: 2.5s to 3.5s mark]
-                "burstFR": [],     #during stimulation only (FR averaged over all events irrespective of trials) [exact times: 2.5s to 3.5s mark]
-                # "burstN_fix_stim" : [],     
-                # "burstN_log_bsl" : [],      # log method: during baseline only (average over trials) [time is pre stim and almost equal to stim time : 1.5s to 2.5 s]
-                # "burstN_fix_bsl" : [],
+                "burstN" : burstN,     #during stimulation only (average over trials) [exact times: 2.5s to 4s mark]
+                "burstL" : burstL,     #during stimulation only (length averaged over all events irrespective of trials) [exact times: 2.5s to 4s mark]
+                "burstFR": burstFR,     #during stimulation only (FR averaged over all events irrespective of trials) [exact times: 2.5s to 4s mark]
+                "burstN_bsl" : burstN_bsl,     #during baseline only (average over trials) [exact times: 0.5 to 2.5s mark]
+                "burstL_bsl" : burstL_bsl,     #during baseline only (length averaged over all events irrespective of trials) [exact times: 0.5 to 2.5s mark]
+                "burstFR_bsl": burstFR_bsl,     #during baseline only (FR averaged over all events irrespective of trials) [exact times: 0.5 to 2.5s  mark]
                 "burst_i": burst_I_arr,
                 "tau_r": tau_refractory_arr,
                 "wav_assym": wv_asym_arr
