@@ -1,5 +1,7 @@
-function [] = func_plot3d(struct_in,xaxis_in,filename_fig,bsl_indx)
+function [out_arr] = func_plot3d(struct_in,xaxis_in,filename_fig,bsl_indx)
 
+% output array contains the relative area and the relative shift in center
+out_arr = {};
 % Plotting the activation area center 
 area = zeros(1,length(struct_in));
 vec_rel = zeros(length(struct_in),2);
@@ -19,6 +21,14 @@ colors = [0,0,1;0,0,1];
 sz_tmp = size(area,2) - size(bsl_indx,2);
 s2 = zeros(sz_tmp,3);
 colors = vertcat(colors,s2);
+
+if sz_tmp > 5
+    out_arr{end+1} = (area(end) + area(end-1))/2;   % avg area 
+    out_arr{end+1} = (x_axis(end) + x_axis(end-1))/2;   % avg x shift
+else
+    out_arr{end+1} = area(end);     % avg area 
+    out_arr{end+1} = x_axis(end);    % avg x shift
+end
 
 scatter3(x_axis,y_axis,z_axis,area*500,colors,'filled');
 % Customize the appearance of the plot
@@ -78,6 +88,12 @@ colors = [0,0,1;0,0,1];
 sz_tmp = size(area,2) - size(bsl_indx,2);
 s2 = zeros(sz_tmp,3);
 colors = vertcat(colors,s2);
+
+if sz_tmp > 5
+    out_arr{end+1} = (y_axis(end) + y_axis(end-1))/2;   % avg y shift
+else
+    out_arr{end+1} = y_axis(end);    % avg y shift
+end
 
 scatter3(x_axis,y_axis,z_axis,area*500,colors,'filled');
 % Customize the appearance of the plot
