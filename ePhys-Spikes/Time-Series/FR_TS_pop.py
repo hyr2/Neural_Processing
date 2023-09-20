@@ -405,17 +405,25 @@ def combine_sessions(source_dir, str_ID):
     )
     df_all_clusters_main = pd.DataFrame(
         {
-            "animal_ID":[],
-            "day": [],
-            "shank": [],
-            "celltype": [],
-            "response": [],
-            "T2P": [],
-            "spont_FR": [],
-            "event_FR": [],
-            "burst_i": [],
-            "tau_r": [],
-            "wav_assym": []
+                "animal_ID":[],
+                "day": [],
+                "shank": [],
+                "celltype": [],
+                "response": [],
+                "T2P": [],
+                "spont_FR": [], # the spont FR pre stim 
+                "event_FR": [], # Peak FR during stim (for inhibited cells, this would be the minimum FR)
+                "N_bsl" : [],    # Total spikes in 1.5 sec duration
+                "N_stim" : [],  # Total spikes in 1.5 sec duration
+                "burstN" : [],     #during stimulation only (average over trials) [exact times: 2.5s to 4s mark]
+                "burstL" : [],     #during stimulation only (length averaged over all events irrespective of trials) [exact times: 2.5s to 4s mark]
+                "burstFR": [],     #during stimulation only (FR averaged over all events irrespective of trials) [exact times: 2.5s to 4s mark]
+                "burstN_bsl" : [],     #during baseline only (average over trials) [exact times: 0.5 to 2.5s mark]
+                "burstL_bsl" : [],     #during baseline only (length averaged over all events irrespective of trials) [exact times: 0.5 to 2.5s mark]
+                "burstFR_bsl": [],     #during baseline only (FR averaged over all events irrespective of trials) [exact times: 0.5 to 2.5s  mark]
+                "burst_i": [],
+                "tau_r": [],
+                "wav_assym": []
         }
     )
     
