@@ -255,6 +255,17 @@ def extract_bursts(clus_property_local):
         burstFR_bsl[itr] = clus_property_local[itr]['burstFR_bsl']
     return (burstN,burstN_bsl,burstL,burstL_bsl,burstFR,burstFR_bsl)    
 
+def extract_adaptation(clus_property_local):
+    n_clusters = len(clus_property_local)
+    adapt_time_avg = np.zeros([n_clusters,],dtype = float)  
+    adapt_time_end = np.zeros([n_clusters,],dtype = float)
+    adapt_trial = np.zeros([n_clusters,],dtype = float)
+    for itr in range(n_clusters):
+        adapt_time_avg[itr] = clus_property_local[itr]['adapt_time_avg']
+        adapt_time_end[itr] = clus_property_local[itr]['adapt_time_end']
+        adapt_trial[itr] = clus_property_local[itr]['adapt_trial']
+    return (adapt_time_avg,adapt_time_end,adapt_trial)    
+
 def combine_sessions(source_dir, str_ID):
     # source_dir : source directory global (ie for mouse instead of a single session)
     # str_ID : string for mouse label (name/ID)
@@ -332,7 +343,7 @@ def combine_sessions(source_dir, str_ID):
             '0':'G300',
             '1':'L300',
             '2':'L300',
-            '3':'S2'
+            '3':'G300'
         }
     else:
         sys.exit('No string matched with: ' + str_ID)
@@ -423,7 +434,11 @@ def combine_sessions(source_dir, str_ID):
                 "burstFR_bsl": [],     #during baseline only (FR averaged over all events irrespective of trials) [exact times: 0.5 to 2.5s  mark]
                 "burst_i": [],
                 "tau_r": [],
-                "wav_assym": []
+                "wav_assym": [],
+                "adapt_time_avg" : [],  # Thomas Adaptation Z scored relavtive to avg response during stim
+                "adapt_time_end" : [],  # Thomas Adaptation Z scored relavtive to end of response during stim
+                "adapt_trial" : [],      # Thomas Adaptation over trials
+                "region" : []
         }
     )
     
@@ -488,6 +503,7 @@ def combine_sessions(source_dir, str_ID):
         # Saving spike counts
         (cluster_property,N_stim,N_bsl,shank_num,spont_FR,event_FR) = extract_spikes(clus_property[iter])
         (burstN,burstN_bsl,burstL,burstL_bsl,burstFR,burstFR_bsl) = extract_bursts(clus_property[iter])
+        (adapt_time_avg,adapt_time_end,adapt_trial) = extract_adaptation(clus_property[iter])
         # Avg Spont FR (Tonic activity) 
         avg_spont_FR.append(np.mean(spont_FR))
         # Avg during stim FR (phasic activity)
@@ -575,6 +591,10 @@ def combine_sessions(source_dir, str_ID):
         for iter_local in range(shank_num.shape[0]):
             print(shank_num[iter_local])
         
+        # Get region here (from dictionary mapping see top of code)
+        shank_num_list = list(map(str, list(shank_num)))
+        shank_num_list = [dict_shank_spatial_info[key] for key in shank_num_list if key in dict_shank_spatial_info]
+
         tmp_df = pd.DataFrame(
             {
                 "animal_ID":[str_ID] * T2P_arr.shape[0],
@@ -595,7 +615,11 @@ def combine_sessions(source_dir, str_ID):
                 "burstFR_bsl": burstFR_bsl,     #during baseline only (FR averaged over all events irrespective of trials) [exact times: 0.5 to 2.5s  mark]
                 "burst_i": burst_I_arr,
                 "tau_r": tau_refractory_arr,
-                "wav_assym": wv_asym_arr
+                "wav_assym": wv_asym_arr,
+                "adapt_time_avg" : adapt_time_avg,  # Thomas Adaptation Z scored relavtive to avg response during stim
+                "adapt_time_end" : adapt_time_end,  # Thomas Adaptation Z scored relavtive to end of response during stim
+                "adapt_trial" : adapt_trial,      # Thomas Adaptation over trials
+                "region" : shank_num_list        # Region that this shank belongs to
             }
         )
         
