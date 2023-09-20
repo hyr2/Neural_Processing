@@ -102,7 +102,7 @@ for i_clus = 1:n_clus   % each cluster in mountainsort output is assigned a shan
     % prim_ch = pri_ch_lut(i_clus);   % this is the Mountainsort channel ID (starts from 1)]
 %     disp(get_shanknum_from_msort_id(prim_ch,Native_orders,chmap_mat,chmap2x16))
     % shank_num(i_clus) = int8(get_shanknum_from_msort_id(prim_ch,Native_orders,chmap_mat,chmap2x16)); % function used to get shank ID  
-    shank_num(i_clus) = floorDiv(clus_loc(i_clus,1),250) + 1;
+    shank_num(i_clus) = idivide(int16(clus_loc(i_clus,1)),250) + 1;         % Starts from 1 to 4 
 end
 
 % More curation code

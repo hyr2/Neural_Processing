@@ -337,7 +337,7 @@ def plot_all_trials(input_arr,Fs,folder_path,clus_dict):
     
     f, a = plt.subplots(1,1)
     a.set_ylabel('FR/Hz')
-    len_str = 'Cluster ID:' + str(clus_dict['cluster_id']) + '| Shank:' + str(clus_dict['shank_num']) + '| Adap:' + str(round(clus_dict['stim_response'],2)) + '| Adap(end):' + str(round(clus_dict['stim_response_end'],2)) 
+    len_str = 'Cluster ID:' + str(clus_dict['cluster_id']) + '| Shank:' + str(clus_dict['shank_num']) + '| Adap:' + str(round(clus_dict['adapt_time_avg'],2)) + '| Adap(end):' + str(round(clus_dict['adapt_time_end'],2)) 
     f.suptitle(len_str,wrap=True)
     if clus_dict['clus_prop'] == 1:
         a.plot(t_axis[t_start_indx:t_end_indx+25],input_arr[t_start_indx:t_end_indx+25],'g', lw=2.0)
