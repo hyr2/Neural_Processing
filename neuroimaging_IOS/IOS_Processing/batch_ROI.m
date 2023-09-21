@@ -17,6 +17,8 @@ else    % exit function if ROI.mat already exists
     if isfile(fullfile(mat_dir,'ROI.mat'))
         BW = 0;
         mask = 0;
+        coord_r = 0;
+        save_flag = 0;
         return
     end
 end
