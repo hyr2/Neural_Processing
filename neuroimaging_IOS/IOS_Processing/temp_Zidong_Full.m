@@ -7,7 +7,7 @@
 clear 
 close all;
 % Partial Automation (ie batch process) IOS imaging files
-parent_directory = '/home/hyr2-office/.media/share/xl_neurovascular_coupling/November_2021 - NVC/RH-11';         % Reading from Remote Server
+parent_directory = '/home/hyr2-office/.media/share/xl_neurovascular_coupling/November_2021 - NVC/RH-11/';         % Reading from Remote Server
 parent_directory_local = '/home/hyr2-office/Documents/Data/IOS_imaging/rh11/';           % Saving into local PC. Must have the same sessions IDs as the Server
 file_X = dir_sorted(parent_directory);
 file_X = {file_X.name};
@@ -23,6 +23,8 @@ for iter_filename = file_X
     [sample_img,coord_r,save_flag] = temp_batch_ROI(source_dir,Raw_dir,cam_in);
 
     if save_flag == 1
+        tmp_str = char(iter_filename);
+        % iter_filename = tmp_str(3:end);
         mat_dir = fullfile(parent_directory_local,iter_filename,'Processed','mat_files','ROI.mat');
         Avg_directory = fullfile(parent_directory_local,iter_filename,'Processed','Average','sample_image.mat');
         save(Avg_directory,'sample_img');
