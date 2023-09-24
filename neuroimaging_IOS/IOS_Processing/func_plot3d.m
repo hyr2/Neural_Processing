@@ -6,8 +6,8 @@ out_arr = {};
 area = zeros(1,length(struct_in));
 vec_rel = zeros(length(struct_in),2);
 for iter_local = 1:length(struct_in)
-    area(iter_local) = struct_in{iter_local}.wv_580.Area;
-    vec_rel(iter_local,:) = struct_in{iter_local}.wv_580.vec_rel(1,:);
+    area(iter_local) = struct_in{iter_local}.wv_480.Area;
+    vec_rel(iter_local,:) = struct_in{iter_local}.wv_480.vec_rel(1,:);
 end
 
 %% performing fit for X axis

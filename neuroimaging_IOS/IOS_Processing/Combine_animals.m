@@ -24,7 +24,7 @@ for iter_filename = file_X
     source_dir = fullfile(mouse_bc7,iter_filename);
     disp(source_dir);
     if isdir(source_dir)
-        File_load_local = fullfile(source_dir,'Processed','mat_files','580nm_processed.mat');
+        File_load_local = fullfile(source_dir,'Processed','mat_files','480nm_processed.mat');
         struct_bc7{iter_local} = load(File_load_local);
     end
 end
