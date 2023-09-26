@@ -15,7 +15,7 @@ import seaborn as sns
 
 
 
-# Script to perform statistical testing on the neural data (only for spiking data) [use after running: "combined_pop_versionA.py"]
+# Script to perform statistical testing on the neural data (only for populational analysis) [use after running: "combined_pop_versionA.py"]
 def stat_test_pop(source_dir):
     # output dataframe
     df_output_csv = pd.DataFrame({
@@ -35,47 +35,152 @@ def stat_test_pop(source_dir):
     df_l300_abs = pd.read_pickle(os.path.join(source_dir,'dataframe_L300_abs.pkl'))
     df_g300_abs = pd.read_pickle(os.path.join(source_dir,'dataframe_G300_abs.pkl'))
 
+    # ----------------- STATISITCAL TESTS ON ABSOLUTES ______________________________________________________
     # Statistical tests (ratios only) with its own baseline: 1. peri-infarct region vs 2. healthier region
     df_l300_abs_new = df_l300_abs.filter(['day','activated','nor','suppressed','excitatory','inhibitory','act_E','act_I'])
     df_g300_abs_new = df_g300_abs.filter(['day','activated','nor','suppressed','excitatory','inhibitory','act_E','act_I'])
     df_l300_abs_new['total_cells'] = df_l300_abs_new['activated'] + df_l300_abs_new['nor'] + df_l300_abs_new['suppressed']
     df_g300_abs_new['total_cells'] = df_g300_abs_new['activated'] + df_g300_abs_new['nor'] + df_g300_abs_new['suppressed']
     
-    df_l300_abs_new.loc[(df_l300_abs_new['day'] >= 21),'day'] = 'Chronic'
-    df_l300_abs_new.loc[(df_l300_abs_new['day'] == -3) | (df_l300_abs_new['day'] == -2),'day'] = 'Pre'
-    df_l300_abs_new.loc[(df_l300_abs_new['day'] == 2),'day'] = 'SubAcute'
-    df_l300_abs_new.loc[(df_l300_abs_new['day'] == 7) | (df_l300_abs_new['day'] == 14),'day'] = 'Recovery'
-    df_g300_abs_new.loc[(df_g300_abs_new['day'] >= 21),'day'] = 'Chronic'
-    df_g300_abs_new.loc[(df_g300_abs_new['day'] == -3) | (df_g300_abs_new['day'] == -2),'day'] = 'Pre'
-    df_g300_abs_new.loc[(df_g300_abs_new['day'] == 2),'day'] = 'SubAcute'
-    df_g300_abs_new.loc[(df_g300_abs_new['day'] == 7) | (df_g300_abs_new['day'] == 14),'day'] = 'Recovery'
-    
+    df_g300_abs_new.loc[df_g300_abs_new['day'] == -3 ,'day'] = -2 
+    df_l300_abs_new.loc[df_l300_abs_new['day'] == -3 ,'day'] = -2 
     
     # r_1 : proportion of stim-locked (activated) clusters per shank
     # r_2 : proportion of stim-locked (activated) and excitatory clusters per shank
     # r_3 : proportion of stim-locked (suppressed) clusters per shank
     # r_4 : ratio of inhibitory to excitatory clusters per shank
-    df_l300_abs_new['r_1'] = df_l300_abs_new['activated']/(df_l300_abs_new['total_cells'])
+    df_l300_abs_new['r_1'] = df_l300_abs_new['activated']/(df_l300_abs_new['nor'])
     df_l300_abs_new['r_2'] = df_l300_abs_new['act_E']/(df_l300_abs_new['total_cells']) 
     df_l300_abs_new['r_3'] = df_l300_abs_new['suppressed']/(df_l300_abs_new['total_cells'])
     df_l300_abs_new['r_4'] = df_l300_abs_new['inhibitory']/(df_l300_abs_new['excitatory'])
-    df_g300_abs_new['r_1'] = df_g300_abs_new['activated']/(df_g300_abs_new['total_cells'])
+    df_g300_abs_new['r_1'] = df_g300_abs_new['activated']/(df_g300_abs_new['nor'])
     df_g300_abs_new['r_2'] = df_g300_abs_new['act_E']/(df_g300_abs_new['total_cells']) 
     df_g300_abs_new['r_3'] = df_g300_abs_new['suppressed']/(df_g300_abs_new['total_cells'])
     df_g300_abs_new['r_4'] = df_g300_abs_new['inhibitory']/(df_g300_abs_new['excitatory'])
     
+    df_l300_abs_new.loc[(df_l300_abs_new['day'] >= 21) & (df_l300_abs_new['day'] < 56),'day'] = 'Chronic'
+    df_l300_abs_new.loc[(df_l300_abs_new['day'] == -3) | (df_l300_abs_new['day'] == -2),'day'] = 'Pre'
+    df_l300_abs_new.loc[(df_l300_abs_new['day'] == 2),'day'] = 'SubAcute'
+    df_l300_abs_new.loc[(df_l300_abs_new['day'] == 7) | (df_l300_abs_new['day'] == 14),'day'] = 'Recovery'
+    df_g300_abs_new.loc[(df_g300_abs_new['day'] >= 21) & (df_g300_abs_new['day'] < 56),'day'] = 'Chronic'
+    df_g300_abs_new.loc[(df_g300_abs_new['day'] == -3) | (df_g300_abs_new['day'] == -2),'day'] = 'Pre'
+    df_g300_abs_new.loc[(df_g300_abs_new['day'] == 2),'day'] = 'SubAcute'
+    df_g300_abs_new.loc[(df_g300_abs_new['day'] == 7) | (df_g300_abs_new['day'] == 14),'day'] = 'Recovery'
+    
+    # r1 : stimL to Total cell count ratio
+    # 0: Chronic, 1: Pre, 2: Recovery, 3: SubAcute (example usage : np.array(r1[0],dtype = float))
+    r1 = df_g300_abs_new.groupby('day').r_1.apply(np.array)                                                 # very powerful method to apply a function directly after a groupby command in pandas
+    r1.drop(index = 56, inplace = True)
+    sstats.ranksums(r1.iloc[1][~np.isnan(r1.iloc[1])], r1.iloc[0][~np.isnan(r1.iloc[0])],alternative = 'greater')     # vs chronic
+    sstats.ranksums(r1.iloc[1][~np.isnan(r1.iloc[1])], r1.iloc[2][~np.isnan(r1.iloc[2])],alternative = 'greater')     # vs recovery
+    r1 = df_l300_abs_new.groupby('day').r_1.apply(np.array)
+    r1.drop(index = 56, inplace = True)
+    sstats.ranksums(r1.iloc[1][~np.isnan(r1.iloc[1])], r1.iloc[0][~np.isnan(r1.iloc[0])],alternative = 'greater')     # vs chronic
+    sstats.ranksums(r1.iloc[1][~np.isnan(r1.iloc[1])], r1.iloc[2][~np.isnan(r1.iloc[2])],alternative = 'greater')     # vs recovery
+    # r4 : E I ratio
+    # 0: Chronic, 1: Pre, 2: Recovery, 3: SubAcute (example usage : np.array(r1[0],dtype = float))
+    r4 = df_g300_abs_new.groupby('day').r_4.apply(np.array)    
+    r4.drop(index = 56, inplace = True)                                             # very powerful method to apply a function directly after a groupby command in pandas 
+    sstats.ranksums(r4.iloc[1][~np.isnan(r4.iloc[1])], r4.iloc[0][~np.isnan(r4.iloc[0])],alternative = 'two-sided')     # vs chronic
+    sstats.ranksums(r4.iloc[1][~np.isnan(r4.iloc[1])], r4.iloc[2][~np.isnan(r4.iloc[2])],alternative = 'two-sided')     # vs recovery                                          
+    r4 = df_l300_abs_new.groupby('day').r_4.apply(np.array)
+    r4.drop(index = 56, inplace = True)   
+    sstats.ranksums(r4.iloc[1][~np.isnan(r4.iloc[1])], r4.iloc[0][~np.isnan(r4.iloc[0])],alternative = 'less')     # vs chronic
+    sstats.ranksums(r4.iloc[1][~np.isnan(r4.iloc[1])], r4.iloc[2][~np.isnan(r4.iloc[2])],alternative = 'less')     # vs recovery
+    # Comparing Pyr cells only 
+    r1 = df_g300_abs_new.groupby('day').excitatory.apply(np.array)
+    r1.drop(index = 56, inplace = True)
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Chronic'][~np.isnan(r1.loc['Chronic'])],alternative = 'greater')     # vs chronic
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Recovery'][~np.isnan(r1.loc['Recovery'])],alternative = 'greater')     # vs recovery
+    r1 = df_l300_abs_new.groupby('day').excitatory.apply(np.array)
+    r1.drop(index = 56, inplace = True)
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Chronic'][~np.isnan(r1.loc['Chronic'])],alternative = 'greater')     # vs chronic
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Recovery'][~np.isnan(r1.loc['Recovery'])],alternative = 'greater')     # vs recovery
+    # Comparing FS/PV cells only 
+    r1 = df_g300_abs_new.groupby('day').inhibitory.apply(np.array)
+    r1.drop(index = 56, inplace = True)
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Chronic'][~np.isnan(r1.loc['Chronic'])],alternative = 'greater')     # vs chronic
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Recovery'][~np.isnan(r1.loc['Recovery'])],alternative = 'greater')     # vs recovery
+    r1 = df_l300_abs_new.groupby('day').inhibitory.apply(np.array)
+    r1.drop(index = 56, inplace = True)
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Chronic'][~np.isnan(r1.loc['Chronic'])],alternative = 'greater')     # vs chronic
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Recovery'][~np.isnan(r1.loc['Recovery'])],alternative = 'greater')     # vs recovery
+    # Comparing StimL cells 
+    r1 = df_g300_abs_new.groupby('day').activated.apply(np.array)
+    r1.drop(index = 56, inplace = True)
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Chronic'][~np.isnan(r1.loc['Chronic'])],alternative = 'greater')     # vs chronic
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Recovery'][~np.isnan(r1.loc['Recovery'])],alternative = 'greater')     # vs recovery
+    r1 = df_l300_abs_new.groupby('day').activated.apply(np.array)
+    r1.drop(index = 56, inplace = True)
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Chronic'][~np.isnan(r1.loc['Chronic'])],alternative = 'greater')     # vs chronic
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Recovery'][~np.isnan(r1.loc['Recovery'])],alternative = 'greater')     # vs recovery
+    # Comparing no response cells
+    r1 = df_g300_abs_new.groupby('day').nor.apply(np.array)
+    r1.drop(index = 56, inplace = True)
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Chronic'][~np.isnan(r1.loc['Chronic'])],alternative = 'greater')     # vs chronic
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Recovery'][~np.isnan(r1.loc['Recovery'])],alternative = 'greater')     # vs recovery
+    r1 = df_l300_abs_new.groupby('day').nor.apply(np.array)
+    r1.drop(index = 56, inplace = True)
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Chronic'][~np.isnan(r1.loc['Chronic'])],alternative = 'greater')     # vs chronic
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Recovery'][~np.isnan(r1.loc['Recovery'])],alternative = 'greater')     # vs recovery
+    # Comparing Pyr only StimL cells
+    r1 = df_g300_abs_new.groupby('day').act_E.apply(np.array)
+    r1.drop(index = 56, inplace = True)
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Chronic'][~np.isnan(r1.loc['Chronic'])],alternative = 'less')     # vs chronic
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Recovery'][~np.isnan(r1.loc['Recovery'])],alternative = 'less')     # vs recovery
+    r1 = df_l300_abs_new.groupby('day').act_E.apply(np.array)
+    r1.drop(index = 56, inplace = True)
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Chronic'][~np.isnan(r1.loc['Chronic'])],alternative = 'greater')     # vs chronic
+    sstats.ranksums(r1.loc['Pre'][~np.isnan(r1.loc['Pre'])], r1.loc['Recovery'][~np.isnan(r1.loc['Recovery'])],alternative = 'greater')     # vs recovery
+    
+    
+    
+    # ----------------- STATISITCAL TESTS ON CHANGES ______________________________________________________
+    df_l300_new = df_l300.filter(['day','activated','nor','suppressed','excitatory','inhibitory','act_E','act_I'])
+    df_g300_new = df_g300.filter(['day','activated','nor','suppressed','excitatory','inhibitory','act_E','act_I'])
+    df_l300_new['total_cells'] = df_l300_new['activated'] + df_l300_new['nor'] + df_l300_new['suppressed']
+    df_g300_new['total_cells'] = df_g300_new['activated'] + df_g300_new['nor'] + df_g300_new['suppressed']
+    
+    # common baseline
+    df_g300_new.loc[df_g300_new['day'] == -3 ,'day'] = -2 
+    df_l300_new.loc[df_l300_new['day'] == -3 ,'day'] = -2 
+    
+    # without bucket testing
+    # 0: Chronic, 1: Pre, 2: Recovery, 3: SubAcute (example usage : np.array(r1[0],dtype = float))
+    r1 = df_g300_new.groupby('day').act_E.apply(np.array)
+    r1.drop(index = 56, inplace = True)
+    r2 = df_l300_new.groupby('day').act_E.apply(np.array)
+    r2.drop(index = 56, inplace = True)
+    sstats.ranksums(r1.loc[7][~np.isnan(r1.loc[7])],r2.loc[7][~np.isnan(r2.loc[7])] ,alternative = 'greater')     # L300 vs G300 (day 7 only)
+    sstats.ranksums(r1.loc[14][~np.isnan(r1.loc[14])],r2.loc[14][~np.isnan(r2.loc[14])] ,alternative = 'greater')     # L300 vs G300 (day 14 only)
+    sstats.ranksums(r1.loc[21][~np.isnan(r1.loc[21])],r2.loc[21][~np.isnan(r2.loc[21])] ,alternative = 'greater')     # L300 vs G300 (day 21 only)
+    sstats.ranksums(r1.loc[28][~np.isnan(r1.loc[28])],r2.loc[28][~np.isnan(r2.loc[28])] ,alternative = 'greater')     # L300 vs G300 (day 28 only)
+    sstats.ranksums(r1.loc[35][~np.isnan(r1.loc[35])],r2.loc[35][~np.isnan(r2.loc[35])] ,alternative = 'greater')     # L300 vs G300 (day 35 only)
+    sstats.ranksums(r1.loc[42][~np.isnan(r1.loc[42])],r2.loc[42][~np.isnan(r2.loc[42])] ,alternative = 'greater')     # L300 vs G300 (day 42 only)
+    sstats.ranksums(r1.loc[49][~np.isnan(r1.loc[49])],r2.loc[49][~np.isnan(r2.loc[49])] ,alternative = 'greater')     # L300 vs G300 (day 49 only)
+    
+    # buckets
+    df_l300_new.loc[(df_l300_new['day'] >= 21) & (df_l300_new['day'] < 56),'day'] = 'Chronic'
+    df_l300_new.loc[(df_l300_new['day'] == -3) | (df_l300_new['day'] == -2),'day'] = 'Pre'
+    df_l300_new.loc[(df_l300_new['day'] == 2),'day'] = 'SubAcute'
+    df_l300_new.loc[(df_l300_new['day'] == 7) | (df_l300_new['day'] == 14),'day'] = 'Recovery'
+    df_g300_new.loc[(df_g300_new['day'] >= 21) & (df_g300_new['day'] < 56),'day'] = 'Chronic'
+    df_g300_new.loc[(df_g300_new['day'] == -3) | (df_g300_new['day'] == -2),'day'] = 'Pre'
+    df_g300_new.loc[(df_g300_new['day'] == 2),'day'] = 'SubAcute'
+    df_g300_new.loc[(df_g300_new['day'] == 7) | (df_g300_new['day'] == 14),'day'] = 'Recovery'
     
     # 0: Chronic, 1: Pre, 2: Recovery, 3: SubAcute (example usage : np.array(r1[0],dtype = float))
-    r1 = df_g300_abs_new.groupby('day').r_1.apply(np.array)                                                 # very powerful method to apply a function directly after a groupby command in pandas 
-    sstats.ranksums(r1[1][~np.isnan(r1[1])], r1[0][~np.isnan(r1[0])],alternative = 'greater')
-    sstats.ranksums(r1[1][~np.isnan(r1[1])], r1[2][~np.isnan(r1[2])],alternative = 'greater')
-    
-    r1 = df_l300_abs_new.groupby('day').r_1.apply(np.array)
-    sstats.ranksums(r1[1][~np.isnan(r1[1])], r1[0][~np.isnan(r1[0])],alternative = 'greater')
-    sstats.ranksums(r1[1][~np.isnan(r1[1])], r1[2][~np.isnan(r1[2])],alternative = 'greater')
+    r1 = df_g300_new.groupby('day').act_E.apply(np.array)
+    r1.drop(index = 56, inplace = True)
+    r2 = df_l300_new.groupby('day').act_E.apply(np.array)
+    r2.drop(index = 56, inplace = True)
+    sstats.ranksums(r1.loc['Recovery'][~np.isnan(r1.loc['Recovery'])],r2.loc['Recovery'][~np.isnan(r2.loc['Recovery'])] ,alternative = 'greater')     # L300 vs G300 (Recovery)
+    sstats.ranksums(r1.loc['Chronic'][~np.isnan(r1.loc['Chronic'])],r2.loc['Chronic'][~np.isnan(r2.loc['Chronic'])] ,alternative = 'greater')     # L300 vs G300 (Chronic)
     
     
 
+
+    
 # Script to perform statistical testing on the neural data (only for spiking data) [use after running: "combined_FR_TS_pop_versionA"]
 def stat_test_spikes(source_dir):
     # Input:

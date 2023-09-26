@@ -18,7 +18,7 @@ x_bsl = (x_axis(1) + x_axis(2))/2;
 x_axis = x_axis - x_bsl;
 area = area/max(area);
 colors = [0,0,1;0,0,1];
-sz_tmp = size(area,2) - size(bsl_indx,2);
+sz_tmp = size(x_axis,1) - size(bsl_indx,2);
 s2 = zeros(sz_tmp,3);
 colors = vertcat(colors,s2);
 
@@ -29,6 +29,11 @@ else
     out_arr{end+1} = area(end);     % avg area 
     out_arr{end+1} = x_axis(end);    % avg x shift
 end
+z_axis = z_axis(~isnan(y_axis));
+area = area(~isnan(y_axis));
+colors = colors(~isnan(y_axis),:,:);
+x_axis = x_axis(~isnan(x_axis));
+y_axis = y_axis(~isnan(y_axis));
 
 scatter3(x_axis,y_axis,z_axis,area*500,colors,'filled');
 % Customize the appearance of the plot
@@ -69,8 +74,9 @@ y_val = zeros(1,length(z_range));
 hold on;
 plot3(ax,smoother_x_fit,y_val, z_range, 'Color', '#686869' , 'LineWidth', 2.5);
 grid off;
-xlim([-1,1]);
+xlim([-1.1,1.1]);
 zlim([-6,56]);
+xticks([-1,0,1]);
 set(gca,'ZTickLabel',[]);
 set(ax,'FontSize',24)
 set(ax,'ZColor','none');
@@ -83,9 +89,9 @@ x_axis = 8e-3 * vec_rel(:,1); % in mm
 y_axis = 8e-3 * vec_rel(:,2); % in mm
 y_bsl = (y_axis(1) + y_axis(2))/2;
 y_axis = y_axis - y_bsl;
-area = area/max(area);
+% area = area/max(area);
 colors = [0,0,1;0,0,1];
-sz_tmp = size(area,2) - size(bsl_indx,2);
+sz_tmp = size(x_axis,1) - size(bsl_indx,2);
 s2 = zeros(sz_tmp,3);
 colors = vertcat(colors,s2);
 
@@ -94,7 +100,11 @@ if sz_tmp > 5
 else
     out_arr{end+1} = y_axis(end);    % avg y shift
 end
-
+z_axis = z_axis(~isnan(y_axis));
+% area = area(~isnan(y_axis));
+colors = colors(~isnan(y_axis),:,:);
+x_axis = x_axis(~isnan(x_axis));
+y_axis = y_axis(~isnan(y_axis));
 scatter3(x_axis,y_axis,z_axis,area*500,colors,'filled');
 % Customize the appearance of the plot
 ax = gca();
@@ -127,8 +137,9 @@ x_val = zeros(1,length(z_range));
 hold on;
 plot3(ax,x_val,smoother_y_fit, z_range, 'Color', '#686869', 'LineWidth', 2.5);
 grid off;
-ylim([-1,1]);
+ylim([-1.1,1.1]);
 zlim([-6,56]);
+yticks([-1,0,1]);
 set(gca,'ZTickLabel',[]);
 set(ax,'ZColor','none');
 set(ax,'FontSize',24)

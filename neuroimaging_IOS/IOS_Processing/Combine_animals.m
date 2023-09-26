@@ -41,7 +41,7 @@ for iter_filename = file_X
     source_dir = fullfile(mouse_rh3,iter_filename);
     disp(source_dir);
     if isdir(source_dir)
-        File_load_local = fullfile(source_dir,'Processed','mat_files','580nm_processed.mat');
+        File_load_local = fullfile(source_dir,'Processed','mat_files','480nm_processed.mat');
         struct_rh3{iter_local} = load(File_load_local);
     end
 end
@@ -68,14 +68,14 @@ file_X = {file_X.name};
 file_X =  file_X(~ismember(file_X,{'.','..'}));
 struct_rh11 = {};
 iter_local = 0; 
-xaxis_rh11 = [-5,-3,2,7,14,21,28,35,42,49];  %(baselines: 10-24,10-27)
+xaxis_rh11 = [-5,-3,2,7,14,21,28,35,42,49,56];  %(baselines: 10-24,10-27)
 for iter_filename = file_X
     iter_local = iter_local + 1;
     iter_filename = string(iter_filename);
     source_dir = fullfile(mouse_rh11,iter_filename);
     disp(source_dir);
     if isdir(source_dir)
-        File_load_local = fullfile(source_dir,'Processed','mat_files','580nm_processed.mat');
+        File_load_local = fullfile(source_dir,'Processed','mat_files','480nm_processed.mat');
         struct_rh11{iter_local} = load(File_load_local);
     end
 end
@@ -92,7 +92,7 @@ for iter_filename = file_X
     source_dir = fullfile(mouse_rh7,iter_filename);
     disp(source_dir);
     if isdir(source_dir)
-        File_load_local = fullfile(source_dir,'Processed','mat_files','580nm_processed.mat');
+        File_load_local = fullfile(source_dir,'Processed','mat_files','480nm_processed.mat');
         struct_rh7{iter_local} = load(File_load_local);
     end
 end
@@ -109,7 +109,7 @@ for iter_filename = file_X
     source_dir = fullfile(mouse_rh8,iter_filename);
     disp(source_dir);
     if isdir(source_dir)
-        File_load_local = fullfile(source_dir,'Processed','mat_files','580nm_processed.mat');
+        File_load_local = fullfile(source_dir,'Processed','mat_files','480nm_processed.mat');
         struct_rh8{iter_local} = load(File_load_local);
     end
 end
@@ -119,14 +119,14 @@ file_X = {file_X.name};
 file_X =  file_X(~ismember(file_X,{'.','..'}));
 struct_rh9 = {};
 iter_local = 0; 
-xaxis_rh9 = [-5,-3,2,7,14,21,28,35,42,49]; %(baselines: 12-16,12-17)
+xaxis_rh9 = [-5,-3,2,7,14,21,28,35,42]; %(baselines: 12-16,12-17)
 for iter_filename = file_X
     iter_local = iter_local + 1;
     iter_filename = string(iter_filename);
     source_dir = fullfile(mouse_rh9,iter_filename);
     disp(source_dir);
     if isdir(source_dir)
-        File_load_local = fullfile(source_dir,'Processed','mat_files','580nm_processed.mat');
+        File_load_local = fullfile(source_dir,'Processed','mat_files','480nm_processed.mat');
         struct_rh9{iter_local} = load(File_load_local);
     end
 end
