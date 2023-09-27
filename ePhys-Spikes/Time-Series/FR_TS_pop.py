@@ -223,8 +223,8 @@ def convert2df(T2P_allsessions):
     return df_excit,df_inhib
 
 def extract_spikes(clus_property_local):
-    N_stim = np.zeros([len(clus_property_local),],dtype = np.int32)
-    N_bsl = np.zeros([len(clus_property_local),],dtype = np.int32)
+    N_stim = np.zeros([len(clus_property_local),],dtype = float)
+    N_bsl = np.zeros([len(clus_property_local),],dtype = float)
     cluster_propery = np.zeros([len(clus_property_local),],dtype = np.int8)
     shank_num = np.ones([len(clus_property_local),],dtype = np.int8)
     spont_FR = np.zeros([len(clus_property_local),],dtype = float)
@@ -450,7 +450,7 @@ def combine_sessions(source_dir, str_ID):
     # celltype_excit = np.zeros([len(pop_stats),3])
     # celltype_inhib = np.zeros([len(pop_stats),3])
     T2P_allsessions = []    # list of 1D numpy arrays
-    main_df = deepcopy(df_all_clusters_main)
+    main_df = df_all_clusters_main.copy()
     avg_spont_FR = []
     avg_stim_FR = []
     for iter in range(len(pop_stats)):          # loop over sessions of a single animal
@@ -690,7 +690,7 @@ def combine_sessions(source_dir, str_ID):
     full_mouse_ephys['all_clusters'] = all_clusters
     full_mouse_ephys['FR_act'] = act_FR
     full_mouse_ephys['spont_FR_avg'] = np.array(avg_spont_FR, dtype='float32')      # Average FR over all clusters in each session before stim
-    full_mouse_ephys['stim_FR_avg'] = np.array(avg_stim_FR, dtype='float32')        # Min/Max FR over all clusters in each session during stim
+    full_mouse_ephys['stim_FR_avg'] = np.array(avg_stim_FR, dtype='float32')        # Avg Min/Max FR over all clusters in each session during stim
     
     sio.savemat(os.path.join(source_dir,'full_mouse_ephys.mat'), full_mouse_ephys)
     np.savez(os.path.join(source_dir,'full_mouse_T2P.npz'),T2P = np.array(T2P_allsessions,dtype = object))        # saving as object
