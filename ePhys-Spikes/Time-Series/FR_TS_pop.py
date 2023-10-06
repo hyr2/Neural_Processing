@@ -284,7 +284,7 @@ def combine_sessions(source_dir, str_ID):
     if (str_ID.lower() == 'processed_data_rh3'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,56]) 
         dict_shank_spatial_info = {
-            '0':'NaN',
+            '0':'L300',
             '1':'L300',
             '2':'G300',
             '3':'NaN'
@@ -293,7 +293,7 @@ def combine_sessions(source_dir, str_ID):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,42]) 
         dict_shank_spatial_info = {
             '0':'L300',
-            '1':'G300',
+            '1':'L300',
             '2':'S2',
             '3':'S2'
         }
@@ -310,7 +310,7 @@ def combine_sessions(source_dir, str_ID):
     elif (str_ID.lower() == 'processed_data_rh7'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,24,28,35,42,49,56])
         dict_shank_spatial_info = {
-            '0':'G300',
+            '0':'L300',
             '1':'L300',
             '2':'L300',
             '3':'S2'
@@ -321,7 +321,7 @@ def combine_sessions(source_dir, str_ID):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,35,42,49,56])  
         dict_shank_spatial_info = {
             '0':'L300',
-            '1':'L300',
+            '1':'G300',
             '2':'NaN',
             '3':'S2'
         }
@@ -330,7 +330,7 @@ def combine_sessions(source_dir, str_ID):
         dict_shank_spatial_info = {
             '0':'L300',
             '1':'L300',
-            '2':'G300',
+            '2':'L300',
             '3':'NaN'
         }
     elif (str_ID.lower() == 'B-BC8'.lower()):
@@ -341,7 +341,7 @@ def combine_sessions(source_dir, str_ID):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,35,42])
         dict_shank_spatial_info = {
             '0':'G300',
-            '1':'L300',
+            '1':'G300',
             '2':'L300',
             '3':'G300'
         }
