@@ -337,6 +337,9 @@ def combine_sessions(source_dir, str_ID):
         linear_xaxis = np.array([-4,-3,-2,-1,3,7])
     elif (str_ID.lower() == 'BHC-7'.lower()):
         linear_xaxis = np.array([-3,-2,-1,7,14])
+        dict_shank_spatial_info = {
+
+        }
     elif (str_ID.lower() == 'processed_data_rh11'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,35,42,49,56])
         dict_shank_spatial_info = {
