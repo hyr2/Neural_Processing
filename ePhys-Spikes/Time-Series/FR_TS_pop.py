@@ -214,10 +214,10 @@ def convert2df(T2P_allsessions):
     for iter_local in range(len(T2P_allsessions)):
         T2P = pd.concat([T2P,pd.Series(np.squeeze(T2P_allsessions[iter_local]))])
     
-    tmp_bool = np.array(T2P > 0.47)
+    tmp_bool = np.array(T2P > 0.425)
     df_excit.T2P = T2P[tmp_bool]
     df_excit.index = np.linspace(0,df_excit.T2P.shape[0]-1,df_excit.T2P.shape[0])
-    tmp_bool = np.array(T2P <= 0.47)
+    tmp_bool = np.array(T2P <= 0.425)
     df_inhib.T2P = T2P[tmp_bool]
     df_inhib.index = np.linspace(0,df_inhib.T2P.shape[0]-1,df_inhib.T2P.shape[0])
     return df_excit,df_inhib
@@ -338,7 +338,7 @@ def combine_sessions(source_dir, str_ID):
     elif (str_ID.lower() == 'BHC-7'.lower()):
         linear_xaxis = np.array([-3,-2,-1,7,14])
     elif (str_ID.lower() == 'processed_data_rh11'.lower()):
-        linear_xaxis = np.array([-3,-2,2,7,14,21,28,35,42])
+        linear_xaxis = np.array([-3,-2,2,7,14,21,28,35,42,49,56])
         dict_shank_spatial_info = {
             '0':'G300',
             '1':'G300',
