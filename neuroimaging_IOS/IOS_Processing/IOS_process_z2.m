@@ -36,11 +36,13 @@
 % Some important parameters
 sigma_2d = 7;
 z_thresh = -2.5;            % -2.5 or -2.75
+thresh_480 = -0.02;
+thresh_580 = -0.025;
 dist_thresh=140; %in pixels
 c_limits_480 = [-0.03,-0.01]; % Should be dynamic?
 c_limits_580 = [-0.04,-0.01]; % Should be dynamic?
 c_limits_510 = [-0.03,-0.01]; % Should be dynamic?
-frames_load = [18:35];
+frames_load = [19:32];
 
 % Loading Trial mask file
 trial_mask = fullfile(source_dir,'trial_mask.csv');
@@ -63,11 +65,13 @@ amax = mean(sample_img(:),'omitnan') + 2.75*tmp_std;
 %% Adding Vessel segmentation using adaptive thresholding
 T = adaptthresh(sample_img,0.825);
 BW_vessel = imbinarize(sample_img,T);
-
+BW_vessel = double(BW_vessel);
+BW_vessel(BW_vessel == 0) = NaN;
 %% User draws activation area region (where do you expect the activation to be located?)
-% [activation_region,x_act,y_act] = defineArea(sample_img,[amin amax]);
-x_act = [1;1;Y-140;Y-dist_thresh;1];
-y_act = [1;X;X;1;1];
+[activation_region,x_act,y_act] = defineArea(sample_img,[amin amax]);  %
+% uncomment this line to draw define an activation area. I did this for RH9
+% x_act = [1;1;Y-140;Y-dist_thresh;1];
+% y_act = [1;X;X;1;1];
 %% Working on 480nm
 load(fullfile(mat_folder,'480nm_data.mat'))
 try 
@@ -79,7 +83,7 @@ try
     img_stack_local = reshape(mean(R_data_blue,1),[75,X,Y]);    % mean over all accepted trials
     img_stack_local = permute(img_stack_local,[2,3,1]);
     img_stack_local = img_stack_local .* BW_vessel;      % mask        
-    img_stack_local(img_stack_local == 0) = NaN;         % mask is set to NaN to remove it from Z score calculations
+    % img_stack_local(img_stack_local == 0) = NaN;         % mask is set to NaN to remove it from Z score calculations
     img_stack_local = img_stack_local - 1;      % deltaR/R
     img_stack_local = permute(img_stack_local,[3,1,2]);
     [ROI_time_series_img,names] = Time_Series_extract_single(img_stack_local,mask,len_trials,X,Y);      % Time series for all ROIs
@@ -96,14 +100,15 @@ try
     for iter_seq = frames_load
         iter_local_local = iter_local_local + 1;
         name_pic = strcat('480nm-',num2str(iter_seq));
-        delRR = squeeze(img_stack_local_filtered(iter_seq,:,:)); 
+        delRR = squeeze(img_stack_local(iter_seq,:,:)); 
         % plot_overlay(sample_img,delRR,c_limits,[amin,amax],fullfile(output_folder,'480nm'),name_pic);
         % plot_overlay_auto(sample_img,delRR,c_limits_480,fullfile(output_folder,'480nm'),name_pic);
         % Tracking activation centroid and Area for current session
         % thresholdRange = [-0.01,-0.03]; % Example threshold range
         delRR_z = Zscore_nan(delRR);
         % ActMask_local = (delRR <= c_limits_480(2)) & (delRR >= c_limits_480(1));                % Binary mask absolute
-        ActMask_local_z = delRR_z < z_thresh;     % Following threshold set by Zeiger et al (2021)    % Binary mask using Z score
+        % ActMask_local = activation_region.*delRR <= thresh_580;      % Absolute threshold based on experience
+        ActMask_local_z = activation_region.*delRR_z < z_thresh;     % Following threshold set by Zeiger et al (2021)    % Binary mask using Z score
         % Area_local_raw = sum(ActMask_local(:));
         % Area_local_Z = sum(ActMask_local_z);
         labeledImage = bwlabel(ActMask_local_z);    % label each discontinuous area to a unique value
@@ -121,18 +126,27 @@ try
             CentroidsZ_local = props.Centroid;
             % Uncomment this block to apply the effect of "defineArea.m" function
             % Find if activation areas found exist within the expected roi
-            if inpolygon(CentroidsZ_local(1),CentroidsZ_local(2),x_act,y_act) == 0
-                Area_activationZ(iter_local_local) = 0;
-                CentroidsZ(iter_local_local,:) = NaN(1,2);
-                continue;
-            else
+            % if inpolygon(CentroidsZ_local(1),CentroidsZ_local(2),x_act,y_act) == 0
+                % Area_activationZ(iter_local_local) = 0;
+                % CentroidsZ(iter_local_local,:) = NaN(1,2);
+                % continue;
+            % else
                 Area_activationZ(iter_local_local) = Area_activationZ_local;
                 CentroidsZ(iter_local_local,:) = CentroidsZ_local;
                 wv_480_local.Area = Area_activationZ_local;
                 wv_480_local.Coord_c = CentroidsZ_local;
                 plot_overlay_auto_zscored_centroid(sample_img,ActMask_local_z,fullfile(output_folder,'480nm'),name_pic,wv_480_local);
                 continue;
-            end
+            % end
+        % else
+            % for iter_local1 = [1:size(props,1)]
+            %     CentroidsZ_local = props(iter_local1).Centroid;
+            %     if inpolygon(CentroidsZ_local(1),CentroidsZ_local(2),x_act,y_act) == 0
+            %         props(iter_local1) = [];
+            %     end
+            % end
+
+          
         end
         % Uncomment this block to apply the effect of "defineArea.m" function
         % tmp_a = [props.FilledArea];        
@@ -169,7 +183,7 @@ try
     name_pic = strcat('480nm-Max_Area',num2str(iter_seq));
     delRR = squeeze(img_stack_local_filtered(iter_seq,:,:)); 
     delRR_z = Zscore_nan(delRR);
-    ActMask_local_z = delRR_z < z_thresh;  
+    ActMask_local_z = activation_region.*delRR_z < z_thresh;  
     plot_overlay_auto_zscored(sample_img,ActMask_local_z,fullfile(output_folder,'480nm'),name_pic);
     vec_loc = coord_c - coord_r;        
     wv_480.vec_rel = vec_loc;
@@ -196,8 +210,8 @@ try
     R_data_amber = R_data_amber(trial_mask,:,:,:);
     img_stack_local = reshape(mean(R_data_amber,1),[75,X,Y]);    % mean over all accepted trials
     img_stack_local = permute(img_stack_local,[2,3,1]);
-    img_stack_local = img_stack_local .* BW_vessel;      % mask        
-    img_stack_local(img_stack_local == 0) = NaN;         % mask is set to NaN to remove it from Z score calculations
+    % img_stack_local = img_stack_local .* BW_vessel;      % mask        
+    % img_stack_local(img_stack_local == 0) = NaN;         % mask is set to NaN to remove it from Z score calculations
     img_stack_local = img_stack_local - 1;      % deltaR/R
     img_stack_local = permute(img_stack_local,[3,1,2]);
     [ROI_time_series_img,names] = Time_Series_extract_single(img_stack_local,mask,len_trials,X,Y);      % Time series for all ROIs
@@ -215,14 +229,14 @@ try
     for iter_seq = frames_load
         iter_local_local = iter_local_local + 1;
         name_pic = strcat('580nm-',num2str(iter_seq));
-        delRR = squeeze(img_stack_local_filtered(iter_seq,:,:)); 
+        delRR = squeeze(img_stack_local(iter_seq,:,:)); 
         % plot_overlay(sample_img,delRR,c_limits,[amin,amax],fullfile(output_folder,'480nm'),name_pic);
         % plot_overlay_auto(sample_img,delRR,c_limits_480,fullfile(output_folder,'480nm'),name_pic);
         % Tracking activation centroid and Area for current session
         % thresholdRange = [-0.01,-0.03]; % Example threshold range
         delRR_z = Zscore_nan(delRR);
         % ActMask_local = (delRR <= c_limits_480(2)) & (delRR >= c_limits_480(1));                % Binary mask absolute
-        ActMask_local_z = delRR_z < z_thresh;     % Following threshold set by Zeiger et al (2021)    % Binary mask using Z score
+        ActMask_local_z = activation_region.*delRR_z < z_thresh;     % Following threshold set by Zeiger et al (2021)    % Binary mask using Z score
         labeledImage = bwlabel(ActMask_local_z);    % label each discontinuous area to a unique value
         tmp_vee = unique(labeledImage);
         tmp_vee = tmp_vee(2:end);
@@ -289,7 +303,7 @@ try
     name_pic = strcat('580nm-Max_Area',num2str(iter_seq));
     delRR = squeeze(img_stack_local_filtered(iter_seq,:,:)); 
     delRR_z = Zscore_nan(delRR);
-    ActMask_local_z = delRR_z < z_thresh;  
+    ActMask_local_z = activation_region.*delRR_z < z_thresh;  
     plot_overlay_auto_zscored(sample_img,ActMask_local_z,fullfile(output_folder,'580nm'),name_pic);
     vec_loc = coord_c - coord_r;        
     wv_580.vec_rel = vec_loc;
