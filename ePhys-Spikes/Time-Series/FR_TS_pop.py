@@ -308,15 +308,21 @@ def combine_sessions(source_dir, str_ID):
             '3':'NaN'
         }
     elif (str_ID.lower() == 'processed_data_rh7'.lower()):
-        linear_xaxis = np.array([-3,-2,2,7,14,24,28,35,42,49,56])
+        linear_xaxis = np.array([-3,-2,2,7,14,21,28,35,42,49,56])
         dict_shank_spatial_info = {
             '0':'L300',
             '1':'L300',
             '2':'L300',
             '3':'S2'
         }
-    elif (str_ID.lower() == 'BC8'.lower()):
-        linear_xaxis = np.array([-3,-2,2,2,7,8,15,21,54])
+    elif (str_ID.lower() == 'processed_data_bc8'.lower()):
+        linear_xaxis = np.array([-3,-2,2,7,14,21,42])
+        dict_shank_spatial_info = {
+            '0':'L300',
+            '1':'L300',
+            '2':'L300',
+            '3':'L300'
+        }
     elif (str_ID.lower() == 'processed_data_rh8'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,35,42,49,56])  
         dict_shank_spatial_info = {
@@ -335,10 +341,13 @@ def combine_sessions(source_dir, str_ID):
         }
     elif (str_ID.lower() == 'B-BC8'.lower()):
         linear_xaxis = np.array([-4,-3,-2,-1,3,7])
-    elif (str_ID.lower() == 'BHC-7'.lower()):
-        linear_xaxis = np.array([-3,-2,-1,7,14])
+    elif (str_ID.lower() == 'processed_data_bhc7'.lower()):
+        linear_xaxis = np.array([-2,7,14])
         dict_shank_spatial_info = {
-
+            '0':'G300',
+            '1':'G300',
+            '2':'NaN',  
+            '3':'L300'
         }
     elif (str_ID.lower() == 'processed_data_rh11'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,35,42,49,56])

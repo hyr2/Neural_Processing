@@ -127,7 +127,7 @@ bsl_indx = [baseline_end1:start_stimulate];         % baseline time extraction
 % save parameters and ROI masks to mat_dir  ********************************
 eff_num_trials = num_trials;
 clearvars sample_img
-save(fullfile(mat_dir,'ROI.mat'),'BW','mask');
+save(fullfile(mat_dir,'ROI.mat'),'BW','mask','coord_r');
 sample_img = sample_img_temp;
 % sample_img = sumImage;
 if cam_in == 1
