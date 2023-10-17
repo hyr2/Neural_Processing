@@ -110,7 +110,7 @@ if ROI_selector
 %     ROI_loc = input('Path to ROI.mat file\n','s');
     ROI_loc = fullfile(source_dir,'Processed','mat_files');
     ROI_loc = fullfile(ROI_loc,'ROI.mat');
-    load(ROI_loc,'mask','BW');
+    load(ROI_loc,'mask','BW','coord_r');
   if size(mask, 1) ~= X || size(mask, 2) ~= Y
     error('ROI dimensions (%d x %d) do not match intrinsic data (%d x %d)', size(mask,1), size(mask, 2), X, Y);
   end
