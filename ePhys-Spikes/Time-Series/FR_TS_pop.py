@@ -300,7 +300,7 @@ def combine_sessions(source_dir, str_ID):
     elif (str_ID.lower() == 'BC6'.lower()):
         linear_xaxis = np.array([-3,-2,2,9,14,21,28,35,49])
     elif (str_ID.lower() == 'processed_data_bbc5'.lower()):
-        linear_xaxis = np.array([-3,-2,2,7,14,21,47]) 
+        linear_xaxis = np.array([-3,-2,2,7,14,21,42]) 
         dict_shank_spatial_info = {
             '0':'NaN',
             '1':'NaN',
@@ -640,10 +640,10 @@ def combine_sessions(source_dir, str_ID):
         
         
     # combining     
-    all_clusters_A = np.squeeze(df_all_clusters_A.to_numpy(dtype = float))
-    all_clusters_B = np.squeeze(df_all_clusters_B.to_numpy(dtype = float))
-    all_clusters_C = np.squeeze(df_all_clusters_C.to_numpy(dtype = float))
-    all_clusters_D = np.squeeze(df_all_clusters_D.to_numpy(dtype = float))
+    all_clusters_A = df_all_clusters_A.to_numpy(dtype = float)
+    all_clusters_B = df_all_clusters_B.to_numpy(dtype = float)
+    all_clusters_C = df_all_clusters_C.to_numpy(dtype = float)
+    all_clusters_D = df_all_clusters_D.to_numpy(dtype = float)
     
     max_clus_in_shank = np.max(np.array([all_clusters_A.shape[0],all_clusters_B.shape[0],all_clusters_C.shape[0],all_clusters_D.shape[0]]))
     
