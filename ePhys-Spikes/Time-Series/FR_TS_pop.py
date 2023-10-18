@@ -305,7 +305,7 @@ def combine_sessions(source_dir, str_ID):
             '0':'NaN',
             '1':'NaN',
             '2':'L300',
-            '3':'NaN'
+            '3':'L300'
         }
     elif (str_ID.lower() == 'processed_data_rh7'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,35,42,49,56])
@@ -319,9 +319,9 @@ def combine_sessions(source_dir, str_ID):
         linear_xaxis = np.array([-3,-2,2,7,14,21,42])
         dict_shank_spatial_info = {
             '0':'L300',
-            '1':'L300',
-            '2':'L300',
-            '3':'L300'
+            '1':'NaN',      # Good shank but longitudinally significant channel loss 
+            '2':'G300',
+            '3':'G300'
         }
     elif (str_ID.lower() == 'processed_data_rh8'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,35,42,49,56])  
@@ -344,10 +344,10 @@ def combine_sessions(source_dir, str_ID):
     elif (str_ID.lower() == 'processed_data_bhc7'.lower()):
         linear_xaxis = np.array([-2,7,14])
         dict_shank_spatial_info = {
-            '0':'G300',
-            '1':'G300',
+            '0':'NaN',
+            '1':'NaN',
             '2':'NaN',  
-            '3':'L300'
+            '3':'NaN'
         }
     elif (str_ID.lower() == 'processed_data_rh11'.lower()):
         linear_xaxis = np.array([-3,-2,2,7,14,21,28,35,42,49,56])
