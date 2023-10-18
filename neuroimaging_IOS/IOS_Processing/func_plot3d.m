@@ -30,9 +30,8 @@ ind_z = find(z_axis > 21);
 out_arr{1} = mean(area(ind_z));
 out_arr{2} = mean(x_axis(ind_z));
 
-out_arr{6} = helper_fill_nans(xaxis_ideal,xaxis_in(2:end),area);
+out_arr{6} = helper_fill_nans(xaxis_ideal,xaxis_in(2:end),area);    % The area array
 
-% out_arr{6} = area;       % relative area to baseline
 
 z_axis = z_axis(~isnan(y_axis));
 area = area(~isnan(y_axis));
