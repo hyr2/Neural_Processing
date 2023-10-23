@@ -34,7 +34,7 @@
 %
 
 % Some important parameters
-sigma_2d = 7;
+sigma_2d = 3;
 z_thresh = -2.5;            % -2.5 or -2.75
 thresh_480 = -0.02;
 thresh_580 = -0.025;

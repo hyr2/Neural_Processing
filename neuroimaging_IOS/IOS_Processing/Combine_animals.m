@@ -142,7 +142,7 @@ file_X =  file_X(~ismember(file_X,{'.','..'}));
 struct_rh7 = {};
 struct_rh7_580 = {};
 iter_local = 0; 
-xaxis_rh7 = [-5,-3,2,7,14,21,28,35,42,49,56];  %(baselines: 10-24,10-27)
+xaxis_rh7 = [-5,-3,2,7,14,21,28,35,42,49];  %(baselines: 10-24,10-27)
 for iter_filename = file_X
     iter_local = iter_local + 1;
     iter_filename = string(iter_filename);
@@ -262,9 +262,9 @@ string_out = sprintf('The shift in cortical activity map has a p-value of: %.4f'
 disp(string_out);
 
 %% Plots for Figure1G (inter-day shift):
-histogram(shift_vec_early, 'BinWidth', 0.28,'FaceColor', [0.1, 0.9, 0.9],'EdgeColor',[0.08, 0.65, 0.9]);
+histogram(shift_vec_early, 'BinWidth', 0.25,'FaceColor', [0.1, 0.9, 0.9],'EdgeColor',[0.08, 0.65, 0.9]);
 hold on;
-histogram(-shift_vec_chronic, 'BinWidth', 0.28,'FaceColor', [0.9, 0.1, 0.2],'EdgeColor',[1.0, 0.05, 0.1]);
+histogram(-shift_vec_chronic, 'BinWidth', 0.25,'FaceColor', [0.9, 0.1, 0.2],'EdgeColor',[1.0, 0.05, 0.1]);
 xlim([-2,2.1])
 xlabel('Inter-day Shift (mm)');
 ylabel('Count');

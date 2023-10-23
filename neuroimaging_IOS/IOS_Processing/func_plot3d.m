@@ -77,17 +77,23 @@ y_val = zeros(1,length(z_range));
 % hold on;
 % plot(gca,x_axis, z_axis, 'o', 'MarkerFaceColor', 'b', 'MarkerEdgeColor', 'b');
 hold on;
-plot3(ax,x_axis,y_val, z_range, 'Color', '#686869' , 'LineWidth', 2.5);
+plot3(ax,x_axis,y_val, z_range, 'Color', '#686869' , 'LineWidth', 5);
 % plot3(ax,smoother_x_fit,y_val, z_range, 'Color', '#686869' , 'LineWidth', 2.5);
 grid off;
-xlim([-1.4,1.4]);
-zlim([-6,56]);
-xticks([-1,0,1]);
 set(gca,'ZTickLabel',[]);
 set(ax,'FontSize',24)
 set(ax,'ZColor','none');
 set(fig,'Position',[50 50 400 800])
-saveas(fig,fullfile(filename_fig,'X.png'),'png');
+set(gcf, 'color', 'none');   
+set(gca, 'color', 'none');
+% exportgraphics(ax,fullfile(filename_fig,'X.png'))
+rez = [800,1600]; %set desired [horizontal vertical] resolution
+% set(fig,'PaperPosition',[0 0 rez/100],'PaperUnits','inches');
+% exportgraphics(ax,fullfile(filename_fig,'Y.png'));
+xlim([-0.75,0.85]);
+zlim([-6,56]);
+xticks([]);
+figsave(fig,fullfile(filename_fig,'X.png'),rez,2.5,0);
 close(fig);
 %% performing fit for Y axis
 z_axis = xaxis_in';
@@ -142,17 +148,22 @@ view(90, 0); % Change the view angle
 z_range = z_axis;
 x_val = zeros(1,length(z_range));
 hold on;
-plot3(ax,x_val,y_axis, z_range, 'Color', '#686869' , 'LineWidth', 2.5);
+plot3(ax,x_val,y_axis, z_range, 'Color', '#686869' , 'LineWidth', 5);
 % plot3(ax,x_val,smoother_y_fit, z_range, 'Color', '#686869', 'LineWidth', 2.5);
 grid off;
-ylim([-1,1]);
-zlim([-6,56]);
-yticks([-1,0,1]);
 set(gca,'ZTickLabel',[]);
 set(ax,'ZColor','none');
 set(ax,'FontSize',24)
 set(fig,'Position',[50 50 400 800])
-saveas(fig,fullfile(filename_fig,'Y.png'),'png');
+set(gcf, 'color', 'none');   
+set(gca, 'color', 'none');
+rez = [800,1600]; %set desired [horizontal vertical] resolution
+ylim([-1,0.6]);
+zlim([-6,56]);
+yticks([]);
+% set(fig,'PaperPosition',[0 0 rez/100],'PaperUnits','inches');
+% exportgraphics(ax,fullfile(filename_fig,'Y.png'));
+figsave(fig,fullfile(filename_fig,'Y.png'),rez,2.5,0);
 close(fig);
 
 %% Distance (shift)
