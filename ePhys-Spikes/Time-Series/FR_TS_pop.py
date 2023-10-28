@@ -339,8 +339,14 @@ def combine_sessions(source_dir, str_ID):
             '2':'L300',
             '3':'NaN'
         }
-    elif (str_ID.lower() == 'B-BC8'.lower()):
+    elif (str_ID.lower() == 'processed_data_bbc8'.lower()):
         linear_xaxis = np.array([-4,-3,-2,-1,3,7])
+        dict_shank_spatial_info = {
+            '0':'NaN',
+            '1':'NaN',
+            '2':'NaN',  
+            '3':'NaN'
+        }
     elif (str_ID.lower() == 'processed_data_bhc7'.lower()):
         linear_xaxis = np.array([-2,7,14])
         dict_shank_spatial_info = {

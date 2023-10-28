@@ -289,7 +289,7 @@ def interp_session_loss(data_in, day_local_axis, day_axis_ideal,int_flag = True)
     else:
         avg_local = np.nanmean(np.reshape(data_in[local_indx,:],[local_indx.size,YY_dim]),axis = 0)
     tmp_indx = np.isin(day_axis_ideal,day_local_axis[local_indx])
-    tmp_indx = ~tmp_indx[6:]    # day 28 is a hard coded (requested by Dr.Lan)
+    tmp_indx = ~tmp_indx[6:]    # day 28 is a hard coded (suggested by Lan)
     out_arr_28 = np.zeros([tmp_indx.size,YY_dim])
     out_arr_28[tmp_indx,:] = avg_local
     
