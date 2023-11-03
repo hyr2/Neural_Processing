@@ -54,8 +54,11 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     keys = list(shank_info.keys())
     shank_info = list(shank_info.values())  # select these shanks for sorting only
     
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    for iter_l in len(shank_info):
+        if shank_info[iter_l]:
+            local_outputdir =os.path.join(output_dir,f'Shank_{iter_l}')
+            if not os.path.exists(local_outputdir):
+                os.makedirs(local_outputdir)
     
     filename_trials_export = os.path.join(output_dir,'trials_times.mat')
     filename_trials_digIn = os.path.join(output_dir,'trials_digIn.png')
@@ -71,6 +74,8 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
 
     list_session = []
     list_rhd = []
+    
+
 
     # Storing all file paths to be processed
     for iter_local, filename_u in enumerate(source_dir_list_upper):
@@ -78,63 +83,90 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         source_dir_list = os.listdir(session_rel_path)
         source_dir_list = list(filter(lambda x: x.endswith(".rhd"), source_dir_list))
         source_dir_list = natsorted(source_dir_list)
-
         list_rhd.append(source_dir_list)
         list_session.append(filename_u)
 
-    print('\n'.join(list_rhd))
-    print('\n'.join(list_session))
-    
-        # for iter_inner, filename_i in enumerate(source_dir_list):
+    # Reading channel map
+    chmap_mat = loadmat(CHANNEL_MAP_FPATH)['Ch_Map_new']
+    if np.min(chmap_mat)==1:
+        print("    Subtracted one from channel map to make sure channel index starts from 0 (Original map file NOT changed)")
+        chmap_mat -= 1
+    # sum(len(sublist) for sublist in list_rhd)
 
-'''
-    N_samples_ = {}
-    N_samples_cumsum_by_file_ = {}
+    N_samples_ = 0
+    N_samples_cumsum_by_file_ = [0]
     dict_ch_nativeorder_allsessions = {}
-    # loops over single session
-    for iter_local, filename_u in enumerate(source_dir_list_upper):
-        
-        session_rel_path = os.path.join(Raw_dir,filename_u)
-        
-        matlabTXT = os.path.join(session_rel_path,'whisker_stim.txt')
-        trial_mask = os.path.join(session_rel_path,'trial_mask.csv')
-    
-        source_dir_list = natsorted(os.listdir(session_rel_path))
-    
-        # filenames = os.listdir(Raw_dir)
-        source_dir_list = list(filter(lambda x: x.endswith(".rhd"), source_dir_list))
-        source_dir_list = natsorted(source_dir_list)
-    
-        if os.path.isfile(matlabTXT):
-            # Read .txt file
-            stim_start_time, stim_num, seq_period, len_trials, num_trials, FramePerSeq, total_seq, len_trials_arr = read_stimtxt(matlabTXT)
-        
-        print('\n'.join(source_dir_list))
-        # read rhd files and append data in list 
-        # REMEMBER native order starts from 0 ###
-        n_samples_cumsum_by_file = [0]
-        n_samples = 0
-        for filename in source_dir_list:
-            n_ch, n_samples_this_file = get_n_samples_in_data(os.path.join(session_rel_path, filename))
-            n_samples += n_samples_this_file
-            n_samples_cumsum_by_file.append(n_samples) #cumalative count of total V points
+    file_i = -1
+    # This double loop is for getting the number of samples in each .rhd file
+    for iter_local, filename_u in enumerate(list_session):              # Session loop        
+        for iter_local_i, filename_i in enumerate(list_rhd[iter_local]):    # RHD loop
+            file_i += 1
+            filename_rhd = os.path.join(Raw_dir,filename_u,filename_i)
+            n_ch, n_samples_this_file = get_n_samples_in_data(filename_rhd)
+            N_samples_ += n_samples_this_file
+            N_samples_cumsum_by_file_.append(N_samples_) #cumalative count of total V points
+
+            # This block of code also caters for inter-session changes in channels and will 
+            # select the common electrodes among all the sessions
+            with open(filename_rhd, "rb") as fh:    
+                head_dict = read_header(fh)
+            chs_info_local = deepcopy(head_dict['amplifier_channels'])
+            chs_native_order_local = [e['native_order'] for e in chs_info_local]
+            dict_ch_nativeorder_allsessions[file_i] = chs_native_order_local   
+
+            print(f'{filename_u}:{filename_i}')
+
+    TrueNativeChOrder,n_ch = intersection_lists(dict_ch_nativeorder_allsessions)    # minimum common channels among all sessions
+
+    print(f'Number of samples (total):\t{N_samples_}')
+    print('\n'.join(N_samples_cumsum_by_file_))
+    print('------------------\n-----------------\n----------------\n')
+    print(f'Number of channels\t:{n_ch}')
+    print('\n'.join(TrueNativeChOrder))
+
+
+    for iter_l in len(shank_info):
+        if shank_info[iter_l]:
+            local_outputdir = os.path.join(output_dir,f'Shank_{iter_l}')
+            writer = DiskWriteMda(os.path.join(local_outputdir, "converted_data.mda"), (n_ch, N_samples_), dt="int16")
+
+    chs_impedance = None
+    notch_freq = None
+    chs_native_order = None
+    sample_freq = None
+    # df_final = pd.DataFrame(columns=['Time','ADC'])
+    # Main loop for generating converted_data.mda file 
+    # for iter_local, filename_u in enumerate(list_session):              # Session loop        
+    #     matlabTXT = os.path.join(Raw_dir,filename_u,'whisker_stim.txt')
+    #     trial_mask = os.path.join(Raw_dir,filename_u,'trial_mask.csv')
+    #     try:
+    #         stim_start_time, stim_num, seq_period, len_trials, num_trials, FramePerSeq, total_seq, len_trials_arr = read_stimtxt(matlabTXT)
+    #         trial_mask = pd.read_csv(trial_mask, header=None, index_col=False,dtype = bool)
+    #         TRIAL_KEEP_MASK = trial_mask.to_numpy(dtype = bool)
+    #         TRIAL_KEEP_MASK = np.squeeze(TRIAL_KEEP_MASK)
+    #     except ValueError as e:
+    #         print(e)
+
+
+
+        # for iter_local_i, filename_i in enumerate(list_rhd[iter_local]):    # RHD loop
+            # Read all .rhds and write chunks 
+
         
         # Fix implemented: user rejected a channel during the recording/experiment 
         # This block of code also caters for inter-session changes in channels and will 
         # select the common electrodes among all the sessions
-        for i_file,filename in enumerate(source_dir_list):
-            with open(os.path.join(session_rel_path, filename), "rb") as fh:
-                head_dict = read_header(fh)
-            chs_info_local = deepcopy(head_dict['amplifier_channels'])
-            chs_native_order_local = [e['native_order'] for e in chs_info_local]
-            dict_ch_nativeorder_allsessions[i_file] = chs_native_order_local   
-        TrueNativeChOrder,n_ch = intersection_lists(dict_ch_nativeorder_allsessions)
+        # for i_file,filename in enumerate(source_dir_list):
+        #     with open(os.path.join(session_rel_path, filename), "rb") as fh:
+        #         head_dict = read_header(fh)
+        #     chs_info_local = deepcopy(head_dict['amplifier_channels'])
+        #     chs_native_order_local = [e['native_order'] for e in chs_info_local]
+        #     dict_ch_nativeorder_allsessions[i_file] = chs_native_order_local   
+        # TrueNativeChOrder,n_ch = intersection_lists(dict_ch_nativeorder_allsessions)
     
-        chmap_mat = loadmat(CHANNEL_MAP_FPATH)['Ch_Map_new']
         
-        if np.min(chmap_mat)==1:
-            print("    Subtracted one from channel map to make sure channel index starts from 0 (Original map file NOT changed)")
-            chmap_mat -= 1
+        
+
         
         # if os.path.isfile(filename_min_chan_mask):
         #     arr_mask = np.load(filename_min_chan_mask)
@@ -159,13 +191,9 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
             
         # writer = DiskWriteMda(os.path.join(SESSION_FOLDER_MDA, "converted_data.mda"), (n_ch, n_samples), dt="int16")
         
-        chs_impedance = None
-        notch_freq = None
-        chs_native_order = None
-        sample_freq = None
-        df_final = pd.DataFrame(columns=['Time','ADC'])
+
         
-        
+        '''
         for i_file, filename in enumerate(filenames):
             print("----%s----"%(os.path.join(Raw_dir, filename)))
             with open(os.path.join(Raw_dir, filename), "rb") as fh:
