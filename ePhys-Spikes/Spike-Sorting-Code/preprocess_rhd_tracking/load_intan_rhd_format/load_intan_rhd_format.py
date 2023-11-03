@@ -99,26 +99,26 @@ def read_data(filename):
 
         data = {}
         if (header['version']['major'] == 1 and header['version']['minor'] >= 2) or (header['version']['major'] > 1):
-            data['t_amplifier'] = np.zeros(num_amplifier_samples, dtype=np.int)
+            data['t_amplifier'] = np.zeros(num_amplifier_samples, dtype=np.int64)
         else:
-            data['t_amplifier'] = np.zeros(num_amplifier_samples, dtype=np.uint)
+            data['t_amplifier'] = np.zeros(num_amplifier_samples, dtype=np.uint64)
 
-        data['amplifier_data'] = np.zeros([header['num_amplifier_channels'], num_amplifier_samples], dtype=np.uint)
-        data['aux_input_data'] = np.zeros([header['num_aux_input_channels'], num_aux_input_samples], dtype=np.uint)
-        data['supply_voltage_data'] = np.zeros([header['num_supply_voltage_channels'], num_supply_voltage_samples], dtype=np.uint)
-        data['temp_sensor_data'] = np.zeros([header['num_temp_sensor_channels'], num_supply_voltage_samples], dtype=np.uint)
-        data['board_adc_data'] = np.zeros([header['num_board_adc_channels'], num_board_adc_samples], dtype=np.uint)
+        data['amplifier_data'] = np.zeros([header['num_amplifier_channels'], num_amplifier_samples], dtype=np.uint64)
+        data['aux_input_data'] = np.zeros([header['num_aux_input_channels'], num_aux_input_samples], dtype=np.uint64)
+        data['supply_voltage_data'] = np.zeros([header['num_supply_voltage_channels'], num_supply_voltage_samples], dtype=np.uint16)
+        data['temp_sensor_data'] = np.zeros([header['num_temp_sensor_channels'], num_supply_voltage_samples], dtype=np.uint16)
+        data['board_adc_data'] = np.zeros([header['num_board_adc_channels'], num_board_adc_samples], dtype=np.uint64)
         
         # by default, this script interprets digital events (digital inputs and outputs) as booleans
         # if unsigned int values are preferred(0 for False, 1 for True), replace the 'dtype=np.bool' argument with 'dtype=np.uint' as shown
         # the commented line below illustrates this for digital input data; the same can be done for digital out
         
         #data['board_dig_in_data'] = np.zeros([header['num_board_dig_in_channels'], num_board_dig_in_samples], dtype=np.uint)
-        data['board_dig_in_data'] = np.zeros([header['num_board_dig_in_channels'], num_board_dig_in_samples], dtype=np.bool)
-        data['board_dig_in_raw'] = np.zeros(num_board_dig_in_samples, dtype=np.uint)
+        data['board_dig_in_data'] = np.zeros([header['num_board_dig_in_channels'], num_board_dig_in_samples], dtype=bool)
+        data['board_dig_in_raw'] = np.zeros(num_board_dig_in_samples, dtype=np.uint64)
         
-        data['board_dig_out_data'] = np.zeros([header['num_board_dig_out_channels'], num_board_dig_out_samples], dtype=np.bool)
-        data['board_dig_out_raw'] = np.zeros(num_board_dig_out_samples, dtype=np.uint)
+        data['board_dig_out_data'] = np.zeros([header['num_board_dig_out_channels'], num_board_dig_out_samples], dtype=bool)
+        data['board_dig_out_raw'] = np.zeros(num_board_dig_out_samples, dtype=np.uint64)
 
         # Read sampled data from file.
         print('Reading data from file...')

@@ -54,7 +54,7 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     keys = list(shank_info.keys())
     shank_info = list(shank_info.values())  # select these shanks for sorting only
     
-    for iter_l in len(shank_info):
+    for iter_l in range(len(shank_info)):
         if shank_info[iter_l]:
             local_outputdir =os.path.join(output_dir,f'Shank_{iter_l}')
             if not os.path.exists(local_outputdir):
@@ -117,45 +117,150 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
             chs_native_order_local = [e['native_order'] for e in chs_info_local]
             dict_ch_nativeorder_allsessions[file_i] = chs_native_order_local   
 
-            print(f'{filename_u}:{filename_i}')
-
     TrueNativeChOrder,n_ch = intersection_lists(dict_ch_nativeorder_allsessions)    # minimum common channels among all sessions
-
+    
+    # Number of channels on each shank on the minimum channel map (between all sessions)
+    shank_list_local = []
+    for iter_localA in range(len(TrueNativeChOrder)):
+        loc_local = np.squeeze(np.argwhere(chmap_mat == TrueNativeChOrder[iter_localA]))
+        if not ELECTRODE_2X16: 
+            r_id = loc_local[0]
+            sh_id = loc_local[1]
+        else:
+            r_id = loc_local[0]
+            sh_id = loc_local[1] // 2   # floor division gets us the effective shank ID
+        shank_list_local.append(sh_id)
+    shank_list_local = np.array(shank_list_local,dtype=np.int8)
+    
+    
     print(f'Number of samples (total):\t{N_samples_}')
-    print('\n'.join(N_samples_cumsum_by_file_))
     print('------------------\n-----------------\n----------------\n')
     print(f'Number of channels\t:{n_ch}')
-    print('\n'.join(TrueNativeChOrder))
-
-
-    for iter_l in len(shank_info):
+    dict_writers_mda = {}   # dictionary of variables and writer objects for .mda files
+    for iter_l in range(len(shank_info)):           # Creating .mda files
+        n_ch_this_shank = (shank_list_local == iter_l).sum()
         if shank_info[iter_l]:
             local_outputdir = os.path.join(output_dir,f'Shank_{iter_l}')
-            writer = DiskWriteMda(os.path.join(local_outputdir, "converted_data.mda"), (n_ch, N_samples_), dt="int16")
+            dict_writers_mda["writer{}".format(iter_l)] = DiskWriteMda(os.path.join(local_outputdir, "converted_data.mda"), (n_ch_this_shank, N_samples_), dt="int16")
+            # writer = DiskWriteMda(os.path.join(local_outputdir, "converted_data.mda"), (n_ch, N_samples_), dt="int16")
 
     chs_impedance = None
     notch_freq = None
     chs_native_order = None
     sample_freq = None
-    # df_final = pd.DataFrame(columns=['Time','ADC'])
+    file_i = -1
+    df_final = pd.DataFrame(columns=['Time','ADC'])
     # Main loop for generating converted_data.mda file 
-    # for iter_local, filename_u in enumerate(list_session):              # Session loop        
-    #     matlabTXT = os.path.join(Raw_dir,filename_u,'whisker_stim.txt')
-    #     trial_mask = os.path.join(Raw_dir,filename_u,'trial_mask.csv')
-    #     try:
-    #         stim_start_time, stim_num, seq_period, len_trials, num_trials, FramePerSeq, total_seq, len_trials_arr = read_stimtxt(matlabTXT)
-    #         trial_mask = pd.read_csv(trial_mask, header=None, index_col=False,dtype = bool)
-    #         TRIAL_KEEP_MASK = trial_mask.to_numpy(dtype = bool)
-    #         TRIAL_KEEP_MASK = np.squeeze(TRIAL_KEEP_MASK)
-    #     except ValueError as e:
-    #         print(e)
+    for iter_local, filename_u in enumerate(list_session):              # Session loop        
+        matlabTXT = os.path.join(Raw_dir,filename_u,'whisker_stim.txt')
+        trial_mask = os.path.join(Raw_dir,filename_u,'trial_mask.csv')
+        try:
+            stim_start_time, stim_num, seq_period, len_trials, num_trials, FramePerSeq, total_seq, len_trials_arr = read_stimtxt(matlabTXT)
+            trial_mask = pd.read_csv(trial_mask, header=None, index_col=False,dtype = bool)
+            TRIAL_KEEP_MASK = trial_mask.to_numpy(dtype = bool)
+            TRIAL_KEEP_MASK = np.squeeze(TRIAL_KEEP_MASK)
+        except ValueError as e:
+            print(e)
 
-
-
-        # for iter_local_i, filename_i in enumerate(list_rhd[iter_local]):    # RHD loop
+        for iter_local_i, filename_i in enumerate(list_rhd[iter_local]):    # RHD loop
             # Read all .rhds and write chunks 
+            file_i += 1
+            filename_rhd = os.path.join(Raw_dir,filename_u,filename_i)
+            data_dict = read_data(filename_rhd)
+            chs_info = deepcopy(data_dict['amplifier_channels'])
+            arr_ADC = data_dict['board_dig_in_data']                    # Digital Trigger input 
+            Time = data_dict['t_amplifier']                        		# Timing info from INTAN
+            if arr_ADC.shape[0] != 1:                                   # For data with multiple digital inputs (dig input channel 1 is the speckle trigger)
+                arr_ADC = arr_ADC[0,:]
+            arr_ADC = np.reshape(arr_ADC,(arr_ADC.size,))
+            df = {'Time':Time,'ADC':arr_ADC}
+            df = pd.DataFrame(df,dtype = np.single)
+            df_final = pd.concat([df_final,df],axis = 0,ignore_index=True)
+            # record and check key information
+            if chs_native_order is None:
+                chs_native_order = [e['native_order'] for e in chs_info]
+                chs_impedance = [e['electrode_impedance_magnitude'] for e in chs_info]
+                print("#Chans with >= 3MOhm impedance:", np.sum(np.array(chs_impedance)>=3e6))
+                notch_freq = head_dict['notch_filter_frequency']
+                sample_freq = head_dict['sample_rate']
+            else:
+                tmp_native_order = [e['native_order'] for e in chs_info]
+                print("#Chans with >= 3MOhm impedance:", np.sum(np.array([e['electrode_impedance_magnitude'] for e in chs_info])>=3e6))
+                if not check_header_consistency(tmp_native_order, chs_native_order):
+                    warnings.warn("WARNING in preprocess_rhd: native ordering of channels inconsistent within one session\n")
+                if notch_freq != head_dict['notch_filter_frequency']:
+                    warnings.warn("WARNING in preprocess_rhd: notch frequency inconsistent within one session\n")
+                if sample_freq != head_dict['sample_rate']:
+                    warnings.warn("WARNING in preprocess_rhd: sampling frequency inconsistent within one session\n")
+            chs_native_order = [e['native_order'] for e in chs_info]
+            shank_list_local = []
+            for iter_localA in range(len(chs_native_order)):
+                loc_local = np.squeeze(np.argwhere(chmap_mat == chs_native_order[iter_localA]))
+                if not ELECTRODE_2X16: 
+                    r_id = loc_local[0]
+                    sh_id = loc_local[1]
+                else:
+                    r_id = loc_local[0]
+                    sh_id = loc_local[1] // 2   # floor division gets us the effective shank ID
+                shank_list_local.append(sh_id)
+            shank_list_local = np.array(shank_list_local,dtype=np.int8)
+            np_chs_native_order = np.array(chs_native_order,dtype=np.int8)
+            # reject_ch_indx_global = np.where(np.any(chs_native_order==(np.setdiff1d(chs_native_order,np.array(TrueNativeChOrder))[:,None]), axis=0))[0]
+            reject_ch_indx_global = np.squeeze(np.argwhere(np.in1d(chs_native_order,np.setdiff1d(chs_native_order,np.array(TrueNativeChOrder)))))
+            
+            # divide ephys array by shank here
+            for iter_local_local in range(len(shank_info)):
+                if shank_info[iter_local_local]:
+                    local_NativeChOrder_shank0 = np_chs_native_order[shank_list_local == iter_local_local]   # channels in the current recording located on shankA
+                    reject_ch_indx_local = np.squeeze(np.argwhere(np.in1d(chs_native_order,np.setdiff1d(chs_native_order,np.array(local_NativeChOrder_shank0)))))     
+                    reject_ch_indx_local = np.concatenate((reject_ch_indx_local,reject_ch_indx_global))    # adding globally rejected (due to missing channels)
+                    reject_ch_indx_local = np.unique(reject_ch_indx_local)
+                    print("Intan channels to reject:", reject_ch_indx_local)    
+                    
+                    ephys_data = data_dict['amplifier_data']
+                    ephys_data = np.delete(ephys_data,reject_ch_indx_local,axis = 0)
+                    ephys_data = notch_filter(ephys_data, sample_freq, 60, Q=20)     # Notch filter 60Hz
+                    ephys_data = ephys_data - np.median(ephys_data, axis=0)          # CMR: Common Mode rejection
+                    ephys_data = ephys_data.astype(np.int16)
+                    
+                    print("    Appending chunk to disk")
+                    entry_offset = N_samples_cumsum_by_file_[file_i] * n_ch
+                    dict_writers_mda[f'writer{iter_local_local}'].writeChunk(ephys_data, i1=0, i2=entry_offset)     # write chunk to shank's .mda file
+                
+            del(ephys_data)
+            del(data_dict)
+            del(df)
+            del(reject_ch_indx_local)
+            del(reject_ch_indx_global)
+            gc.collect()
+            
+            # # only implement min channel map mask when the file exists 
+            # # thus this addition will not affect normal spike sorting pipeline
+            # if os.path.isfile(filename_min_chan_mask): 
+            #     ch_id_to_reject = []
+            #     arr_mask = np.load(filename_min_chan_mask)
+            #     for iter_localA in range(len(chs_native_order)):
+            #         loc_local = np.squeeze(np.argwhere(chmap_mat == chs_native_order[iter_localA]))
+            #         if not ELECTRODE_2X16: 
+            #             r_id = loc_local[0]
+            #             sh_id = loc_local[1]
+            #         else:
+            #             r_id = loc_local[0]
+            #             sh_id = loc_local[1] // 2   # floor division gets us the effective shank ID 
+            #         if (arr_mask[r_id,sh_id] == False):
+            #             ch_id_to_reject.append(chs_native_order[iter_localA])
+                        
+            #     # arr1 = np.setdiff1d(chs_native_order,arr_mask)
+            #     # arr2 = np.squeeze(chs_native_order)
+            #     # indx_to_reject = np.where(np.isin(arr2,arr1))[0]
+            #     # andd = np.logical_and(chmap_mat ,arr_mask)
+            #     # linear_arr_min = chmap_mat[andd]
+            #     # linear_arr_min = deepcopy(np.sort(linear_arr_min,kind = 'mergesort'))
+                
+            #     indx_to_reject = np.where(np.isin(chs_native_order,ch_id_to_reject))[0]
+            #     reject_ch_indx = np.append(reject_ch_indx,indx_to_reject)
 
-        
+    
         # Fix implemented: user rejected a channel during the recording/experiment 
         # This block of code also caters for inter-session changes in channels and will 
         # select the common electrodes among all the sessions
