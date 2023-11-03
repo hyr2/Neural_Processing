@@ -535,9 +535,8 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
                 i_clus_dict['adapt_time_end'] = np.nan
                 i_clus_dict['adapt_trial'] = np.nan
 
-            # if not(failed): 
-                
-                # plot_all_trials(firing_rate_avg,1/WINDOW_LEN_IN_SEC,result_folder_FR_avg,i_clus_dict)           # Plotting function
+            if not(failed): 
+                plot_all_trials(firing_rate_avg,1/WINDOW_LEN_IN_SEC,result_folder_FR_avg,i_clus_dict)           # Plotting function
             
             # Append to output dataframe of all units in current session
             list_all_clus.append(i_clus_dict)

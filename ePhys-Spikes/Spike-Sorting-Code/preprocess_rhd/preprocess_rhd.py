@@ -21,16 +21,7 @@ from natsort import natsorted
 from matplotlib import pyplot as plt
 plt.rcParams['agg.path.chunksize'] = 10000
 
-# channel map .mat file
-# BC6, B-BC8 is rigid
-# BC7, BC8 is flex
-# B-BC5 is 2x16 flex
-# CHANNEL_MAP_FPATH = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/chan_map_1x32_128ch_rigid.mat" # rigid
-# CHANNEL_MAP_FPATH = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/Fei2x16old/Mirro_Oversampling_hippo_map.mat" # flex 
-# CHANNEL_MAP_FPATH = "/media/luanlab/Data_Processing/Jim-Zhang/Spike-Sort/channel_maps/oversampling_palvo_flex_intanAdapterMap.mat"
-# ELECTRODE_2X16 = False
-
-#%%
+# Check header consistency
 def check_header_consistency(hA, hB):
     if len(hA)!=len(hB): 
         return False
@@ -55,7 +46,7 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         GW_BETWEEN_SHANK = 300 # micron
         GH = 25 # micron
     else:
-        # 16x2 per shank setting, MirroHippo Fei Old Device ChMap
+        # 16x2 per shank setting
         GW_BETWEEN_SHANK = 250
         GW_WITHIN_SHANK = 30
         GH = 30

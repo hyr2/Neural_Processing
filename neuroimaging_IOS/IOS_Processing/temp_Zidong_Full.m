@@ -7,8 +7,8 @@
 clear 
 close all;
 % Partial Automation (ie batch process) IOS imaging files
-parent_directory = '/home/hyr2-office/.media/share/xl_neurovascular_coupling/November_2021 - NVC/RH-11/';         % Reading from Remote Server
-parent_directory_local = '/home/hyr2-office/Documents/Data/IOS_imaging/rh11/';           % Saving into local PC. Must have the same sessions IDs as the Server
+parent_directory = '/home/hyr2-office/.media/share/xl_neurovascular_coupling/November_2021 - NVC/B-BC5/';         % Reading from Remote Server
+parent_directory_local = '/home/hyr2-office/Documents/Data/IOS_imaging/bbc5/';           % Saving into local PC. Must have the same sessions IDs as the Server
 file_X = dir_sorted(parent_directory);
 file_X = {file_X.name};
 file_X =  file_X(~ismember(file_X,{'.','..'}));

@@ -54,10 +54,10 @@ for iter, filename in enumerate(source_dir_list):
         # func_convert2MS(Raw_dir)
 
         # Population analysis
-        func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
+        # func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
 
         # Calling matlab scripts from python
-        eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,CHANNEL_MAP_FPATH,nargout=0)
+        # eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,CHANNEL_MAP_FPATH,nargout=0)
 
         # delete converted_data.mda and filt.mda and raw data files (.rhd) 
         # os.remove(os.path.join(Raw_dir,'converted_data.mda'))
