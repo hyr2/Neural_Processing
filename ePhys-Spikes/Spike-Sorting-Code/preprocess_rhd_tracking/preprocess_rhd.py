@@ -152,16 +152,6 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     df_final = pd.DataFrame(columns=['Time','ADC'])
     # Main loop for generating converted_data.mda file 
     for iter_local, filename_u in enumerate(list_session):              # Session loop        
-        matlabTXT = os.path.join(Raw_dir,filename_u,'whisker_stim.txt')
-        trial_mask = os.path.join(Raw_dir,filename_u,'trial_mask.csv')
-        try:
-            stim_start_time, stim_num, seq_period, len_trials, num_trials, FramePerSeq, total_seq, len_trials_arr = read_stimtxt(matlabTXT)
-            trial_mask = pd.read_csv(trial_mask, header=None, index_col=False,dtype = bool)
-            TRIAL_KEEP_MASK = trial_mask.to_numpy(dtype = bool)
-            TRIAL_KEEP_MASK = np.squeeze(TRIAL_KEEP_MASK)
-        except ValueError as e:
-            print(e)
-
         for iter_local_i, filename_i in enumerate(list_rhd[iter_local]):    # RHD loop
             # Read all .rhds and write chunks 
             file_i += 1
@@ -213,7 +203,8 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
                 if shank_info[iter_local_local]:
                     local_NativeChOrder_shank0 = np_chs_native_order[shank_list_local == iter_local_local]   # channels in the current recording located on shankA
                     reject_ch_indx_local = np.squeeze(np.argwhere(np.in1d(chs_native_order,np.setdiff1d(chs_native_order,np.array(local_NativeChOrder_shank0)))))     
-                    reject_ch_indx_local = np.concatenate((reject_ch_indx_local,reject_ch_indx_global))    # adding globally rejected (due to missing channels)
+                    if np.size(reject_ch_indx_global) != 0:
+                        reject_ch_indx_local = np.concatenate((reject_ch_indx_local,reject_ch_indx_global))    # adding globally rejected (due to missing channels)
                     reject_ch_indx_local = np.unique(reject_ch_indx_local)
                     print("Intan channels to reject:", reject_ch_indx_local)    
                     
@@ -233,7 +224,83 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
             del(reject_ch_indx_local)
             del(reject_ch_indx_global)
             gc.collect()
-            
+    
+    matlabTXT = os.path.join(Raw_dir,filename_u,'whisker_stim.txt')
+    trial_mask = os.path.join(Raw_dir,filename_u,'trial_mask.csv')
+    try:
+        stim_start_time, stim_num, seq_period, len_trials, num_trials, FramePerSeq, total_seq, len_trials_arr = read_stimtxt(matlabTXT)
+        trial_mask = pd.read_csv(trial_mask, header=None, index_col=False,dtype = bool)
+        TRIAL_KEEP_MASK = trial_mask.to_numpy(dtype = bool)
+        TRIAL_KEEP_MASK = np.squeeze(TRIAL_KEEP_MASK)
+    except ValueError as e:
+        print(e)
+        
+    # Saving trial_times.mat
+    arr_Time = pd.Series(df_final.Time)          # Time in seconds
+    arr_Time = arr_Time.to_numpy(dtype = np.single)
+    arr_ADC = pd.Series(df_final.ADC)            # ADC input (CMOS trigger)
+    arr_ADC = arr_ADC.to_numpy(dtype = np.single)
+    arr_ADC[arr_ADC >= 1] = 5                # Ceiling the ADC data (ideal signal)
+    arr_ADC[arr_ADC < 1] = 0                # Flooring the ADC data (ideal signal)
+
+    # If data was taken in two sessions:
+    # If experiment was taken in two sessions (e.g: a b only) -------------------------------
+    temp_arr = (arr_Time - np.roll(arr_Time,-1) > 1)
+    temp_arr = np.where(temp_arr)
+    iter = temp_arr[0]
+    if len(iter) > 1:
+        iter = np.delete(iter,[-1])
+        iter = iter[0]
+        temp_arr = arr_Time[iter+1:]
+        temp_arr = temp_arr + arr_Time[iter]
+        arr_Time = np.delete(arr_Time,np.arange(iter+1,len(arr_Time),1))
+        arr_Time = np.concatenate((arr_Time,temp_arr))
+
+    # Finding peaks
+    arr_ADC_diff = np.diff(arr_ADC)
+    arr_ADC_diff[arr_ADC_diff<0] = 0
+    arr_Time_diff = np.delete(arr_Time,[-1])
+    timestamp_frame = ( arr_ADC_diff - np.roll(arr_ADC_diff,1) > 0.5) & (arr_ADC_diff - np.roll(arr_ADC_diff,-1) > 0.5) # for digital
+    # Here I compute the indices of the timestamps 
+    timestamp_frame = timestamp_frame.nonzero()[0]                                        # Timestamp indices of the frames (FOIL Camera)
+    # sequences
+    temp_vec = np.diff(timestamp_frame)
+    x = np.argwhere(temp_vec > sample_freq*0.03)                                                   # Detect sequences
+    x = x.astype(int)
+    x = np.reshape(x,(len(x),))
+    x+=1
+    x = np.insert(x,0,0)                                                                  # So that we dont miss the first seq
+    timestamp_seq = timestamp_frame[x]
+    # trials
+    xx = np.argwhere(temp_vec > sample_freq*1)                                                      # Detect trials
+    xx = xx.astype(int)
+    xx = np.reshape(xx,(len(xx),))
+    xx+=1
+    xx = np.insert(xx,0,0)    
+    
+    # xx = np.delete(xx,-1)   # extra
+    
+    timestamp_trials = timestamp_frame[xx]
+    
+    # Actual timestamps of the sequences and trials
+    timestamp_seq_times = arr_Time[timestamp_seq]           # in seconds
+    timestamp_trials_times = arr_Time[timestamp_trials]     # in seconds
+    
+    #----------------------------- Plotting -----------------------------(suppressed)
+    plt.figure()
+    plt.plot(arr_Time,arr_ADC)
+    plt.plot(timestamp_seq_times,arr_ADC[timestamp_frame[x]]+1,'ro')
+    plt.plot(timestamp_trials_times,arr_ADC[timestamp_frame[xx]]+1,'go')
+    # plt.show()
+    fig = plt.gcf()
+    fig.set_size_inches((16, 9), forward=False)
+    fig.savefig(filename_trials_digIn, dpi=200, format = 'png')
+    
+    # Exporting Timestamps of the trial start times:
+    tt_export = timestamp_frame[xx]
+    export_timestamps_trials = {'empty':[0],'t_trial_start':tt_export}
+    savemat(filename_trials_export,export_timestamps_trials)
+        
             # # only implement min channel map mask when the file exists 
             # # thus this addition will not affect normal spike sorting pipeline
             # if os.path.isfile(filename_min_chan_mask): 
