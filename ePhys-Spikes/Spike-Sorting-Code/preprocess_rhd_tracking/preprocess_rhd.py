@@ -60,7 +60,7 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
             if not os.path.exists(local_outputdir):
                 os.makedirs(local_outputdir)
     
-    filename_trials_export = os.path.join(output_dir,'trials_times.mat')
+    # filename_trials_export = os.path.join(output_dir,'trials_times.mat')
     filename_trials_digIn = os.path.join(output_dir,'trials_digIn.png')
     filename_min_chan_mask = os.path.join(Raw_dir,'min_chanmap_mask_new.npy')
     
@@ -150,8 +150,22 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     sample_freq = None
     file_i = -1
     df_final = pd.DataFrame(columns=['Time','ADC'])
+    df_trial_mask = pd.DataFrame(columns=['mask','session'])
     # Main loop for generating converted_data.mda file 
     for iter_local, filename_u in enumerate(list_session):              # Session loop        
+        matlabTXT = os.path.join(Raw_dir,filename_u,'whisker_stim.txt')
+        trial_mask = os.path.join(Raw_dir,filename_u,'trial_mask.csv')
+        try:
+            stim_start_time, stim_num, seq_period, len_trials, num_trials, FramePerSeq, total_seq, len_trials_arr = read_stimtxt(matlabTXT)
+            trial_mask = pd.read_csv(trial_mask, header=None, index_col=False,dtype = bool)
+            TRIAL_KEEP_MASK = trial_mask.to_numpy(dtype = bool)
+            TRIAL_KEEP_MASK = np.squeeze(TRIAL_KEEP_MASK)
+        except ValueError as e:
+            print(e)
+        session_info = np.repeat(iter_local,TRIAL_KEEP_MASK.shape[0])
+        dict_tmp = {'mask':TRIAL_KEEP_MASK,'session':session_info}
+        dict_tmp = pd.DataFrame(dict_tmp,dtype=np.single,columns=['mask','session'])
+        df_trial_mask = pd.concat([df_trial_mask,dict_tmp],axis=0,ignore_index=True)
         for iter_local_i, filename_i in enumerate(list_rhd[iter_local]):    # RHD loop
             # Read all .rhds and write chunks 
             file_i += 1
@@ -225,15 +239,7 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
             del(reject_ch_indx_global)
             gc.collect()
     
-    matlabTXT = os.path.join(Raw_dir,filename_u,'whisker_stim.txt')
-    trial_mask = os.path.join(Raw_dir,filename_u,'trial_mask.csv')
-    try:
-        stim_start_time, stim_num, seq_period, len_trials, num_trials, FramePerSeq, total_seq, len_trials_arr = read_stimtxt(matlabTXT)
-        trial_mask = pd.read_csv(trial_mask, header=None, index_col=False,dtype = bool)
-        TRIAL_KEEP_MASK = trial_mask.to_numpy(dtype = bool)
-        TRIAL_KEEP_MASK = np.squeeze(TRIAL_KEEP_MASK)
-    except ValueError as e:
-        print(e)
+    
         
     # Saving trial_times.mat
     arr_Time = pd.Series(df_final.Time)          # Time in seconds
@@ -287,19 +293,22 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     timestamp_trials_times = arr_Time[timestamp_trials]     # in seconds
     
     #----------------------------- Plotting -----------------------------(suppressed)
-    plt.figure()
-    plt.plot(arr_Time,arr_ADC)
-    plt.plot(timestamp_seq_times,arr_ADC[timestamp_frame[x]]+1,'ro')
-    plt.plot(timestamp_trials_times,arr_ADC[timestamp_frame[xx]]+1,'go')
-    # plt.show()
-    fig = plt.gcf()
-    fig.set_size_inches((16, 9), forward=False)
-    fig.savefig(filename_trials_digIn, dpi=200, format = 'png')
+    # plt.figure()
+    # plt.plot(arr_Time,arr_ADC)
+    # plt.plot(timestamp_seq_times,arr_ADC[timestamp_frame[x]]+1,'ro')
+    # plt.plot(timestamp_trials_times,arr_ADC[timestamp_frame[xx]]+1,'go')
+    # # plt.show()
+    # fig = plt.gcf()
+    # fig.set_size_inches((16, 9), forward=False)
+    # fig.savefig(filename_trials_digIn, dpi=200, format = 'png')
     
     # Exporting Timestamps of the trial start times:
     tt_export = timestamp_frame[xx]
     export_timestamps_trials = {'empty':[0],'t_trial_start':tt_export}
-    savemat(filename_trials_export,export_timestamps_trials)
+    for iter_l in range(len(shank_info)):
+        if shank_info[iter_l]:
+            local_outputdir =os.path.join(output_dir,f'Shank_{iter_l}','trials_times.mat')
+            savemat(local_outputdir,export_timestamps_trials)
         
             # # only implement min channel map mask when the file exists 
             # # thus this addition will not affect normal spike sorting pipeline
