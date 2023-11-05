@@ -295,18 +295,18 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     arr_ADC[arr_ADC >= 1] = 5                # Ceiling the ADC data (ideal signal)
     arr_ADC[arr_ADC < 1] = 0                # Flooring the ADC data (ideal signal)
 
-    # If data was taken in two sessions:
-    # If experiment was taken in two sessions (e.g: a b only) -------------------------------
-    temp_arr = (arr_Time - np.roll(arr_Time,-1) > 1)
-    temp_arr = np.where(temp_arr)
-    iter = temp_arr[0]
-    if len(iter) > 1:
-        iter = np.delete(iter,[-1])
-        iter = iter[0]
-        temp_arr = arr_Time[iter+1:]
-        temp_arr = temp_arr + arr_Time[iter]
-        arr_Time = np.delete(arr_Time,np.arange(iter+1,len(arr_Time),1))
-        arr_Time = np.concatenate((arr_Time,temp_arr))
+    # # If data was taken in two sessions:
+    # # If experiment was taken in two sessions (e.g: a b only) -------------------------------
+    # temp_arr = (arr_Time - np.roll(arr_Time,-1) > 1)
+    # temp_arr = np.where(temp_arr)
+    # iter = temp_arr[0]
+    # if len(iter) > 1:
+    #     iter = np.delete(iter,[-1])
+    #     iter = iter[0]
+    #     temp_arr = arr_Time[iter+1:]
+    #     temp_arr = temp_arr + arr_Time[iter]
+    #     arr_Time = np.delete(arr_Time,np.arange(iter+1,len(arr_Time),1))
+    #     arr_Time = np.concatenate((arr_Time,temp_arr))
 
     # Finding peaks
     arr_ADC_diff = np.diff(arr_ADC)
@@ -329,12 +329,12 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     xx = np.reshape(xx,(len(xx),))
     xx+=1
     xx = np.insert(xx,0,0)    
-    # sessions
-    xx = np.argwhere(temp_vec > sample_freq*45)                                                      # Detect sessions
-    xx = xx.astype(int)
-    xx = np.reshape(xx,(len(xx),))
-    xx+=1
-    xx = np.insert(xx,0,0)    
+    # # sessions
+    # xx = np.argwhere(temp_vec > sample_freq*45)                                                      # Detect sessions
+    # xx = xx.astype(int)
+    # xx = np.reshape(xx,(len(xx),))
+    # xx+=1
+    # xx = np.insert(xx,0,0)    
     
     # xx = np.delete(xx,-1)   # extra
     
@@ -375,7 +375,7 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
             # Writing .json file:
             dictionary_summary = {
                 "Session": [],
-                "NumChannels": electrodes_in_shank[iter_l].shape,
+                "NumChannels": electrodes_in_shank[iter_l].shape[0],
                 "SampleRate": sample_freq,
                 "ELECTRODE_2X16": ELECTRODE_2X16,
                 "Notch filter": notch_freq,
