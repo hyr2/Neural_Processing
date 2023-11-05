@@ -214,7 +214,7 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         if iter_local == 0:
             T_offset = 0.0
         else: 
-            T_offset = df_final.iat[-1,0] + 50 # adding 50 seconds signals next session
+            T_offset = df_final.iat[-1,0] + 50 # adding 50 seconds signals next session (helps in trial_times.mat)
         for iter_local_i, filename_i in enumerate(list_rhd[iter_local]):    # RHD loop
             # Read all .rhds and write chunks 
             file_i += 1
