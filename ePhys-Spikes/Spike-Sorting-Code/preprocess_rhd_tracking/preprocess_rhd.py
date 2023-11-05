@@ -16,6 +16,41 @@ from natsort import natsorted
 from matplotlib import pyplot as plt
 plt.rcParams['agg.path.chunksize'] = 10000
 
+def generate_geom_csv(chmap_mat,TrueNativeChOrder,ELECTRODE_2X16,shank_info):
+
+    dict_geom = {}
+    for iter_l in range(len(shank_info)):
+           dict_geom["shank{}".format(iter_l)] = []
+    # read .mat for channel map (make sure channel index starts from 0)
+    if not ELECTRODE_2X16:
+        GW_BETWEEN_SHANK = 300 # micron
+        GH = 25 # micron
+        print(chmap_mat.shape)
+        if chmap_mat.shape!=(32,4):
+            raise ValueError("Channel map is of shape %s, expected (32,4)" % (chmap_mat.shape))
+        # find correct locations for valid chanels
+        geom_map = -1*np.ones((len(TrueNativeChOrder), 2), dtype= int)
+        for i, native_order in enumerate(TrueNativeChOrder):
+            loc = np.where(chmap_mat==native_order)
+            shank_ID_local = loc[1][0]
+            dict_geom[f'shank{shank_ID_local}'].append(np.array([loc[0][0]*GH,loc[1][0]*GW_BETWEEN_SHANK]))
+    
+    else:
+        GW_BETWEEN_SHANK = 250
+        GW_WITHIN_SHANK = 30
+        GH = 30
+        print(chmap_mat.shape)
+        if chmap_mat.shape!=(16,8):
+            raise ValueError("Channel map is of shape %s, expected (16,8)" % (chmap_mat.shape))
+        # Generating the geom.csv file required by mountainsort       
+        geom_map = -1*np.ones((len(TrueNativeChOrder), 2), dtype=np.int)
+        for i, native_order in enumerate(TrueNativeChOrder):
+            loc = np.where(chmap_mat==native_order)
+            shank_ID_local = loc[1][0] // 2
+            dict_geom[f'shank{shank_ID_local}'].append(np.array([loc[0][0]*GH,(loc[1][0]//2)*GW_BETWEEN_SHANK + (loc[1][0]%2)*GW_WITHIN_SHANK]))
+                
+    return dict_geom
+
 # Check header consistency
 def check_header_consistency(hA, hB):
     if len(hA)!=len(hB): 
@@ -100,8 +135,10 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     N_samples_cumsum_by_file_ = [0]
     dict_ch_nativeorder_allsessions = {}
     file_i = -1
+    session_info = np.array([0],dtype=np.int8)
     # This double loop is for getting the number of samples in each .rhd file
-    for iter_local, filename_u in enumerate(list_session):              # Session loop        
+    for iter_local, filename_u in enumerate(list_session):              # Session loop    
+        session_info = np.concatenate((session_info,np.repeat(iter_local,len(list_rhd[iter_local]))))    
         for iter_local_i, filename_i in enumerate(list_rhd[iter_local]):    # RHD loop
             file_i += 1
             filename_rhd = os.path.join(Raw_dir,filename_u,filename_i)
@@ -116,7 +153,12 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
             chs_info_local = deepcopy(head_dict['amplifier_channels'])
             chs_native_order_local = [e['native_order'] for e in chs_info_local]
             dict_ch_nativeorder_allsessions[file_i] = chs_native_order_local   
-
+    df_samples = pd.DataFrame(
+        {
+            'N_samples': np.array(N_samples_cumsum_by_file_,dtype=np.int64),
+            'Session':session_info
+        }
+    )            
     TrueNativeChOrder,n_ch = intersection_lists(dict_ch_nativeorder_allsessions)    # minimum common channels among all sessions
     
     # Number of channels on each shank on the minimum channel map (between all sessions)
@@ -137,18 +179,21 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     print('------------------\n-----------------\n----------------\n')
     print(f'Number of channels\t:{n_ch}')
     dict_writers_mda = {}   # dictionary of variables and writer objects for .mda files
+    electrodes_in_shank = []
+    np_TrueNativeChOrder = np.array(TrueNativeChOrder,dtype = np.int16)
     for iter_l in range(len(shank_info)):           # Creating .mda files
         n_ch_this_shank = (shank_list_local == iter_l).sum()
+        electrodes_in_shank.append(np_TrueNativeChOrder[shank_list_local == iter_l])
         if shank_info[iter_l]:
             local_outputdir = os.path.join(output_dir,f'Shank_{iter_l}')
             dict_writers_mda["writer{}".format(iter_l)] = DiskWriteMda(os.path.join(local_outputdir, "converted_data.mda"), (n_ch_this_shank, N_samples_), dt="int16")
-            # writer = DiskWriteMda(os.path.join(local_outputdir, "converted_data.mda"), (n_ch, N_samples_), dt="int16")
 
     chs_impedance = None
     notch_freq = None
     chs_native_order = None
     sample_freq = None
     file_i = -1
+    session_time = []
     df_final = pd.DataFrame(columns=['Time','ADC'])
     df_trial_mask = pd.DataFrame(columns=['mask','session'])
     # Main loop for generating converted_data.mda file 
@@ -166,6 +211,10 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
         dict_tmp = {'mask':TRIAL_KEEP_MASK,'session':session_info}
         dict_tmp = pd.DataFrame(dict_tmp,dtype=np.single,columns=['mask','session'])
         df_trial_mask = pd.concat([df_trial_mask,dict_tmp],axis=0,ignore_index=True)
+        if iter_local == 0:
+            T_offset = 0.0
+        else: 
+            T_offset = df_final.iat[-1,0] + 50 # adding 50 seconds signals next session
         for iter_local_i, filename_i in enumerate(list_rhd[iter_local]):    # RHD loop
             # Read all .rhds and write chunks 
             file_i += 1
@@ -173,7 +222,7 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
             data_dict = read_data(filename_rhd)
             chs_info = deepcopy(data_dict['amplifier_channels'])
             arr_ADC = data_dict['board_dig_in_data']                    # Digital Trigger input 
-            Time = data_dict['t_amplifier']                        		# Timing info from INTAN
+            Time = data_dict['t_amplifier'] + T_offset                  # Timing info from INTAN
             if arr_ADC.shape[0] != 1:                                   # For data with multiple digital inputs (dig input channel 1 is the speckle trigger)
                 arr_ADC = arr_ADC[0,:]
             arr_ADC = np.reshape(arr_ADC,(arr_ADC.size,))
@@ -190,10 +239,6 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
             else:
                 tmp_native_order = [e['native_order'] for e in chs_info]
                 print("#Chans with >= 3MOhm impedance:", np.sum(np.array([e['electrode_impedance_magnitude'] for e in chs_info])>=3e6))
-                if not check_header_consistency(tmp_native_order, chs_native_order):
-                    warnings.warn("WARNING in preprocess_rhd: native ordering of channels inconsistent within one session\n")
-                if notch_freq != head_dict['notch_filter_frequency']:
-                    warnings.warn("WARNING in preprocess_rhd: notch frequency inconsistent within one session\n")
                 if sample_freq != head_dict['sample_rate']:
                     warnings.warn("WARNING in preprocess_rhd: sampling frequency inconsistent within one session\n")
             chs_native_order = [e['native_order'] for e in chs_info]
@@ -211,12 +256,14 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
             np_chs_native_order = np.array(chs_native_order,dtype=np.int8)
             # reject_ch_indx_global = np.where(np.any(chs_native_order==(np.setdiff1d(chs_native_order,np.array(TrueNativeChOrder))[:,None]), axis=0))[0]
             reject_ch_indx_global = np.squeeze(np.argwhere(np.in1d(chs_native_order,np.setdiff1d(chs_native_order,np.array(TrueNativeChOrder)))))
+            if reject_ch_indx_global.size == 1:
+                reject_ch_indx_global = np.array([reject_ch_indx_global],dtype = np.int16)
             
             # divide ephys array by shank here
             for iter_local_local in range(len(shank_info)):
                 if shank_info[iter_local_local]:
                     local_NativeChOrder_shank0 = np_chs_native_order[shank_list_local == iter_local_local]   # channels in the current recording located on shankA
-                    reject_ch_indx_local = np.squeeze(np.argwhere(np.in1d(chs_native_order,np.setdiff1d(chs_native_order,np.array(local_NativeChOrder_shank0)))))     
+                    reject_ch_indx_local = np.array(np.squeeze(np.argwhere(np.in1d(chs_native_order,np.setdiff1d(chs_native_order,np.array(local_NativeChOrder_shank0))))) ,dtype=np.int16)    
                     if np.size(reject_ch_indx_global) != 0:
                         reject_ch_indx_local = np.concatenate((reject_ch_indx_local,reject_ch_indx_global))    # adding globally rejected (due to missing channels)
                     reject_ch_indx_local = np.unique(reject_ch_indx_local)
@@ -230,15 +277,14 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
                     
                     print("    Appending chunk to disk")
                     entry_offset = N_samples_cumsum_by_file_[file_i] * n_ch
-                    dict_writers_mda[f'writer{iter_local_local}'].writeChunk(ephys_data, i1=0, i2=entry_offset)     # write chunk to shank's .mda file
-                
+                    dict_writers_mda[f'writer{iter_local_local}'].writeChunk(ephys_data, i1=0, i2=entry_offset)     # write chunk to shank's .mda file   
             del(ephys_data)
             del(data_dict)
             del(df)
             del(reject_ch_indx_local)
             del(reject_ch_indx_global)
             gc.collect()
-    
+
     
         
     # Saving trial_times.mat
@@ -269,8 +315,8 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     timestamp_frame = ( arr_ADC_diff - np.roll(arr_ADC_diff,1) > 0.5) & (arr_ADC_diff - np.roll(arr_ADC_diff,-1) > 0.5) # for digital
     # Here I compute the indices of the timestamps 
     timestamp_frame = timestamp_frame.nonzero()[0]                                        # Timestamp indices of the frames (FOIL Camera)
-    # sequences
     temp_vec = np.diff(timestamp_frame)
+    # sequences
     x = np.argwhere(temp_vec > sample_freq*0.03)                                                   # Detect sequences
     x = x.astype(int)
     x = np.reshape(x,(len(x),))
@@ -279,6 +325,12 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     timestamp_seq = timestamp_frame[x]
     # trials
     xx = np.argwhere(temp_vec > sample_freq*1)                                                      # Detect trials
+    xx = xx.astype(int)
+    xx = np.reshape(xx,(len(xx),))
+    xx+=1
+    xx = np.insert(xx,0,0)    
+    # sessions
+    xx = np.argwhere(temp_vec > sample_freq*45)                                                      # Detect sessions
     xx = xx.astype(int)
     xx = np.reshape(xx,(len(xx),))
     xx+=1
@@ -301,15 +353,44 @@ def func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH):
     # fig = plt.gcf()
     # fig.set_size_inches((16, 9), forward=False)
     # fig.savefig(filename_trials_digIn, dpi=200, format = 'png')
-    
+      
     # Exporting Timestamps of the trial start times:
     tt_export = timestamp_frame[xx]
     export_timestamps_trials = {'empty':[0],'t_trial_start':tt_export}
+    dict_geom = generate_geom_csv(chmap_mat , TrueNativeChOrder,ELECTRODE_2X16,shank_info)
     for iter_l in range(len(shank_info)):
         if shank_info[iter_l]:
-            local_outputdir =os.path.join(output_dir,f'Shank_{iter_l}','trials_times.mat')
+            local_outputdir = os.path.join(output_dir,f'Shank_{iter_l}','trials_times.mat')  # trial_times.mat for all sessions
             savemat(local_outputdir,export_timestamps_trials)
-        
+            local_outputdir = os.path.join(output_dir,f'Shank_{iter_l}','RHDfile_samples.csv')  # Samples info with session IDs
+            df_samples.to_csv(local_outputdir, index=False,header=False) 
+            local_outputdir = os.path.join(output_dir,f'Shank_{iter_l}','trial_mask.csv')   # trial mask (all sessions)
+            df_trial_mask.to_csv(local_outputdir, index=False,header=False)
+            local_outputdir = os.path.join(output_dir,f'Shank_{iter_l}','geom.csv')     # geom.csv
+            geom_map_df = pd.DataFrame(data=dict_geom[f'shank{iter_l}'])
+            geom_map_df.to_csv(local_outputdir, index=False, header=False)
+            local_outputdir = os.path.join(output_dir,f'Shank_{iter_l}','native_ch_order.npy')     # native_ch_order.npy
+            np.save(local_outputdir,electrodes_in_shank[iter_l])
+
+            # Writing .json file:
+            dictionary_summary = {
+                "Session": [],
+                "NumChannels": electrodes_in_shank[iter_l].shape,
+                "SampleRate": sample_freq,
+                "ELECTRODE_2X16": ELECTRODE_2X16,
+                "Notch filter": notch_freq,
+                "SequenceTime": seq_period,
+                "StimulationTime": stim_num*seq_period,
+                "StimulationStartTime": stim_start_time,
+                "SeqPerTrial": len_trials,
+                "NumTrials": df_trial_mask.shape[0],
+                "FPS": FramePerSeq
+            } 
+            json_object = json.dumps(dictionary_summary, indent=4)  # Serializing json
+            local_outputdir = os.path.join(output_dir,f'Shank_{iter_l}','pre_MS.json')     # pre_MS.json
+            with open(local_outputdir, "w") as outfile:
+                outfile.write(json_object)
+
             # # only implement min channel map mask when the file exists 
             # # thus this addition will not affect normal spike sorting pipeline
             # if os.path.isfile(filename_min_chan_mask): 
