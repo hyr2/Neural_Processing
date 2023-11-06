@@ -15,63 +15,60 @@ Created on Sun Nov  6 20:30:52 2022
 
 import numpy as np
 from discard_noise_and_viz import *
-from population_analysis import *
-import os, json
+import os, json, sys
 from natsort import natsorted
-import matlab.engine
 sys.path.append(r'../../Time-Series/')
 from FR_TS_pop import *
 from convert2Phy import func_convert2Phy, func_convert2MS
 from apply_curation_and_save import clean_mdas_main
 # Automate batch processing of the pre processing step
 
-# PHY manual curation flag
-phy_flag = 1                        # indicates that PHY manual curation has been performed (we use it only for merging of clusters)
 
-# read parameters
-with open("../params.json", "r") as f:
-    params = json.load(f)
+if __name__ == '__main__':
 
-input_dir = params['spikesort_dir']
-CHANNEL_MAP_FPATH = params['CHANNEL_MAP_FPATH']
-source_dir_list = natsorted(os.listdir(input_dir))
-mda_reldirs = []
+    # PHY manual curation flag
+    phy_flag = 1                        # indicates that PHY manual curation has been performed (we use it only for merging of clusters)
 
-# Start matlab engine and change directory to code file
-eng = matlab.engine.start_matlab()
-eng.cd(r'../../Connectivity Analysis/', nargout=0)
+    # read parameters
+    with open("../params.json", "r") as f:
+        params = json.load(f)
 
-# Iterate over all sessions
-for iter, filename in enumerate(source_dir_list):
-    print(iter, ' ',filename)
-    Raw_dir = os.path.join(input_dir, filename)
-    if os.path.isdir(Raw_dir):
-        mda_reldirs.append(Raw_dir)
-        file_pre_ms = os.path.join(Raw_dir,'pre_MS.json')
-        with open(file_pre_ms, 'r') as f:
-            data_pre_ms = json.load(f)
-        F_SAMPLE = float(data_pre_ms['SampleRate'])
-                         
-        # Curation
-        func_discard_noise_and_viz(Raw_dir)
-        
-        # delete converted_data.mda and filt.mda and raw data files (.rhd) 
-        # os.remove(os.path.join(Raw_dir,'converted_data.mda'))
-        # os.remove(os.path.join(Raw_dir,'filt.mda'))
-        # test = os.listdir(Raw_dir)
-        # for item in test:
-        #     if item.endswith(".rhd"):
-        #         os.remove(os.path.join(Raw_dir, item))
+    input_dir = params['spikesort_dir']
+    CHANNEL_MAP_FPATH = params['CHANNEL_MAP_FPATH']
+    source_dir_list = natsorted(os.listdir(input_dir))
+    mda_reldirs = []
 
-# Applying curation masks to generate "*_clean" files
-clean_mdas_main(mda_reldirs,mda_reldirs)                       #(script is called clean_firings_mda.py written by JiaaoZ)
+    # Iterate over all sessions
+    for iter, filename in enumerate(source_dir_list):
+        print(iter, ' ',filename)
+        Raw_dir = os.path.join(input_dir, filename)
+        if os.path.isdir(Raw_dir):
+            mda_reldirs.append(Raw_dir)
+            file_pre_ms = os.path.join(Raw_dir,'pre_MS.json')
+            with open(file_pre_ms, 'r') as f:
+                data_pre_ms = json.load(f)
+            F_SAMPLE = float(data_pre_ms['SampleRate'])
+                            
+            # Curation
+            func_discard_noise_and_viz(Raw_dir)
+            
+            # delete converted_data.mda and filt.mda and raw data files (.rhd) 
+            # os.remove(os.path.join(Raw_dir,'converted_data.mda'))
+            # os.remove(os.path.join(Raw_dir,'filt.mda'))
+            # test = os.listdir(Raw_dir)
+            # for item in test:
+            #     if item.endswith(".rhd"):
+            #         os.remove(os.path.join(Raw_dir, item))
 
-# Iterate over all sessions to perform conversion of data into PHY compatible files
-for iter, filename in enumerate(source_dir_list):
-    print(iter, ' ',filename)
-    Raw_dir = os.path.join(input_dir, filename)
-    if os.path.isdir(Raw_dir):
-        func_convert2Phy(Raw_dir)
+    # Applying curation masks to generate "*_clean" files
+    clean_mdas_main(mda_reldirs,mda_reldirs)                       #(script is called clean_firings_mda.py written by JiaaoZ)
+
+    # Iterate over all sessions to perform conversion of data into PHY compatible files
+    for iter, filename in enumerate(source_dir_list):
+        print(iter, ' ',filename)
+        Raw_dir = os.path.join(input_dir, filename)
+        if os.path.isdir(Raw_dir):
+            func_convert2Phy(Raw_dir)
         
 # At the end of this code, you must perform manual curation using PHY ----- *******************                
         

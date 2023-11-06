@@ -23,54 +23,55 @@ sys.path.append(r'../../Time-Series/')
 from FR_TS_pop import *
 from convert2Phy import func_convert2Phy, func_convert2MS
 # Automate batch processing of the pre processing step
+if __name__ == '__main__':
 
-# PHY manual curation flag
-phy_flag = 1                        # indicates that PHY manual curation has been performed (we use it only for merging of clusters)
+    # PHY manual curation flag
+    phy_flag = 1                        # indicates that PHY manual curation has been performed (we use it only for merging of clusters)
 
-# read parameters
-with open("../params.json", "r") as f:
-    params = json.load(f)
+    # read parameters
+    with open("../params.json", "r") as f:
+        params = json.load(f)
 
-input_dir = params['spikesort_dir']
-CHANNEL_MAP_FPATH = params['CHANNEL_MAP_FPATH']
-source_dir_list = natsorted(os.listdir(input_dir))
+    input_dir = params['spikesort_dir']
+    CHANNEL_MAP_FPATH = params['CHANNEL_MAP_FPATH']
+    source_dir_list = natsorted(os.listdir(input_dir))
 
-# Start matlab engine and change directory to code file
-eng = matlab.engine.start_matlab()
-eng.cd(r'../../Connectivity Analysis/', nargout=0)
+    # Start matlab engine and change directory to code file
+    eng = matlab.engine.start_matlab()
+    eng.cd(r'../../Connectivity Analysis/', nargout=0)
 
-# Iterate over all sessions
-for iter, filename in enumerate(source_dir_list):
-    print(iter, ' ',filename)
-    Raw_dir = os.path.join(input_dir, filename)
-    if os.path.isdir(Raw_dir):
+    # Iterate over all sessions
+    for iter, filename in enumerate(source_dir_list):
+        print(iter, ' ',filename)
+        Raw_dir = os.path.join(input_dir, filename)
+        if os.path.isdir(Raw_dir):
 
-        file_pre_ms = os.path.join(Raw_dir,'pre_MS.json')
-        with open(file_pre_ms, 'r') as f:
-            data_pre_ms = json.load(f)
-        F_SAMPLE = float(data_pre_ms['SampleRate'])
-        
-        # Update firings.mda and other files here ----
-        # func_convert2MS(Raw_dir)
+            file_pre_ms = os.path.join(Raw_dir,'pre_MS.json')
+            with open(file_pre_ms, 'r') as f:
+                data_pre_ms = json.load(f)
+            F_SAMPLE = float(data_pre_ms['SampleRate'])
+            
+            # Update firings.mda and other files here ----
+            func_convert2MS(Raw_dir)
 
-        # Population analysis
-        # func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
+            # Population analysis
+            func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
 
-        # Calling matlab scripts from python
-        # eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,CHANNEL_MAP_FPATH,nargout=0)
+            # Calling matlab scripts from python
+            eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,CHANNEL_MAP_FPATH,nargout=0)
 
-        # delete converted_data.mda and filt.mda and raw data files (.rhd) 
-        # os.remove(os.path.join(Raw_dir,'converted_data.mda'))
-        # os.remove(os.path.join(Raw_dir,'filt.mda'))
-        # test = os.listdir(Raw_dir)
-        # for item in test:
-        #     if item.endswith(".rhd"):
-        #         os.remove(os.path.join(Raw_dir, item))
+            # delete converted_data.mda and filt.mda and raw data files (.rhd) 
+            # os.remove(os.path.join(Raw_dir,'converted_data.mda'))
+            # os.remove(os.path.join(Raw_dir,'filt.mda'))
+            # test = os.listdir(Raw_dir)
+            # for item in test:
+            #     if item.endswith(".rhd"):
+            #         os.remove(os.path.join(Raw_dir, item))
 
-eng.quit()
+    eng.quit()
 
-moouse_id = input_dir.split('/')[-2]
-combine_sessions(input_dir,moouse_id)
+    moouse_id = input_dir.split('/')[-2]
+    combine_sessions(input_dir,moouse_id)
 
 # Params.json file:
 #     {

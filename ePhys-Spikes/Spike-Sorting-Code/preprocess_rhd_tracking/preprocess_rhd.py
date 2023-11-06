@@ -33,7 +33,7 @@ def generate_geom_csv(chmap_mat,TrueNativeChOrder,ELECTRODE_2X16,shank_info):
         for i, native_order in enumerate(TrueNativeChOrder):
             loc = np.where(chmap_mat==native_order)
             shank_ID_local = loc[1][0]
-            dict_geom[f'shank{shank_ID_local}'].append(np.array([loc[0][0]*GH,loc[1][0]*GW_BETWEEN_SHANK]))
+            dict_geom[f'shank{shank_ID_local}'].append(np.array([loc[1][0]*GW_BETWEEN_SHANK,loc[0][0]*GH]))
     
     else:
         GW_BETWEEN_SHANK = 250
@@ -47,7 +47,7 @@ def generate_geom_csv(chmap_mat,TrueNativeChOrder,ELECTRODE_2X16,shank_info):
         for i, native_order in enumerate(TrueNativeChOrder):
             loc = np.where(chmap_mat==native_order)
             shank_ID_local = loc[1][0] // 2
-            dict_geom[f'shank{shank_ID_local}'].append(np.array([loc[0][0]*GH,(loc[1][0]//2)*GW_BETWEEN_SHANK + (loc[1][0]%2)*GW_WITHIN_SHANK]))
+            dict_geom[f'shank{shank_ID_local}'].append(np.array([(loc[1][0]//2)*GW_BETWEEN_SHANK + (loc[1][0]%2)*GW_WITHIN_SHANK,loc[0][0]*GH]))
                 
     return dict_geom
 
