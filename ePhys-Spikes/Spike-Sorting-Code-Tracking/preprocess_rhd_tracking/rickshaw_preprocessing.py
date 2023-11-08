@@ -38,8 +38,9 @@ max_num_clips_for_pca_var = params["msort_max_num_clips_for_pca"]
 ml_temp_dir = params["msort_temp_dir"]
 
 # Pre-processing step
-# func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH)
+func_preprocess(Raw_dir, output_dir, ELECTRODE_2X16, CHANNEL_MAP_FPATH)
 
+# Loop over shank folders for sorting by shank
 source_dir_list = natsorted(os.listdir(output_dir))  # folders are shanks
 for iter, filename in enumerate(source_dir_list):
     print(iter, ' ', filename)
