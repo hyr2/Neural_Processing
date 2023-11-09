@@ -58,7 +58,7 @@ if __name__ == '__main__':
             func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
 
             # Calling matlab scripts from python
-            eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,CHANNEL_MAP_FPATH,nargout=0)
+            # eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,CHANNEL_MAP_FPATH,nargout=0)
 
             # delete converted_data.mda and filt.mda and raw data files (.rhd) 
             # os.remove(os.path.join(Raw_dir,'converted_data.mda'))
@@ -68,10 +68,10 @@ if __name__ == '__main__':
             #     if item.endswith(".rhd"):
             #         os.remove(os.path.join(Raw_dir, item))
 
-    eng.quit()
+    # eng.quit()
 
-    moouse_id = input_dir.split('/')[-2]
-    combine_sessions(input_dir,moouse_id)
+    # moouse_id = input_dir.split('/')[-2]
+    # combine_sessions(input_dir,moouse_id)
 
 # Params.json file:
 #     {

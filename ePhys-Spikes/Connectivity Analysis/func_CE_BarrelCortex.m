@@ -237,7 +237,7 @@ acg_metrics = calc_ACG_metrics(spikes,Fs,'showFigures',false);
 fit_params = fit_ACG(acg_metrics.acg_narrow,false);
 cell_metrics.acg_tau_rise = fit_params.acg_tau_rise;
 
-preferences.putativeCellType.troughToPeak_boundary=0.45;       % From CE website (edited for Barrel Cortex)
+preferences.putativeCellType.troughToPeak_boundary=0.425;       % From CE website (edited for Barrel Cortex)
 preferences.putativeCellType.acg_tau_rise_boundary=6;           % From CE website
 cell_metrics.putativeCellType = celltype_classification.standard(cell_metrics,preferences);
 celltype = cell_metrics.putativeCellType;
@@ -261,20 +261,20 @@ troughtopeak_excit = cell_metrics.troughToPeak(idx_act);
 troughtopeak_inhib = cell_metrics.troughToPeak(idx_inhib);
 
 % scatter plot for cell type
-% scatter(troughtopeak_excit,acg_tau_rise_excit,28,'r','filled')
-% hold on;
-% scatter(troughtopeak_inhib,acg_tau_rise_inhib,28,'b','filled');
-% xlabel('Trough to Pk (ms)');
-% ylabel('\tau_{rise} (ms)');
-% xline(0.425,"--",'Wide Interneuron','Color','y','LineWidth',2.5);
-% vec_line_x = linspace(0.425,1,10);
-% vec_line_y = 6*ones(1,10);
-% plot(vec_line_x,vec_line_y,'--','Color','g','LineWidth',2.5);
-% text(0.7,5.75,'Pyramidal neuron')
-% text(0.15,14,'Narrow Interneuron');
-% axis([0.1,1,-inf,inf]);
-% filename = fullfile(plotfolder,'cell_type_analysis.png');
-% print(filename,'-dpng','-r0');
+scatter(troughtopeak_excit,acg_tau_rise_excit,28,'r','filled')
+hold on;
+scatter(troughtopeak_inhib,acg_tau_rise_inhib,28,'b','filled');
+xlabel('Trough to Pk (ms)');
+ylabel('\tau_{rise} (ms)');
+xline(0.425,"--",'Wide Interneuron','Color','y','LineWidth',2.5);
+vec_line_x = linspace(0.425,1,10);
+vec_line_y = 6*ones(1,10);
+plot(vec_line_x,vec_line_y,'--','Color','g','LineWidth',2.5);
+text(0.7,5.75,'Pyramidal neuron')
+text(0.15,14,'Narrow Interneuron');
+axis([0.1,1,-inf,inf]);
+filename = fullfile(plotfolder,'cell_type_analysis.png');
+print(filename,'-dpng','-r0');
 filename = fullfile(plotfolder,'pop_celltypes.mat');
 save(filename,'type_excit','type_inhib','troughToPeak','assymetry','celltype','shank_num','burstIndex_Royer2012','tau_rise','thetaModulationIndex'); % all these quantities are only for the curated clusters
 % type_err = (cell_metrics.troughToPeak <= 0.2);
