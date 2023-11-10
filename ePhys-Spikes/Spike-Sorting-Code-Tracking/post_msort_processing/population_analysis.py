@@ -450,9 +450,11 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             firing_rate_avg = filter_Savitzky_slow(firing_rate_avg)
             t_axis = np.linspace(0,firing_rate_avg.shape[0]*WINDOW_LEN_IN_SEC,firing_rate_avg.shape[0])
             plt.figure()
-            plt.plot(t_axis,firing_rate_avg)
+            plt.plot(t_axis,firing_rate_avg,linewidth  = 2.5,color = 'k',linestyle = '-')
+            plt.xlim([0,4])
+            plt.ylim([0,1])
             filename_save = os.path.join(result_folder_FR_avg,f'FR__cluster{i_clus+1}_session{iter_l}.png')
-            plt.savefig(filename_save,format = 'png')
+            plt.savefig(filename_save,format = 'png',dpi=250)
             plt.close()
             
             

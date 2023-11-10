@@ -54,4 +54,5 @@ main_df = pd.concat([main_df1,main_df2],axis = 0)
 main_df_counts = main_df.filter(['cluster_id','plasticity_metric'])
 main_df_counts = main_df_counts.drop_duplicates()
 
-sns.countplot(x = 'plasticity_metric', data = main_df_counts)
+sns.countplot(x = 'plasticity_metric', data = main_df_counts,palette = ['r','#6F8FAF','g'])
+
