@@ -492,7 +492,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         
         # Z_score_val = (np.mean(chr_FR) - np.mean(bsl_FR))/np.mean(bsl_FR) 
         if Z_score_val > 1.835:
-            np_arr_session_binary_up_down = -1
+            np_arr_session_binary_up_down = 1
         elif (Z_score_val < -0.5):
             np_arr_session_binary_up_down = -1
         else:
