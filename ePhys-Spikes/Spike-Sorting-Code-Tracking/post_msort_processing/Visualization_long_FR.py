@@ -54,5 +54,6 @@ main_df = pd.concat([main_df1,main_df2],axis = 0)
 main_df_counts = main_df.filter(['cluster_id','plasticity_metric'])
 main_df_counts = main_df_counts.drop_duplicates()
 
-sns.countplot(x = 'plasticity_metric', data = main_df_counts,palette = ['r','#6F8FAF','g'])
-
+ax = sns.countplot(x = 'plasticity_metric', data = main_df_counts,palette = ['r','#6F8FAF','g'])
+ax.set_yticks([0,5,10,15,20])
+plt.savefig(os.path.join('/home/hyr2/Documents/Data/NVC/Results/Tracking-Results-RH11-Twoshanks/','Plasticity_counts.png'),format = 'png',dpi = 300)
