@@ -829,8 +829,8 @@ def func_discard_noise_and_viz(SESSION_FOLDER):
     COMMON_AVG_REREFERENCE = True
     ADJACENCY_RADIUS_SQUARED = 200**2   # um^2, [consistent with mountainsort shell script](not anymore)
     SNR_THRESH = 1.5                    # SNR increased from 1.5
-    AMP_THRESH = 50                     # 35 for Anesthetized # 50 for awake
-    FIRING_RATE_THRESH = 0.01            # 0.1 Hz and below over the 20 min session of trial based whisker stimulation
+    AMP_THRESH = 45                     # 35 for Anesthetized # 50 for awake
+    FIRING_RATE_THRESH = 0.005            # 0.1 Hz and below over the 20 min session of trial based whisker stimulation
     P2P_PROPORTION_THRESH = 0.25        # For spatial screening (p2p threshold %) AKA isolation in space
     ISI_VIOLATION_RATIO = 0.015        # ratio of spikes violating the inter spike interval criterion (3% criteria)
     PARAMS = {}
