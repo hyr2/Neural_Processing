@@ -17,8 +17,6 @@ import numpy as np
 from discard_noise_and_viz import *
 import os, json, sys
 from natsort import natsorted
-sys.path.append(r'../../Time-Series/')
-from FR_TS_pop import *
 from convert2Phy import func_convert2Phy, func_convert2MS
 from apply_curation_and_save import clean_mdas_main
 # Automate batch processing of the pre processing step
