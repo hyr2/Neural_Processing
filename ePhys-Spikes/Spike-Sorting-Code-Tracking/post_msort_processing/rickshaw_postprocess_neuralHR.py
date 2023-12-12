@@ -19,8 +19,7 @@ from population_analysis import *
 import os, json
 from natsort import natsorted
 import matlab.engine
-sys.path.append(r'../../Time-Series/')
-from FR_TS_pop import *
+from PCA_full import combine_shanks
 from convert2Phy import func_convert2Phy, func_convert2MS
 # Automate batch processing of the pre processing step
 if __name__ == '__main__':
@@ -71,7 +70,7 @@ if __name__ == '__main__':
     # eng.quit()
 
     # moouse_id = input_dir.split('/')[-2]
-    # combine_sessions(input_dir,moouse_id)
+    combine_shanks(input_dir)
 
 # Params.json file:
 #     {

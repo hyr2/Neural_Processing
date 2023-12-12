@@ -11,9 +11,8 @@ from population_analysis import *
 import os, json, sys
 from natsort import natsorted
 import matlab.engine
-sys.path.append(r'../../Time-Series/')
-from FR_TS_pop import *
 from convert2Phy import func_convert2Phy, func_convert2MS
+from PCA_full import combine_shanks
 
 # from convert2Phy import func_convert2Phy, func_convert2MS
 
@@ -25,8 +24,4 @@ CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing
 # func_convert2MS(session_folder)
 
 func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
-# func_discard_noise_and_viz(Raw_dir)
-
-# func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
-# moouse_id = input_dir.split('/')[-2]
-# combine_sessions(input_dir,moouse_id)
+# combine_shanks(Raw_dir)

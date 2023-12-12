@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 from scipy.io import loadmat, savemat
 from scipy import integrate
 from scipy.stats import ttest_ind, zscore, norm
+from scipy.signal import savgol_filter
 from itertools import product, compress
 import pandas as pd
 from utils.read_mda import readmda
@@ -16,6 +17,24 @@ import seaborn as sns
 from adaptation import adaptation
 sys.path.append('/home/hyr2-office/Documents/git/Neural_SP/Unreleased-Code-ePhys/bursts/')
 from burst_analysis import *
+from sklearn.preprocessing import (
+    MaxAbsScaler,
+    MinMaxScaler,
+    Normalizer,
+    PowerTransformer,
+    QuantileTransformer,
+    RobustScaler,
+    StandardScaler,
+    minmax_scale,
+)
+import skfda
+from skfda.exploratory.visualization import FPCAPlot
+from skfda.preprocessing.dim_reduction import FPCA
+from skfda.representation.basis import (
+    BSplineBasis,
+    FourierBasis,
+    MonomialBasis,
+)
 
 
 # Plotting fonts
@@ -174,17 +193,18 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     global session_files_list
     # Input parameters ---------------------
     # session folder is a single measurement 
-    
+    parent_dir = os.path.abspath(os.path.join(session_folder, os.pardir))
     # firing rate calculation params
-    WINDOW_LEN_IN_SEC = 40e-3
+    WINDOW_LEN_IN_SEC = 2
     SMOOTHING_SIZE = 11
     DURATION_OF_INTEREST = 2.5  # how many seconds to look at upon stim onset (this is the activation or inhibition window)
     # Setting up
     session_trialtimes = os.path.join(session_folder,'trials_times.mat')
     trial_mask_file = os.path.join(session_folder,'trial_mask.csv')
-    sessions_file = os.path.join(session_folder,'RHDfile_samples.csv')    # RHD samples for files (all sessions)
+    sessions_file = os.path.join(session_folder,'RHDfile_samples.csv')    # RHD samples for files (all sessions) [ending sample of each file if you ignore first entry]
     result_folder = os.path.join(session_folder,'Processed', 'count_analysis')
     result_folder_FR_avg = os.path.join(session_folder,'Processed', 'FR_clusters')
+    sessions_label_stroke = os.path.join(parent_dir,'Sessions.csv')
     # dir_expsummary = os.path.join(session_folder,'exp_summary.xlsx')
     
     # Extract sampling frequency
@@ -223,7 +243,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         session_files_list = pd.read_csv(sessions_file, header=None, index_col=False,dtype = np.uint32)
         session_files_list = session_files_list.to_numpy(dtype = np.uint32)
         session_files_list_session = np.squeeze(session_files_list[:,1].astype(np.int8))   # the session to which each trial belongs
-        session_files_list_sample = np.squeeze(session_files_list[:,0])      # Trial accept mask 
+        session_files_list_sample = np.squeeze(session_files_list[:,0])      # Trial accept mask    
         sessions_ids = np.unique(session_files_list_session)
         samples_start_session = []
         # for i_iter in sessions_ids:
@@ -234,6 +254,11 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         
     else:
         warning('WARNING: RHDfile_samples.csv not found!\n ')
+    if os.path.isfile(sessions_label_stroke):
+        sessions_label_stroke = pd.read_csv(sessions_label_stroke,header=None, index_col=False)
+        sessions_label_stroke = sessions_label_stroke.iloc[:,0].to_list()
+    else:
+        warning('WARNING: Sessions.csv not found!\n ')
     
     
     
@@ -324,6 +349,9 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             raise ValueError("Number of channels mismatch b/w geom.csv and pre_MS.json!\n")
     except ValueError as e: 
         print(e)
+        
+    indx_rhdsessions_file = np.squeeze(np.where(np.diff(session_files_list_session)))
+    session_sample_abs = np.append(session_files_list_sample[indx_rhdsessions_file],[session_files_list_sample[-1]])    # the ending sample of each session
     # Handle the exception
     firings = readmda(os.path.join(session_folder, "firings_clean_merged.mda")).astype(np.int64)
     # get spike stamp for all clusters (in SAMPLEs not seconds)
@@ -394,13 +422,13 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         burst_cfgs["max_long_isi_ms"] = 0.120   # 120ms (after empirical observations)
         
         #burst_dict = SingleUnit_burst(firing_stamp,trials_start_times,stim_start_time,stim_end_time,bsl_start_time,Fs,TRIAL_KEEP_MASK,burst_cfgs)   # **** needs updates to multiple sessions
-        
+        window_in_samples_n = 0.100 * Fs
         # Firing rate series (for each session ****)
         firing_rate_series = get_single_cluster_spikebincouts_all_trials(
             firing_stamp, 
             trials_start_times, 
             trial_duration_in_samples, 
-            window_in_samples
+            window_in_samples_n
             )
         
         firing_rate_rasters = raster_all_trials(firing_stamp, trials_start_times, trial_duration_in_samples, window_in_samples)
@@ -502,7 +530,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             np_arr_session_binary_up_down = 0 
                 
         
-        return (np_arr_session_binary_up_down, np_arr_session_binary)
+        return (np_arr_session_binary_up_down, np_arr_session_binary,fr_series_ids,trial_keep_session)
             
         # **************** check with raster. Something seems wrong in binning into histogram
 
@@ -611,48 +639,137 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     FR_list_byshank_inh =  [ [] for i in range(4) ]  # create empty list
     list_all_clus = []
     iter_local = 0
-
-
+    
+    
+    def func_create_dict(sessions_label_stroke,spike_time_local,session_sample_abs):
+        
+        session_sample_abs_tmp = np.insert(session_sample_abs,0,0)
+        lst_sessions_spike = []
+        for iter_l in range(session_sample_abs.shape[0]):    # loop over sessions
+            spike_time_singlesession = spike_time_local[np.logical_and(spike_time_local < session_sample_abs_tmp[iter_l+1],spike_time_local > session_sample_abs_tmp[iter_l] ) ]     # single session
+            lst_sessions_spike.append(spike_time_singlesession)
+        dict_local = dict(zip(sessions_label_stroke, lst_sessions_spike))
+        
+        
+        return dict_local   # spike times by session
+        
+    def generate_hist_from_spiketimes(start_sample,end_sample, spike_times_local, window_in_samples):
+        # n_windows_in_trial = int(np.ceil(end_sample-start_sample/window_in_samples))
+        bin_edges = np.arange(start_sample, end_sample, step=window_in_samples)
+        frq, edges = np.histogram(spike_times_local,bin_edges)
+        return frq, edges
+    
+    lst_filtered_data = []
     for i_clus in range(n_clus):
         
-        if single_unit_mask[i_clus] == True:
-            # Need to add facilitating cell vs adapting cell vs no change cell
-            # clus_property, firing_rate_avg, firing_rate_sum, Spikes_num, firing_rate_series, burst_dict = single_cluster_main(i_clus)
-            ( plasticity_metric, arr_sessions_spiking) = single_cluster_main(i_clus)
-            
-            # t_axis = np.linspace(0,total_time,firing_rate_avg.shape[0])
-            # t_1 = np.squeeze(np.where(t_axis >= 8.5))[0]
-            # t_2 = np.squeeze(np.where(t_axis >= 12.5))[0]
-            # t_3 = np.squeeze(np.where(t_axis >= 2.35))[0]
-            # t_4 = np.squeeze(np.where(t_axis >= 3.75))[0]
-            # t_5 = 2.45
-            
-            # t_bsl_start = np.squeeze(np.where(t_axis >= 0.25))[0]
-            # t_bsl_end = np.squeeze(np.where(t_axis >= 2.25))[0]
-            # creating a dictionary for this cluster
-            firing_stamp = spike_times_by_clus[i_clus]
-            N_spikes_local = spike_times_by_clus[i_clus].size 
-            # shank_num = int(clus_loc[i_clus,0] // 250)      # starts from 0
-            depth = int(clus_loc[i_clus,1])  # triangulation by Jiaao
-            # Get shank ID from primary channel for the cluster
-            # shank_num = get_shanknum_from_msort_id(prim_ch)
-            
-
-            i_clus_dict  = {}
-            i_clus_dict['cluster_id'] = i_clus + 1 # to align with the discard_noise_viz.py code cluster order [folder: figs_allclus_waveforms]
-            i_clus_dict['total_spike_count'] = firing_stamp.shape[0]
-            i_clus_dict['depth'] =  depth
-            i_clus_dict['plasticity_metric'] =  plasticity_metric
-            i_clus_dict['sessions_visibility'] =  arr_sessions_spiking
- 
-    
-            
-            # Append to output dataframe of all units in current session
-            list_all_clus.append(i_clus_dict)
-
+        spike_time_local = spike_times_by_clus[i_clus]
+        dict_local_i_clus = func_create_dict(sessions_label_stroke,spike_time_local,session_sample_abs)     # FR of a single unit by session
+        session_sample_abs_tmp = np.insert(session_sample_abs,0,0)
         
-            iter_local = iter_local+1
+        # histogram binning of the FR
+        thiscluster_hist = []
+        thiscluster_edges = []
+        for iter_l in range(len(dict_local_i_clus)):    # loop over sessions
+            start_sample = session_sample_abs_tmp[iter_l]
+            end_sample = session_sample_abs_tmp[iter_l+1]
+            hist_local, hist_edges_local = generate_hist_from_spiketimes(start_sample,end_sample, dict_local_i_clus[sessions_label_stroke[iter_l]], window_in_samples)
+            thiscluster_hist.append(hist_local)
+            thiscluster_edges.append(hist_edges_local)
+            # ax.bar(hist_edges_local[:-1], hist_local)
+        # Filtering the signal
+        all_FR_thiscluster = np.concatenate(thiscluster_hist, axis = 0)
+        all_edges_thiscluster = np.concatenate(thiscluster_edges, axis = 0)
+        x_ticks = [local_arr.shape[0] for local_arr in thiscluster_edges]
+        x_ticks = [sum(x_ticks[:i+1]) for i in range(len(x_ticks))]
+        
+        Num_to_drop = all_edges_thiscluster.shape[0] - all_FR_thiscluster.shape[0]
+        all_edges_thiscluster = all_edges_thiscluster[:-Num_to_drop]
+        
+        all_FR_thiscluster_f = np.abs(savgol_filter(all_FR_thiscluster,200,3,mode = 'nearest'))
+        # fig, ax = plt.subplots()
+        # ax.plot(all_FR_thiscluster_f)
+        # ax.set_xticks(x_ticks)
+        # ax.set_xticklabels(dict_local_i_clus.keys())
+        
+        lst_filtered_data.append(all_FR_thiscluster_f)
+        
+        # Need to add facilitating cell vs adapting cell vs no change cell
+        # clus_property, firing_rate_avg, firing_rate_sum, Spikes_num, firing_rate_series, burst_dict = single_cluster_main(i_clus)
+        # ( plasticity_metric, arr_sessions_spiking, fr_series_ids_out,trial_keep_session_out) = single_cluster_main(i_clus)
+        
+        # t_axis = np.linspace(0,total_time,firing_rate_avg.shape[0])
+        # t_1 = np.squeeze(np.where(t_axis >= 8.5))[0]
+        # t_2 = np.squeeze(np.where(t_axis >= 12.5))[0]
+        # t_3 = np.squeeze(np.where(t_axis >= 2.35))[0]
+        # t_4 = np.squeeze(np.where(t_axis >= 3.75))[0]
+        # t_5 = 2.45
+        
+        # t_bsl_start = np.squeeze(np.where(t_axis >= 0.25))[0]
+        # t_bsl_end = np.squeeze(np.where(t_axis >= 2.25))[0]
+        # creating a dictionary for this cluster
+        firing_stamp = spike_times_by_clus[i_clus]
+        N_spikes_local = spike_times_by_clus[i_clus].size 
+        # shank_num = int(clus_loc[i_clus,0] // 250)      # starts from 0
+        depth = int(clus_loc[i_clus,1])  # triangulation by Jiaao
+        # Get shank ID from primary channel for the cluster
+        # shank_num = get_shanknum_from_msort_id(prim_ch)
+        i_clus_dict  = {}
+        i_clus_dict['cluster_id'] = i_clus + 1 # to align with the discard_noise_viz.py code cluster order [folder: figs_allclus_waveforms]
+        i_clus_dict['total_spike_count'] = firing_stamp.shape[0]
+        i_clus_dict['depth'] =  depth
+        # i_clus_dict['plasticity_metric'] =  plasticity_metric
+        # i_clus_dict['sessions_visibility'] =  arr_sessions_spiking
+        
+        # Append to output dataframe of all units in current session
+        list_all_clus.append(i_clus_dict)
 
+        iter_local = iter_local+1
+        
+    # Scaling the data ()
+    X_in = np.transpose(np.stack(lst_filtered_data))
+    scaled_data_list = [
+        StandardScaler().fit_transform(X_in),
+        MaxAbsScaler().fit_transform(X_in),
+        RobustScaler(quantile_range=(25, 75)).fit_transform(X_in)   # bad since outliers units are left intact ie their FR is much different to the rest
+        ]
+    # Plotting scaled outputs
+    
+    # randomly sample 100 datapoints from each phase of stroke
+    x_ticks[-1] = X_in.shape[0]
+    days_this_dataset = list(dict_local_i_clus.keys())
+    days_this_dataset = np.array(days_this_dataset,dtype = np.int8)
+    
+    samples_temporal_phase = [x_ticks[np.where(days_this_dataset < 0)[0][-1]], x_ticks[np.where(days_this_dataset < 21)[0][-1]] , x_ticks[np.where(days_this_dataset < 28)[0][-1]] , x_ticks[-1] ]
+     
+    scaled_data_list_new = []
+    for iter_l in range(len(scaled_data_list)):
+        
+        arr_local_tmp = scaled_data_list[iter_l][0:samples_temporal_phase[0],:]
+        phase_bsl = np.array([np.random.choice(arr_local_tmp[:,iter_ll],200,replace=False) for iter_ll in range(arr_local_tmp.shape[1])],dtype = np.single)
+        
+        arr_local_tmp = scaled_data_list[iter_l][samples_temporal_phase[0]:samples_temporal_phase[1],:]
+        phase_rec1 = np.array([np.random.choice(arr_local_tmp[:,iter_ll],100,replace=False) for iter_ll in range(arr_local_tmp.shape[1])],dtype = np.single)
+        
+        arr_local_tmp = scaled_data_list[iter_l][samples_temporal_phase[1]:samples_temporal_phase[2],:]
+        phase_rec2 = np.array([np.random.choice(arr_local_tmp[:,iter_ll],100,replace=False) for iter_ll in range(arr_local_tmp.shape[1])],dtype = np.single)
+
+        arr_local_tmp = scaled_data_list[iter_l][samples_temporal_phase[2]:samples_temporal_phase[3],:]
+        phase_chr = np.array([np.random.choice(arr_local_tmp[:,iter_ll],400,replace=False) for iter_ll in range(arr_local_tmp.shape[1])],dtype = np.single)
+        
+        # combing all phases: 100 samples from pre-stroke, 100 samples from recovery phase and 100 samples from chronic phase post stroke
+        phase_all_local = np.concatenate((phase_bsl,phase_rec1,phase_rec2,phase_chr),axis = 1)
+        
+        # filtering (lowpass)
+        phase_all_local = savgol_filter(phase_all_local,17,3,mode = 'nearest',axis = 1)
+        scaled_data_list_new.append(phase_all_local)
+        # Creating FDataGrid object for sklearn-fda
+        # scaled_data_list_new.append(skfda.FDataGrid(
+        #     data_matrix = phase_all_local,
+        #     grid_points = None
+        #     ))
+        
+        
+    
     # plt.figure()
     # # clus_response_mask  = np.squeeze(clus_response_mask.to_numpy())
     # clus_response_mask = np.squeeze(clus_response_mask)
@@ -750,4 +867,5 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
    
     # savemat(os.path.join(result_folder, "population_stat_responsive_only.mat"), data_dict)
     np.save(os.path.join(result_folder,'all_clus_property.npy'),list_all_clus)
+    np.save(os.path.join(result_folder,'all_clus_pca_preprocessed.npy'),scaled_data_list_new)
 
