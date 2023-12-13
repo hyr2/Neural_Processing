@@ -27,12 +27,32 @@ from skfda.representation.basis import (
 import sklearn.cluster as skC
 import sklearn.metrics as skM
 
+def sort_cell_type(input_arr,shank_arr):
+    # Function counts the number of wide, narrow and pyramidal cells from the matlab output (.mat file called pop_celltypes.mat)
+    output_arr = np.zeros([3,4],dtype = np.int16)
+    output_list_string = []
+    if not input_arr.shape:
+        return (output_arr,output_list_string)
+    else:
+        for iter in range(input_arr.shape[1]):
+            str_celltype = input_arr[0][iter]
+            if str_celltype == 'Pyramidal Cell':
+                output_arr[0,shank_arr[iter]] += 1 
+                output_list_string.append('P')
+            elif str_celltype == 'Narrow Interneuron':
+                output_arr[1,shank_arr[iter]] += 1 
+                output_list_string.append('NI')
+            elif str_celltype == 'Wide Interneuron':
+                output_arr[2,shank_arr[iter]] += 1 
+                output_list_string.append('WI')
+        return (output_arr,output_list_string)
 
 def combine_shanks(input_dir):
     source_dir_list = natsorted(os.listdir(input_dir))
     names_datasets = []
     pop_stats = {}
     clus_property = {}
+    celltype = {}
     iter=0
     for name in source_dir_list:
         if os.path.isdir(os.path.join(input_dir,name)):
@@ -40,6 +60,7 @@ def combine_shanks(input_dir):
             if os.path.isdir(folder_loc_mat):
                 pop_stats[iter] = np.load(os.path.join(folder_loc_mat,'Processed/count_analysis/all_clus_pca_preprocessed.npy'),allow_pickle=True)      # comes from population_analysis.py 
                 clus_property[iter] = np.load(os.path.join(folder_loc_mat,'Processed/count_analysis/all_clus_property.npy'),allow_pickle=True)  # comes from population_analysis.py
+                celltype[iter] = sio.loadmat(os.path.join(folder_loc_mat,'Processed/cell_type/pop_celltypes.mat'))  # comes from func_CE_BarrelCortex.m 
                 names_datasets.append(name)
                 iter += 1
 
@@ -49,6 +70,20 @@ def combine_shanks(input_dir):
     
     filename_save = os.path.join(input_dir,'all_shanks_pca_preprocessed.npy')
     np.save(filename_save,lst_1st)
+
+    celltype_shank = np.zeros([len(pop_stats),3,4])
+    for iter_l in range(len(celltype)):
+        tmp_shank = celltype[iter]['shank_num']
+        tmp_shank = np.squeeze(tmp_shank)
+        tmp_shank = tmp_shank-1             # starts from 0 (consistent with python)
+        (celltype_shank_tmp,list_celltype) = sort_cell_type(celltype[iter]['celltype'],tmp_shank)
+        print(
+            '2nd Arg:',
+            list_celltype,
+            '1st Arg:',
+            celltype_shank
+        )
+    
 
 def PCA_clustering(pca_scores_state,dict_params):    
     dict_pred = {}
