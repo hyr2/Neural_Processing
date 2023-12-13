@@ -49,7 +49,7 @@ chmap_mat = chmap_mat.Ch_Map_new;
 Native_orders = readNPY(fullfile(datafolder,'native_ch_order.npy'));    
 curation_mask = logical(csvread(fullfile(datafolder, 'accept_mask.csv')));  % deparcated
 pos_mask = not(logical(csvread(fullfile(datafolder , 'positive_mask.csv' )))); % deparcated
-response_mask = csvread(fullfile(datafolder,'Processed','count_analysis','cluster_response_mask.csv')); 
+// response_mask = csvread(fullfile(datafolder,'Processed','count_analysis','cluster_response_mask.csv')); 
 clus_loc = csvread(fullfile(datafolder,'clus_locations_clean_merged.csv'));
 % clus_locations = csvread(fullfile(datafolder, 'clus_locations.csv'));
 % disp(Location(1,:))

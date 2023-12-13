@@ -39,7 +39,7 @@ if __name__ == '__main__':
     eng = matlab.engine.start_matlab()
     eng.cd(r'../../Connectivity Analysis/', nargout=0)
 
-    # Iterate over all sessions
+    # Iterate over all shanks
     for iter, filename in enumerate(source_dir_list):
         print(iter, ' ',filename)
         Raw_dir = os.path.join(input_dir, filename)
@@ -57,7 +57,7 @@ if __name__ == '__main__':
             func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
 
             # Calling matlab scripts from python
-            # eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,CHANNEL_MAP_FPATH,nargout=0)
+            eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,CHANNEL_MAP_FPATH,nargout=0)
 
             # delete converted_data.mda and filt.mda and raw data files (.rhd) 
             # os.remove(os.path.join(Raw_dir,'converted_data.mda'))
