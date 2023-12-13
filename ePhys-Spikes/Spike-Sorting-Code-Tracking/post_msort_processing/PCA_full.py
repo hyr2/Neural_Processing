@@ -71,19 +71,16 @@ def combine_shanks(input_dir):
     filename_save = os.path.join(input_dir,'all_shanks_pca_preprocessed.npy')
     np.save(filename_save,lst_1st)
 
-    celltype_shank = np.zeros([len(pop_stats),3,4])
+    list_celltype_full = []
     for iter_l in range(len(celltype)):
-        tmp_shank = celltype[iter]['shank_num']
+        tmp_shank = celltype[iter_l]['shank_num']
         tmp_shank = np.squeeze(tmp_shank)
         tmp_shank = tmp_shank-1             # starts from 0 (consistent with python)
-        (celltype_shank_tmp,list_celltype) = sort_cell_type(celltype[iter]['celltype'],tmp_shank)
-        print(
-            '2nd Arg:',
-            list_celltype,
-            '1st Arg:',
-            celltype_shank
-        )
+        (_,list_celltype) = sort_cell_type(celltype[iter_l]['celltype'],tmp_shank)
+        list_celltype_full.extend(list_celltype)
     
+    filename_save = os.path.join(input_dir,'all_shanks_celltype_processed.npy')
+    np.save(filename_save,list_celltype)
 
 def PCA_clustering(pca_scores_state,dict_params):    
     dict_pred = {}
