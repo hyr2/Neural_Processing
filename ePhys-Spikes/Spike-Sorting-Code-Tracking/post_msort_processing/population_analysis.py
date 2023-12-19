@@ -521,9 +521,9 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         plt.savefig(filename_save,format = 'png')
         
         # Z_score_val = (np.mean(chr_FR) - np.mean(bsl_FR))/np.mean(bsl_FR) 
-        if Z_score_val > 1.835:
+        if Z_score_val > 1.95:
             np_arr_session_binary_up_down = 1
-        elif (Z_score_val < -0.5):
+        elif (Z_score_val < -0.25):
             np_arr_session_binary_up_down = -1
         else:
             #not significant
@@ -695,7 +695,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         
         # Need to add facilitating cell vs adapting cell vs no change cell
         # clus_property, firing_rate_avg, firing_rate_sum, Spikes_num, firing_rate_series, burst_dict = single_cluster_main(i_clus)
-        # ( plasticity_metric, arr_sessions_spiking, fr_series_ids_out,trial_keep_session_out) = single_cluster_main(i_clus)
+        ( plasticity_metric, arr_sessions_spiking, fr_series_ids_out,trial_keep_session_out) = single_cluster_main(i_clus)
         
         # t_axis = np.linspace(0,total_time,firing_rate_avg.shape[0])
         # t_1 = np.squeeze(np.where(t_axis >= 8.5))[0]
@@ -717,8 +717,8 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         i_clus_dict['cluster_id'] = i_clus + 1 # to align with the discard_noise_viz.py code cluster order [folder: figs_allclus_waveforms]
         i_clus_dict['total_spike_count'] = firing_stamp.shape[0]
         i_clus_dict['depth'] =  depth
-        # i_clus_dict['plasticity_metric'] =  plasticity_metric
-        # i_clus_dict['sessions_visibility'] =  arr_sessions_spiking
+        i_clus_dict['plasticity_metric'] =  plasticity_metric
+        i_clus_dict['sessions_visibility'] =  arr_sessions_spiking
         
         # Append to output dataframe of all units in current session
         list_all_clus.append(i_clus_dict)

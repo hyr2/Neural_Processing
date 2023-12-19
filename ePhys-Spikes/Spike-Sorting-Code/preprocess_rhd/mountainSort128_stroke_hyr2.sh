@@ -29,8 +29,8 @@ export ML_TEMPORARY_DIRECTORY=$ml_temp_dir
 		ml-run-process ephys.mask_out_artifacts \
 		--inputs timeseries:$ouput_dir/pre1.mda.prv \ --outputs timeseries_out:$ouput_dir/pre.mda.prv
 
-		# Spike sorting
-		# Specify the detect threshold in standard deviations
+		# Spike sorting 	
+		# Specify the detect threshold in standard deviations (using function from ms4alg.py)
 		ml-run-process ms4alg.sort \
 			--inputs \
 				timeseries:$ouput_dir/pre.mda.prv \

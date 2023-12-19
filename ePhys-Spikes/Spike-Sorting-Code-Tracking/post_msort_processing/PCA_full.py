@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from copy import deepcopy
 import seaborn as sns
-import os
+import os, copy
 from natsort import natsorted
 import pandas as pd
 import sys
@@ -64,6 +64,8 @@ def combine_shanks(input_dir):
                 names_datasets.append(name)
                 iter += 1
 
+
+    # PCA preprocessing raw data concatenated
     lst_1st = pop_stats[0]
     for iter_r in range(1,iter):
         lst_1st = np.concatenate((lst_1st,pop_stats[iter_r]),axis = 1)
@@ -71,6 +73,7 @@ def combine_shanks(input_dir):
     filename_save = os.path.join(input_dir,'all_shanks_pca_preprocessed.npy')
     np.save(filename_save,lst_1st)
 
+    # cell types aggregated
     list_celltype_full = []
     for iter_l in range(len(celltype)):
         tmp_shank = celltype[iter_l]['shank_num']
@@ -78,9 +81,19 @@ def combine_shanks(input_dir):
         tmp_shank = tmp_shank-1             # starts from 0 (consistent with python)
         (_,list_celltype) = sort_cell_type(celltype[iter_l]['celltype'],tmp_shank)
         list_celltype_full.extend(list_celltype)
-    
     filename_save = os.path.join(input_dir,'all_shanks_celltype_processed.npy')
-    np.save(filename_save,list_celltype)
+    np.save(filename_save,list_celltype_full)
+    
+    # plasticity metrics aggregated (based on Z score from population_analysis.py)
+    lst_plasticity_metric = []
+    for iter_l in range(len(clus_property)):
+        for iter_i in range(clus_property[iter_l].size):
+            lst_plasticity_metric.append(clus_property[iter_l][iter_i]['plasticity_metric'])
+    
+    filename_save = os.path.join(input_dir,'all_shanks_plasticity_metric_processed.npy')
+    np.save(filename_save,lst_plasticity_metric)
+    
+
 
 def PCA_clustering(pca_scores_state,dict_params):    
     dict_pred = {}
@@ -114,7 +127,7 @@ def KMeans_evaluate_inertia(k_max,data_pca,dir_save):
         print(
             "For n_clusters =",
             n_clusters,
-            "The average silhouette_score is :",
+            "The average inertia value is :",
             clusterer.inertia_
         )
     arr_inertia = np.array(arr_inertia_)
@@ -244,6 +257,41 @@ def KMeans_evaluate_silhouette(k_max,data_pca,dir_save):
 
 def PCA_apply(dict_params,Num_com):
     
+    # For Plasticity Metrics (Z-scored thresholded Z > 2 and Z < -0.5)
+    c_mouse_rh3 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh3/','all_shanks_plasticity_metric_processed.npy'))
+    c_mouse_bc7 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_bc7/','all_shanks_plasticity_metric_processed.npy'))
+    c_mouse_rh8 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh8/','all_shanks_plasticity_metric_processed.npy'))
+    c_mouse_rh11 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh11/','all_shanks_plasticity_metric_processed.npy'))
+    plasticity_data_list_new = []
+    plasticity_data_list_new.extend(c_mouse_rh3.tolist())
+    plasticity_data_list_new.extend(c_mouse_bc7.tolist())
+    plasticity_data_list_new.extend(c_mouse_rh8.tolist())
+    plasticity_data_list_new.extend(c_mouse_rh11.tolist())
+    
+    plasticity_data_list_new = np.array(plasticity_data_list_new, dtype = np.int8)
+    
+    
+    # For Cell Type
+    c_mouse_rh3 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh3/','all_shanks_celltype_processed.npy'))
+    c_mouse_bc7 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_bc7/','all_shanks_celltype_processed.npy'))
+    c_mouse_rh8 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh8/','all_shanks_celltype_processed.npy'))
+    c_mouse_rh11 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh11/','all_shanks_celltype_processed.npy'))
+    
+    celltype_data_list_new = []
+    celltype_data_list_new.extend(c_mouse_rh3.tolist())
+    celltype_data_list_new.extend(c_mouse_bc7.tolist())
+    celltype_data_list_new.extend(c_mouse_rh8.tolist())
+    celltype_data_list_new.extend(c_mouse_rh11.tolist())
+    
+    celltype_data_list_new = np.array(celltype_data_list_new,dtype = str)
+    # celltype_data_list_edgecolors = copy.deepcopy(celltype_data_list_new)
+    # celltype_data_list_edgecolors[celltype_data_list_edgecolors == 'NI'] = 0
+    # celltype_data_list_edgecolors[celltype_data_list_edgecolors == 'P'] = 1
+    # celltype_data_list_edgecolors[celltype_data_list_edgecolors == 'WI'] = 1
+    # celltype_data_list_edgecolors = celltype_data_list_edgecolors.astype(np.int8)
+    
+    
+    # For PCA
     mouse_rh3 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh3/','all_shanks_pca_preprocessed.npy'),allow_pickle=True)
     mouse_bc7 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_bc7/','all_shanks_pca_preprocessed.npy'),allow_pickle=True)
     mouse_rh8 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh8/','all_shanks_pca_preprocessed.npy'),allow_pickle=True)
@@ -347,50 +395,64 @@ def PCA_apply(dict_params,Num_com):
         dict_unit_labels = PCA_clustering(pca_scores_state, dict_params) 
         
         # KMeans labelled plot
-        colors = cm.nipy_spectral(dict_unit_labels['KMeans'].astype(float) / dict_params['N_k'])
+        # colors = cm.nipy_spectral(dict_unit_labels['KMeans'].astype(float) / dict_params['N_k'])
+        cmap = plt.get_cmap("Spectral")
+        colors = cmap(dict_unit_labels['KMeans'].astype(float) / dict_params['N_k'])
+        ct_mask = np.vstack((celltype_data_list_new == 'NI',np.logical_or(celltype_data_list_new == 'P',celltype_data_list_new =='WI'))) # celltype masks
         if Num_com == 3:
             fig = plt.figure(figsize = (10, 7))
             ax = plt.axes(projection ="3d")
-            ax.scatter3D(pca_scores_state[:,0],pca_scores_state[:,1],pca_scores_state[:,2],s = 10, c = colors)
+            ax.scatter3D(pca_scores_state[ct_mask[0,:],0],pca_scores_state[ct_mask[0,:],1],pca_scores_state[ct_mask[0,:],2],s = 60, c = colors[ct_mask[0,:]],marker = 'o')
+            ax.scatter3D(pca_scores_state[ct_mask[1,:],0],pca_scores_state[ct_mask[1,:],1],pca_scores_state[ct_mask[1,:],2],s = 60, c = colors[ct_mask[1,:]],marker = '^')
+            # ax.scatter3D(pca_scores_state[ct_mask[2,:],0],pca_scores_state[ct_mask[2,:],1],pca_scores_state[ct_mask[2,:],2],s = 60, c = colors[ct_mask[2,:]],marker = 'D')
             ax.set_xlabel('PC1')
             ax.set_ylabel('PC2')
             ax.set_zlabel('PC3')
             plt.savefig(os.path.join(output_folder,f'{iter_l}_func_scatter_KMeans.png'))
         elif Num_com == 2:
             fig,ax = plt.subplots(1,1)
-            ax.scatter(pca_scores_state[:,0],pca_scores_state[:,1],s = 8,c = colors)
+            ax.scatter(pca_scores_state[ct_mask[0,:],0],pca_scores_state[ct_mask[0,:],1],s = 60,c = colors[ct_mask[0,:]],marker = 'o')
+            ax.scatter(pca_scores_state[ct_mask[1,:],0],pca_scores_state[ct_mask[1,:],1],s = 60,c = colors[ct_mask[1,:]],marker = '^')
             ax.set_xlabel('PC1')
             ax.set_ylabel('PC2')
             plt.savefig(os.path.join(output_folder,f'{iter_l}_func_scatter_KMeans.png'))
         # DbScan labelled plot
-        colors = cm.nipy_spectral(dict_unit_labels['DbScan'].astype(float) / dict_params['N_k'])
+        cmap = plt.get_cmap("Spectral")
+        colors = cmap(dict_unit_labels['DbScan'].astype(float) / dict_params['N_k'])
+        ct_mask = np.vstack((celltype_data_list_new == 'NI',np.logical_or(celltype_data_list_new == 'P',celltype_data_list_new =='WI'))) # celltype masks
         if Num_com == 3:
             fig = plt.figure(figsize = (10, 7))
             ax = plt.axes(projection ="3d")
-            ax.scatter3D(pca_scores_state[:,0],pca_scores_state[:,1],pca_scores_state[:,2],s = 10, c = colors)
+            ax.scatter3D(pca_scores_state[ct_mask[0,:],0],pca_scores_state[ct_mask[0,:],1],pca_scores_state[ct_mask[0,:],2],s = 60, c = colors[ct_mask[0,:]],marker = 'o')
+            ax.scatter3D(pca_scores_state[ct_mask[1,:],0],pca_scores_state[ct_mask[1,:],1],pca_scores_state[ct_mask[1,:],2],s = 60, c = colors[ct_mask[1,:]],marker = '^')
             ax.set_xlabel('PC1')
             ax.set_ylabel('PC2')
             ax.set_zlabel('PC3')
             plt.savefig(os.path.join(output_folder,f'{iter_l}_func_scatter_DbScan.png'))
         elif Num_com == 2:
             fig,ax = plt.subplots(1,1)
-            ax.scatter(pca_scores_state[:,0],pca_scores_state[:,1],s = 8,c = colors)
+            ax.scatter(pca_scores_state[ct_mask[0,:],0],pca_scores_state[ct_mask[0,:],1],s = 60,c = colors[ct_mask[0,:]],marker = 'o')
+            ax.scatter(pca_scores_state[ct_mask[1,:],0],pca_scores_state[ct_mask[1,:],1],s = 60,c = colors[ct_mask[1,:]],marker = '^')
             ax.set_xlabel('PC1')
             ax.set_ylabel('PC2')
             plt.savefig(os.path.join(output_folder,f'{iter_l}_func_scatter_DbScan.png'))
         # OPTICS labelled plot
-        colors = cm.nipy_spectral(dict_unit_labels['Optics'].astype(float) / dict_params['N_k'])
+        cmap = plt.get_cmap("Spectral")
+        colors = cmap(dict_unit_labels['Optics'].astype(float) / dict_params['N_k'])
+        ct_mask = np.vstack((celltype_data_list_new == 'NI',np.logical_or(celltype_data_list_new == 'P',celltype_data_list_new =='WI'))) # celltype masks
         if Num_com == 3:
             fig = plt.figure(figsize = (10, 7))
             ax = plt.axes(projection ="3d")
-            ax.scatter3D(pca_scores_state[:,0],pca_scores_state[:,1],pca_scores_state[:,2],s = 10, c = colors)
+            ax.scatter3D(pca_scores_state[ct_mask[0,:],0],pca_scores_state[ct_mask[0,:],1],pca_scores_state[ct_mask[0,:],2],s = 60, c = colors[ct_mask[0,:]],marker = 'o')
+            ax.scatter3D(pca_scores_state[ct_mask[1,:],0],pca_scores_state[ct_mask[1,:],1],pca_scores_state[ct_mask[1,:],2],s = 60, c = colors[ct_mask[1,:]],marker = '^')
             ax.set_xlabel('PC1')
             ax.set_ylabel('PC2')
             ax.set_zlabel('PC3')
             plt.savefig(os.path.join(output_folder,f'{iter_l}_func_scatter_optics.png'))
         elif Num_com == 2:
             fig,ax = plt.subplots(1,1)
-            ax.scatter(pca_scores_state[:,0],pca_scores_state[:,1],s = 8,c = colors)
+            ax.scatter(pca_scores_state[ct_mask[0,:],0],pca_scores_state[ct_mask[0,:],1],s = 60,c = colors[ct_mask[0,:]],marker = 'o')
+            ax.scatter(pca_scores_state[ct_mask[1,:],0],pca_scores_state[ct_mask[1,:],1],s = 60,c = colors[ct_mask[1,:]],marker = '^')
             ax.set_xlabel('PC1')
             ax.set_ylabel('PC2')
             plt.savefig(os.path.join(output_folder,f'{iter_l}_func_scatter_optics.png'))
@@ -401,35 +463,56 @@ def PCA_apply(dict_params,Num_com):
         dir_save = os.path.join(output_folder,'KMeans_eval')
         if not os.path.exists(dir_save):
             os.makedirs(dir_save)
-        KMeans_evaluate_inertia(8,pca_scores_state,dir_save)
-        range_n_clusters, list_cluster_labels = KMeans_evaluate_silhouette(5,pca_scores_state,dir_save)
+        # KMeans_evaluate_inertia(8,pca_scores_state,dir_save)
+        # range_n_clusters, list_cluster_labels = KMeans_evaluate_silhouette(5,pca_scores_state,dir_save)
         time_axis = fd_local.grid_points[0]
-        for iter_ll in range(range_n_clusters.shape[0]):
-            n_clusters = range_n_clusters[iter_ll]
-            cluster_labels = list_cluster_labels[iter_ll]
+        # for iter_ll in range(range_n_clusters.shape[0]):
+        #     n_clusters = range_n_clusters[iter_ll]
+        #     cluster_labels = list_cluster_labels[iter_ll]
             
-            # Plotting the basis functions fitted on the raw data
-            for iter_i in range(scaled_data_list_new.shape[1]):
-                fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
-                basis_fd_plot[iter_i].plot(axes=ax)
-                ax.set_xlabel('Stroke Phases')
-                ax.set_ylabel('FR (arb.)')
-                fig.suptitle(f'{cluster_labels[iter_i]}')
-                plt.savefig(os.path.join(output_folder,'all_units_FR',f'K_{iter_ll}_{iter_i}_Tracked_Unit_.png'))
-                plt.close(fig)
+        #     # Plotting the basis functions fitted on the raw data
+        #     for iter_i in range(scaled_data_list_new.shape[1]):
+        #         fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
+        #         basis_fd_plot[iter_i].plot(axes=ax)
+        #         ax.set_xlabel('Stroke Phases')
+        #         ax.set_ylabel('FR (arb.)')
+        #         fig.suptitle(f'{cluster_labels[iter_i]}')
+        #         plt.savefig(os.path.join(output_folder,'all_units_FR',f'K_{iter_ll}_{iter_i}_Tracked_Unit_.png'))
+        #         plt.close(fig)
             
-            fig,ax = plt.subplots(1,n_clusters,figsize = (14,4))
-            ax = ax.flatten()
-            for iter_lll in range(n_clusters):    
-                raw_data_local = raw_data[cluster_labels == iter_lll , :]
-                raw_data_local = np.mean(raw_data_local, axis = 0)
-                ax[iter_lll].plot(time_axis,raw_data_local)
-                ax[iter_lll].set_ylabel('Z-Score')
-                ax[iter_lll].set_xlabel('Normalized Stroke Timeline')
-            plt.savefig(os.path.join(dir_save,f'{iter_ll}_KMeans_AvgRawWaveform_allClusters.png'),dpi = 100,format = 'png')                
-         
+        #     fig,ax = plt.subplots(1,n_clusters,figsize = (14,4))
+        #     ax = ax.flatten()
+        #     for iter_lll in range(n_clusters):    
+        #         raw_data_local = raw_data[cluster_labels == iter_lll , :]
+        #         raw_data_local = np.mean(raw_data_local, axis = 0)
+        #         ax[iter_lll].plot(time_axis,raw_data_local)
+        #         ax[iter_lll].set_ylabel('Z-Score')
+        #         ax[iter_lll].set_xlabel('Normalized Stroke Timeline')
+        #     plt.savefig(os.path.join(dir_save,f'{iter_ll}_KMeans_AvgRawWaveform_allClusters.png'),dpi = 100,format = 'png')                
+        cluster_labels = dict_unit_labels['KMeans'] 
+        raw_data_local = raw_data[cluster_labels == 1 , :]
+        raw_data_local = np.mean(raw_data_local, axis = 0)
+        plt.plot(time_axis,raw_data_local)
+        # Plotting Pie chart and statistics of clusters
+        data_Z = [(plasticity_data_list_new == -1).sum(), (plasticity_data_list_new == 1).sum(), (plasticity_data_list_new == 0).sum()]
+        data_uml = [(dict_unit_labels['KMeans'] == 1).sum(),(dict_unit_labels['KMeans'] == 0).sum(),(dict_unit_labels['KMeans'] == 2).sum()]
         
-                
+        print('Z-scored: ', data_Z)
+        print('UML: ', data_uml)
+    
+
+        plt.figure()
+        labels1 = ['Down-regulated','Up-regulated','Recovered']
+        plt.pie(data_Z,labels=labels1)
+        plt.savefig(os.path.join(dir_save,'Plasticity_counts_pie.png'),format = 'png',dpi = 300)
+        plt.figure()
+        labels1 = ['Down-regulated','Up-regulated','Recovered']
+        plt.pie(data_uml,labels=labels1)
+        plt.savefig(os.path.join(dir_save,'UML_counts_pie.png'),format = 'png',dpi = 300)
+        
+        # (dict_unit_labels['KMeans'] == 0).sum()     # Down-regulated
+        # (dict_unit_labels['KMeans'] == 1).sum()     # Up-regula.red
+        # (dict_unit_labels['KMeans'] == 2).sum()     # No change
         
 if __name__ == '__main__':
     
