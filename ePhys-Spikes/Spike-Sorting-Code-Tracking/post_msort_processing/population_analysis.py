@@ -416,13 +416,14 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         stim_end_time = n_stim_start + (Fs * 1.5) # 1.5 s post stim start is set as the stim end time. We only consider the first 1500ms 
         bsl_start_time = Fs*0.5     # start of baseline period
         # Spike time stamps 
-        burst_cfgs["detection_method"] = "log_isi"
-        burst_cfgs["min_spikes_per_burst"] = 3
-        burst_cfgs["max_short_isi_ms"] = 0.050  # 50 ms (after empirical observations)
-        burst_cfgs["max_long_isi_ms"] = 0.120   # 120ms (after empirical observations)
+        # burst_cfgs["detection_method"] = "log_isi"
+        # burst_cfgs["min_spikes_per_burst"] = 3
+        # burst_cfgs["max_short_isi_ms"] = 0.050  # 50 ms (after empirical observations)
+        # burst_cfgs["max_long_isi_ms"] = 0.120   # 120ms (after empirical observations)
         
         #burst_dict = SingleUnit_burst(firing_stamp,trials_start_times,stim_start_time,stim_end_time,bsl_start_time,Fs,TRIAL_KEEP_MASK,burst_cfgs)   # **** needs updates to multiple sessions
-        window_in_samples_n = 0.100 * Fs
+        window_in_time = 0.1
+        window_in_samples_n = window_in_time * Fs
         # Firing rate series (for each session ****)
         firing_rate_series = get_single_cluster_spikebincouts_all_trials(
             firing_stamp, 
@@ -431,7 +432,13 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             window_in_samples_n
             )
         
+        t_axis = np.linspace(0,firing_rate_series.shape[1]*window_in_time,firing_rate_series.shape[1])
+        t_2 = np.squeeze(np.where(t_axis >= 4.025))[0]      
+        t_1 = np.squeeze(np.where(t_axis >= 2.525))[0]      
+        
         firing_rate_rasters = raster_all_trials(firing_stamp, trials_start_times, trial_duration_in_samples, window_in_samples)
+        
+        
         
         # Splitting into sessions
         fr_series_ids = []  # size should be equal to the number of sessions
@@ -453,43 +460,57 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         firing_rate_avg_allsessions = []
         np_arr_session_binary = np.zeros([sessions_ids.shape[0],],dtype = bool)     # Did this session spike (output boolean array)
         np_arr_session_binary_up_down = np.zeros([sessions_ids.shape[0],],dtype = np.int8)  # was the FR higher or lower chronically w.r.t baseline
+        dict_spikes = {
+            'FR_avg_spont' : [],                                                                                                # trial mask not applied
+            'S_total_spont' : [],     # Here I need to add MUA as well                                                          # trial mask not applied
+            'FR_avg_stim' : [],                                                                                                 # trial mask is applied
+            'S_total_stim' : []       # Here I need to add MUA as well (this should be total spikes during whisker deflection)  # trial mask is applied
+            }
         for iter_l in sessions_ids:
             fr_local = fr_series_ids[iter_l]
+            
+            dict_spikes['FR_avg_spont'].append(np.mean(fr_local,axis = (0,1))/window_in_time)               # Avg FR per trial of this unit
+            dict_spikes['S_total_spont'].append(np.mean(np.sum(fr_local,axis = 1)))                         # Total spikes per trial of this unit
+            
+            
             trial_mask_local = trial_keep_session[iter_l].astype('bool')
             fr_local = fr_local[trial_mask_local,:]
-            firing_rate_series.append(fr_local/WINDOW_LEN_IN_SEC)
+            firing_rate_series.append(fr_local/window_in_time)
             fr_rasters_local = fr_rasters_ids[iter_l]
             
+            dict_spikes['FR_avg_stim'].append(np.mean(fr_local[:,t_1:t_2],axis = (0,1))/window_in_time)     # Avg FR per trial of this unit
+            dict_spikes['S_total_stim'].append(np.mean(np.sum(fr_local[:,t_1:t_2],axis = 1)))                # Total spikes per trial of this unit
+            
             # plotting rasters by session
-            plt.figure()
-            for iter_t in range(len(fr_rasters_local)):
-                raster_local = fr_rasters_local[iter_t]
-                y_local = iter_t + np.ones(raster_local.shape)
-                plt.plot(raster_local,y_local,color = 'blue',marker = "o",linestyle = 'None',markersize = 3)
-            plt.xlim(2,3.5)
-            plt.axis('off')
-            filename_save = os.path.join(result_folder_FR_avg,f'raster__cluster{i_clus+1}_session{iter_l}.png')
-            plt.savefig(filename_save,format = 'png')
-            plt.close()
+            # plt.figure()
+            # for iter_t in range(len(fr_rasters_local)):
+            #     raster_local = fr_rasters_local[iter_t]
+            #     y_local = iter_t + np.ones(raster_local.shape)
+            #     plt.plot(raster_local,y_local,color = 'blue',marker = "o",linestyle = 'None',markersize = 3)
+            # plt.xlim(2,3.5)
+            # plt.axis('off')
+            # filename_save = os.path.join(result_folder_FR_avg,f'raster__cluster{i_clus+1}_session{iter_l}.png')
+            # plt.savefig(filename_save,format = 'png')
+            # plt.close()
             
             # plotting avg FR by session
             firing_rate_avg = np.mean(fr_local, axis=0) # averaging over all trials
-            firing_rate_avg_nofilt = firing_rate_avg
-            firing_rate_avg = filter_Savitzky_slow(firing_rate_avg)
-            t_axis = np.linspace(0,firing_rate_avg.shape[0]*WINDOW_LEN_IN_SEC,firing_rate_avg.shape[0])
-            plt.figure()
-            plt.plot(t_axis,firing_rate_avg,linewidth  = 2.5,color = 'k',linestyle = '-')
-            plt.xlim([0,4])
-            plt.ylim([0,1])
-            filename_save = os.path.join(result_folder_FR_avg,f'FR__cluster{i_clus+1}_session{iter_l}.png')
-            plt.savefig(filename_save,format = 'png',dpi=250)
-            plt.close()
+            firing_rate_avg_nofilt = firing_rate_avg/window_in_time                     # in Hz
+            firing_rate_avg = filter_Savitzky_slow(firing_rate_avg/window_in_time)      # in Hz
+            # t_axis = np.linspace(0,firing_rate_avg.shape[0]*WINDOW_LEN_IN_SEC,firing_rate_avg.shape[0])
+            # plt.figure()
+            # plt.plot(t_axis,firing_rate_avg,linewidth  = 2.5,color = 'k',linestyle = '-')
+            # plt.xlim([0,4])
+            # plt.ylim([0,1])
+            # filename_save = os.path.join(result_folder_FR_avg,f'FR__cluster{i_clus+1}_session{iter_l}.png')
+            # plt.savefig(filename_save,format = 'png',dpi=250)
+            # plt.close()
             
             
             firing_rate_avg_allsessions.append(firing_rate_avg)
             
             firing_rate_avg = np.mean(firing_rate_avg)
-            if firing_rate_avg > 0.02:
+            if firing_rate_avg > 0.2: 
                 np_arr_session_binary[iter_l] = True
             print(f'Avg FR for session {iter_l}: {firing_rate_avg}')
         
@@ -530,7 +551,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             np_arr_session_binary_up_down = 0 
                 
         
-        return (np_arr_session_binary_up_down, np_arr_session_binary,fr_series_ids,trial_keep_session)
+        return (np_arr_session_binary_up_down, np_arr_session_binary,fr_series_ids,trial_keep_session,dict_spikes)
             
         # **************** check with raster. Something seems wrong in binning into histogram
 
@@ -695,36 +716,31 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         
         # Need to add facilitating cell vs adapting cell vs no change cell
         # clus_property, firing_rate_avg, firing_rate_sum, Spikes_num, firing_rate_series, burst_dict = single_cluster_main(i_clus)
-        ( plasticity_metric, arr_sessions_spiking, fr_series_ids_out,trial_keep_session_out) = single_cluster_main(i_clus)
+        ( plasticity_metric, arr_sessions_spiking, fr_series_ids_out,trial_keep_session_out,dict_all_sessions) = single_cluster_main(i_clus)
         
-        # t_axis = np.linspace(0,total_time,firing_rate_avg.shape[0])
-        # t_1 = np.squeeze(np.where(t_axis >= 8.5))[0]
-        # t_2 = np.squeeze(np.where(t_axis >= 12.5))[0]
-        # t_3 = np.squeeze(np.where(t_axis >= 2.35))[0]
-        # t_4 = np.squeeze(np.where(t_axis >= 3.75))[0]
-        # t_5 = 2.45
-        
-        # t_bsl_start = np.squeeze(np.where(t_axis >= 0.25))[0]
-        # t_bsl_end = np.squeeze(np.where(t_axis >= 2.25))[0]
         # creating a dictionary for this cluster
-        firing_stamp = spike_times_by_clus[i_clus]
-        N_spikes_local = spike_times_by_clus[i_clus].size 
+        N_spikes_local = spike_time_local.size 
         # shank_num = int(clus_loc[i_clus,0] // 250)      # starts from 0
         depth = int(clus_loc[i_clus,1])  # triangulation by Jiaao
         # Get shank ID from primary channel for the cluster
         # shank_num = get_shanknum_from_msort_id(prim_ch)
         i_clus_dict  = {}
         i_clus_dict['cluster_id'] = i_clus + 1 # to align with the discard_noise_viz.py code cluster order [folder: figs_allclus_waveforms]
-        i_clus_dict['total_spike_count'] = firing_stamp.shape[0]
+        i_clus_dict['total_spike_count'] = N_spikes_local
         i_clus_dict['depth'] =  depth
         i_clus_dict['plasticity_metric'] =  plasticity_metric
         i_clus_dict['sessions_visibility'] =  arr_sessions_spiking
         
+        
+        z_clus_dict = {**i_clus_dict, **dict_all_sessions}  # combining two dictionaries 
+        
         # Append to output dataframe of all units in current session
-        list_all_clus.append(i_clus_dict)
+        list_all_clus.append(z_clus_dict)
 
         iter_local = iter_local+1
         
+    # 
+    # For clustering and ML    
     # Scaling the data ()
     X_in = np.transpose(np.stack(lst_filtered_data))
     scaled_data_list = [

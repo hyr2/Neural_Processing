@@ -85,13 +85,15 @@ def combine_shanks(input_dir):
     np.save(filename_save,list_celltype_full)
     
     # plasticity metrics aggregated (based on Z score from population_analysis.py)
-    lst_plasticity_metric = []
+    # lst_plasticity_metric = []
+    lst_clust_property = []
     for iter_l in range(len(clus_property)):
         for iter_i in range(clus_property[iter_l].size):
-            lst_plasticity_metric.append(clus_property[iter_l][iter_i]['plasticity_metric'])
+            lst_clust_property.append(clus_property[iter_l][iter_i])
+            # lst_plasticity_metric.append(clus_property[iter_l][iter_i]['plasticity_metric'])
     
-    filename_save = os.path.join(input_dir,'all_shanks_plasticity_metric_processed.npy')
-    np.save(filename_save,lst_plasticity_metric)
+    filename_save = os.path.join(input_dir,'all_shanks_clus_property_processed.npy')
+    np.save(filename_save,lst_clust_property)
     
 
 
@@ -258,15 +260,16 @@ def KMeans_evaluate_silhouette(k_max,data_pca,dir_save):
 def PCA_apply(dict_params,Num_com):
     
     # For Plasticity Metrics (Z-scored thresholded Z > 2 and Z < -0.5)
-    c_mouse_rh3 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh3/','all_shanks_plasticity_metric_processed.npy'))
-    c_mouse_bc7 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_bc7/','all_shanks_plasticity_metric_processed.npy'))
-    c_mouse_rh8 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh8/','all_shanks_plasticity_metric_processed.npy'))
-    c_mouse_rh11 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh11/','all_shanks_plasticity_metric_processed.npy'))
+    c_mouse_rh3 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh3/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
+    c_mouse_bc7 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_bc7/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
+    c_mouse_rh8 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh8/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
+    c_mouse_rh11 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh11/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
+    
+    c_all_mouse = np.concatenate((c_mouse_rh3,c_mouse_bc7,c_mouse_rh8,c_mouse_rh11))    # concatenate all
     plasticity_data_list_new = []
-    plasticity_data_list_new.extend(c_mouse_rh3.tolist())
-    plasticity_data_list_new.extend(c_mouse_bc7.tolist())
-    plasticity_data_list_new.extend(c_mouse_rh8.tolist())
-    plasticity_data_list_new.extend(c_mouse_rh11.tolist())
+    for iter_i in range(c_all_mouse.size):
+        plasticity_data_list_new.append(c_all_mouse[iter_i]['plasticity_metric'])
+
     
     plasticity_data_list_new = np.array(plasticity_data_list_new, dtype = np.int8)
     
