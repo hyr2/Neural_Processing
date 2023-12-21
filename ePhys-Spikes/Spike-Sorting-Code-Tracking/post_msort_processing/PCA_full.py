@@ -257,28 +257,182 @@ def KMeans_evaluate_silhouette(k_max,data_pca,dir_save):
     
     return range_n_clusters,output_arr
 
+def fig5_e(input_list, filename_save,  df_main, dict_config):
+    
+    def fill_nans_single(input_list,local_time,local_count,prev_count):
+        # ideal time axis
+        time_ideal = np.array([-3,-2, 2, 7 , 14, 21, 28, 35, 42, 49, 56],dtype = float)
+        # filling nans rh3
+        
+        indx_arr_nan = np.logical_not(np.in1d(time_ideal,local_time))
+        local_time_new = copy.deepcopy(time_ideal)
+        local_time_new[indx_arr_nan] = np.nan
+        temp_arr = np.empty(time_ideal.shape,dtype = float)
+        temp_arr[:] = np.nan
+        indx_insert = np.where(np.logical_not(np.isnan(local_time_new)))[0]
+        cluster_range = np.arange(prev_count,prev_count + local_count,1)
+        for iter_i in cluster_range:
+            arr_tmp = copy.deepcopy(temp_arr)
+            arr_tmp[indx_insert] = input_list[iter_i]
+            input_list[iter_i] = arr_tmp
+        return input_list
+    
+    cum_sum = np.array([0, dict_config['rh3_count'],dict_config['bc7_count'],dict_config['rh8_count'],dict_config['rh11_count']])
+    cum_sum = np.cumsum(cum_sum)
+    input_list = fill_nans_single(input_list , dict_config['rh3_time'], dict_config['rh3_count'],cum_sum[0])     # rh3
+    input_list = fill_nans_single(input_list , dict_config['bc7_time'], dict_config['bc7_count'],cum_sum[1])     # bc7
+    input_list = fill_nans_single(input_list , dict_config['rh8_time'], dict_config['rh8_count'],cum_sum[2])     # rh8
+    input_list = fill_nans_single(input_list , dict_config['rh11_time'], dict_config['rh11_count'],cum_sum[3])     # rh11
+    
+    # input_list 
+    time_ideal = np.array([-3,-2, 2, 7 , 14, 21, 28, 35, 42, 49, 56],dtype = float)
+    full_array = np.zeros([len(input_list),time_ideal.size],dtype = float)
+    for iter_i in range(len(input_list)):
+        full_array[iter_i,:] = input_list[iter_i]
+    
+
+    
+    # All
+    x_bar = np.array([0,1])
+    N_norm = full_array.shape[0]
+    y_bar = np.array([np.mean(full_array[:,0:2]),np.nanmean(full_array[:,5:])])
+    y_std = np.array([np.nanstd(full_array[:,0:2]),np.nanstd(full_array[:,5:])])
+    y_sem = y_std / np.sqrt(2*N_norm)
+    fig,ax = plt.subplots(1,2)
+    ax = ax.flatten()
+    ax[0].plot(time_ideal,np.nanmean(full_array,axis = 0))
+    ax[1].bar(x_bar,y_bar,width = 0.9,align = 'center',color = 'k',alpha = 0.6)
+    ax[1].errorbar(x_bar,y_bar,y_sem,fmt='None',linewidth = 2.4,ecolor = 'k',elinewidth=2.5)
+    plt.savefig(filename_save+'_all.png')        
+    
+    # Celltype
+    mask_P = (df_main['type'] == 'P').to_numpy()
+    full_array_P = full_array[mask_P,:]
+    mask_NI = (df_main['type'] == 'NI').to_numpy()
+    full_array_NI = full_array[mask_NI,:]
+    
+    N_norm = full_array_P.shape[0]
+    y_bar = np.array([np.mean(full_array_P[:,0:2]),np.nanmean(full_array_P[:,5:])])
+    y_std = np.array([np.nanstd(full_array_P[:,0:2]),np.nanstd(full_array_P[:,5:])])
+    y_sem = y_std / np.sqrt(2*N_norm)
+    fig,ax = plt.subplots(1,2)
+    ax = ax.flatten()
+    ax[0].bar(x_bar,y_bar,width = 0.9,align = 'center',color = 'k',alpha = 0.6)
+    ax[0].errorbar(x_bar,y_bar,y_sem,fmt='None',linewidth = 2.4,ecolor = 'k',elinewidth=2.5)
+    N_norm = full_array_NI.shape[0]
+    y_bar = np.array([np.mean(full_array_NI[:,0:2]),np.nanmean(full_array_NI[:,5:])])
+    y_std = np.array([np.nanstd(full_array_NI[:,0:2]),np.nanstd(full_array_NI[:,5:])])
+    y_sem = y_std / np.sqrt(2*N_norm)
+    ax[1].bar(x_bar,y_bar,width = 0.9,align = 'center',color = 'k',alpha = 0.6)
+    ax[1].errorbar(x_bar,y_bar,y_sem,fmt='None',linewidth = 2.4,ecolor = 'k',elinewidth=2.5)
+    plt.savefig(filename_save+'_celltype.png')    
+    
+    # By PCA Class
+    mask_P = (df_main['PCA_label'] == 0).to_numpy()
+    full_array_P = full_array[mask_P,:]
+    mask_N = (df_main['PCA_label'] == 1).to_numpy()
+    full_array_N = full_array[mask_N,:]
+    mask_NC = (df_main['PCA_label'] == 2).to_numpy()
+    full_array_NC = full_array[mask_NC,:]
+
+    N_norm = full_array_P.shape[0]
+    y_bar = np.array([np.mean(full_array_P[:,0:2]),np.nanmean(full_array_P[:,5:])])
+    y_std = np.array([np.nanstd(full_array_P[:,0:2]),np.nanstd(full_array_P[:,5:])])
+    y_sem = y_std / np.sqrt(2*N_norm)
+    fig,ax = plt.subplots(1,3)
+    ax = ax.flatten()
+    ax[0].bar(x_bar,y_bar,width = 0.9,align = 'center',color = 'k',alpha = 0.6)
+    ax[0].errorbar(x_bar,y_bar,y_sem,fmt='None',linewidth = 2.4,ecolor = 'k',elinewidth=2.5)
+    N_norm = full_array_N.shape[0]
+    y_bar = np.array([np.mean(full_array_N[:,0:2]),np.nanmean(full_array_N[:,5:])])
+    y_std = np.array([np.nanstd(full_array_N[:,0:2]),np.nanstd(full_array_N[:,5:])])
+    y_sem = y_std / np.sqrt(2*N_norm)
+    ax[1].bar(x_bar,y_bar,width = 0.9,align = 'center',color = 'k',alpha = 0.6)
+    ax[1].errorbar(x_bar,y_bar,y_sem,fmt='None',linewidth = 2.4,ecolor = 'k',elinewidth=2.5)
+    N_norm = full_array_NC.shape[0]
+    y_bar = np.array([np.mean(full_array_NC[:,0:2]),np.nanmean(full_array_NC[:,5:])])
+    y_std = np.array([np.nanstd(full_array_NC[:,0:2]),np.nanstd(full_array_NC[:,5:])])
+    y_sem = y_std / np.sqrt(2*N_norm)
+    ax[2].bar(x_bar,y_bar,width = 0.9,align = 'center',color = 'k',alpha = 0.6)
+    ax[2].errorbar(x_bar,y_bar,y_sem,fmt='None',linewidth = 2.4,ecolor = 'k',elinewidth=2.5)
+    plt.savefig(filename_save+'_PCA.png')    
+    
+    return df_main
+    
+    
+
+def fig5_b(input_list, filename_save):
+    sc_bsl = []
+    sc_chr = []
+    for iter_i in range(len(input_list)):
+        sc_bsl.append(np.mean(input_list[iter_i][0:2]))     # days prestroke
+        sc_chr.append(np.mean(input_list[iter_i][3:]))  # days > 21
+    sc_bsl = np.array(sc_bsl,dtype = float)
+    sc_chr = np.array(sc_chr,dtype = float)
+    fig,ax = plt.subplots(1,2)
+    ax = ax.flatten()
+    ax[0].scatter(sc_bsl,sc_chr,s = 20)
+    ax[0].set_xlabel('Pre-Stroke')
+    ax[0].set_ylabel('Post-Stroke')
+    ax[1].scatter(sc_bsl,sc_chr,s = 20)
+    ax[1].set_xlim([-10,60])
+    ax[1].set_ylim([-10,240])
+    ax[1].set_xlabel('Pre-Stroke')
+    ax[1].set_ylabel('Post-Stroke')
+    plt.savefig(filename_save)
+    
+
 def PCA_apply(dict_params,Num_com):
     
+    # Hard coded for now
+    dict_config =  {}
+    dict_config['rh3_time'] = np.array([-3,-2,14,21,28,49])
+    dict_config['bc7_time'] = np.array([-3,-2,14,21,28,42])
+    dict_config['rh8_time'] = np.array([-3,-2,14,21,28,35,42,49,56])
+    dict_config['rh11_time'] = np.array([-3,-2,14,21,28,35,42,49])
+    # dict_config['rh7_time'] = np.array([-3,-2,14,21,28,35,42,49])
+    
+    # Save folder:
+    output_folder = os.path.join('/home/hyr2/Documents/Data/NVC/Results/PCA_analysis')
+    
     # For Plasticity Metrics (Z-scored thresholded Z > 2 and Z < -0.5)
-    c_mouse_rh3 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh3/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
-    c_mouse_bc7 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_bc7/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
-    c_mouse_rh8 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh8/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
-    c_mouse_rh11 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh11/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
+    c_mouse_rh3 = np.load(os.path.join('/home/hyr2/Documents/Data/NVC/Tracking/processed_data_rh3/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
+    c_mouse_bc7 = np.load(os.path.join('/home/hyr2/Documents/Data/NVC/Tracking/processed_data_bc7/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
+    c_mouse_rh8 = np.load(os.path.join('/home/hyr2/Documents/Data/NVC/Tracking/processed_data_rh8/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
+    c_mouse_rh11 = np.load(os.path.join('/home/hyr2/Documents/Data/NVC/Tracking/processed_data_rh11/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
+    
+    dict_config['rh3_count'] = c_mouse_rh3.size
+    dict_config['bc7_count'] = c_mouse_bc7.size
+    dict_config['rh8_count'] = c_mouse_rh8.size
+    dict_config['rh11_count'] = c_mouse_rh11.size
+    # dict_config['rh7_count'] = 
+    
     
     c_all_mouse = np.concatenate((c_mouse_rh3,c_mouse_bc7,c_mouse_rh8,c_mouse_rh11))    # concatenate all
     plasticity_data_list_new = []
+    spont_FR_data_list = []
+    spont_total_data_list = []
+    stim_FR_data_list = []
+    stim_total_data_list = []
     for iter_i in range(c_all_mouse.size):
         plasticity_data_list_new.append(c_all_mouse[iter_i]['plasticity_metric'])
-
+        spont_FR_data_list.append(c_all_mouse[iter_i]['FR_avg_spont'])              # FR per trial
+        spont_total_data_list.append(c_all_mouse[iter_i]['S_total_spont'])          # total spikes per trial
+        stim_FR_data_list.append(c_all_mouse[iter_i]['FR_avg_stim'])          # total spikes per trial
+        stim_total_data_list.append(c_all_mouse[iter_i]['S_total_stim'])          # total spikes per trial
+        
+        
+    df_main = pd.DataFrame([],columns = ['cluster_id','spont_FR','spont_S','stim_FR','stim_S','type','Z_label','PCA_label'])
+    # fig5_e(spont_total_data_list,df_main,dict_config)
+    # fig5_e(spont_FR_data_list,df_main,dict_config)
     
     plasticity_data_list_new = np.array(plasticity_data_list_new, dtype = np.int8)
     
-    
     # For Cell Type
-    c_mouse_rh3 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh3/','all_shanks_celltype_processed.npy'))
-    c_mouse_bc7 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_bc7/','all_shanks_celltype_processed.npy'))
-    c_mouse_rh8 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh8/','all_shanks_celltype_processed.npy'))
-    c_mouse_rh11 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh11/','all_shanks_celltype_processed.npy'))
+    c_mouse_rh3 = np.load(os.path.join('/home/hyr2/Documents/Data/NVC/Tracking/processed_data_rh3/','all_shanks_celltype_processed.npy'))
+    c_mouse_bc7 = np.load(os.path.join('/home/hyr2/Documents/Data/NVC/Tracking/processed_data_bc7/','all_shanks_celltype_processed.npy'))
+    c_mouse_rh8 = np.load(os.path.join('/home/hyr2/Documents/Data/NVC/Tracking/processed_data_rh8/','all_shanks_celltype_processed.npy'))
+    c_mouse_rh11 = np.load(os.path.join('/home/hyr2/Documents/Data/NVC/Tracking/processed_data_rh11/','all_shanks_celltype_processed.npy'))
     
     celltype_data_list_new = []
     celltype_data_list_new.extend(c_mouse_rh3.tolist())
@@ -287,6 +441,7 @@ def PCA_apply(dict_params,Num_com):
     celltype_data_list_new.extend(c_mouse_rh11.tolist())
     
     celltype_data_list_new = np.array(celltype_data_list_new,dtype = str)
+    df_main['type'] = celltype_data_list_new
     # celltype_data_list_edgecolors = copy.deepcopy(celltype_data_list_new)
     # celltype_data_list_edgecolors[celltype_data_list_edgecolors == 'NI'] = 0
     # celltype_data_list_edgecolors[celltype_data_list_edgecolors == 'P'] = 1
@@ -295,12 +450,12 @@ def PCA_apply(dict_params,Num_com):
     
     
     # For PCA
-    mouse_rh3 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh3/','all_shanks_pca_preprocessed.npy'),allow_pickle=True)
-    mouse_bc7 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_bc7/','all_shanks_pca_preprocessed.npy'),allow_pickle=True)
-    mouse_rh8 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh8/','all_shanks_pca_preprocessed.npy'),allow_pickle=True)
-    mouse_rh11 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh11/','all_shanks_pca_preprocessed.npy'),allow_pickle=True)
+    mouse_rh3 = np.load(os.path.join('/home/hyr2/Documents/Data/NVC/Tracking/processed_data_rh3/','all_shanks_pca_preprocessed.npy'),allow_pickle=True)
+    mouse_bc7 = np.load(os.path.join('/home/hyr2/Documents/Data/NVC/Tracking/processed_data_bc7/','all_shanks_pca_preprocessed.npy'),allow_pickle=True)
+    mouse_rh8 = np.load(os.path.join('/home/hyr2/Documents/Data/NVC/Tracking/processed_data_rh8/','all_shanks_pca_preprocessed.npy'),allow_pickle=True)
+    mouse_rh11 = np.load(os.path.join('/home/hyr2/Documents/Data/NVC/Tracking/processed_data_rh11/','all_shanks_pca_preprocessed.npy'),allow_pickle=True)
 
-    output_folder = os.path.join('/home/hyr2-office/Documents/Data/NVC/Results/PCA_analysis')
+
     
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -493,16 +648,17 @@ def PCA_apply(dict_params,Num_com):
         #         ax[iter_lll].set_xlabel('Normalized Stroke Timeline')
         #     plt.savefig(os.path.join(dir_save,f'{iter_ll}_KMeans_AvgRawWaveform_allClusters.png'),dpi = 100,format = 'png')                
         cluster_labels = dict_unit_labels['KMeans'] 
-        raw_data_local = raw_data[cluster_labels == 1 , :]
+        raw_data_local = raw_data[cluster_labels == 1 , :]  # testing label 1
         raw_data_local = np.mean(raw_data_local, axis = 0)
         plt.plot(time_axis,raw_data_local)
         # Plotting Pie chart and statistics of clusters
         data_Z = [(plasticity_data_list_new == -1).sum(), (plasticity_data_list_new == 1).sum(), (plasticity_data_list_new == 0).sum()]
         data_uml = [(dict_unit_labels['KMeans'] == 1).sum(),(dict_unit_labels['KMeans'] == 0).sum(),(dict_unit_labels['KMeans'] == 2).sum()]
-        
         print('Z-scored: ', data_Z)
         print('UML: ', data_uml)
-    
+        df_main['Z_label'] = plasticity_data_list_new
+        df_main['PCA_label'] = dict_unit_labels['KMeans']
+        
 
         plt.figure()
         labels1 = ['Down-regulated','Up-regulated','Recovered']
@@ -517,6 +673,25 @@ def PCA_apply(dict_params,Num_com):
         # (dict_unit_labels['KMeans'] == 1).sum()     # Up-regula.red
         # (dict_unit_labels['KMeans'] == 2).sum()     # No change
         
+        # For Scatter plots (Fig 5b)
+        
+        filename_save = os.path.join(output_folder,'avgFR_fig5_b.png')
+        fig5_b(spont_FR_data_list,filename_save)
+        filename_save = os.path.join(output_folder,'totalS_fig5_b.png')
+        fig5_b(spont_total_data_list,filename_save)
+        filename_save = os.path.join(output_folder,'avgFR_fig5_e')
+        fig5_e(spont_FR_data_list,filename_save,df_main,dict_config)
+        filename_save = os.path.join(output_folder,'totalS_fig5_e')
+        fig5_e(spont_total_data_list,filename_save,df_main,dict_config)
+        filename_save = os.path.join(output_folder,'avgFRStim_fig5_b.png')
+        fig5_b(stim_FR_data_list,filename_save)
+        filename_save = os.path.join(output_folder,'totalSStim_fig5_b.png')
+        fig5_b(stim_total_data_list,filename_save)
+        filename_save = os.path.join(output_folder,'avgFRStim_fig5_e')
+        fig5_e(stim_FR_data_list,filename_save,df_main,dict_config)
+        filename_save = os.path.join(output_folder,'totalSStim_fig5_e')
+        fig5_e(stim_total_data_list,filename_save,df_main,dict_config)
+        
 if __name__ == '__main__':
     
     # Performing clustering 
@@ -529,4 +704,4 @@ if __name__ == '__main__':
     PCA_apply(dict_params,Num_com=3)
     # plt.close('all')
     
-    
+
