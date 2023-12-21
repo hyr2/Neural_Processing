@@ -396,10 +396,6 @@ def PCA_apply(dict_params,Num_com):
     output_folder = os.path.join('/home/hyr2/Documents/Data/NVC/Results/PCA_analysis')
     
     # For Plasticity Metrics (Z-scored thresholded Z > 2 and Z < -0.5)
-    c_mouse_rh3 = np.load(os.path.join('/home/hyr2/Documents/Data/NVC/Tracking/processed_data_rh3/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
-    c_mouse_bc7 = np.load(os.path.join('/home/hyr2/Documents/Data/NVC/Tracking/processed_data_bc7/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
-    c_mouse_rh8 = np.load(os.path.join('/home/hyr2/Documents/Data/NVC/Tracking/processed_data_rh8/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
-    c_mouse_rh11 = np.load(os.path.join('/home/hyr2/Documents/Data/NVC/Tracking/processed_data_rh11/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
     
     dict_config['rh3_count'] = c_mouse_rh3.size
     dict_config['bc7_count'] = c_mouse_bc7.size
@@ -409,6 +405,10 @@ def PCA_apply(dict_params,Num_com):
     
     
     c_all_mouse = np.concatenate((c_mouse_rh3,c_mouse_bc7,c_mouse_rh8,c_mouse_rh11))    # concatenate all
+    c_mouse_rh3 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh3/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
+    c_mouse_bc7 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_bc7/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
+    c_mouse_rh8 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh8/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
+    c_mouse_rh11 = np.load(os.path.join('/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh11/','all_shanks_clus_property_processed.npy'),allow_pickle=True)
     plasticity_data_list_new = []
     spont_FR_data_list = []
     spont_total_data_list = []
