@@ -19,7 +19,7 @@ from population_analysis import *
 import os, json
 from natsort import natsorted
 import matlab.engine
-from PCA_full import combine_shanks
+from combine_shanks_single_animal import combine_shanks
 from convert2Phy import func_convert2Phy, func_convert2MS
 # Automate batch processing of the pre processing step
 if __name__ == '__main__':
