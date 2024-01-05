@@ -274,7 +274,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     result_folder_FR_avg = os.path.join(session_folder,'Processed', 'FR_clusters')
     result_folder_imp_clusters = os.path.join(session_folder,'Processed', 'important_clusters')
     sessions_label_stroke = os.path.join(parent_dir,'Sessions.csv')
-    interesting_cluster_ids = os.path.join(session_folder,'interesting_clusters_.csv')  # Manually selected cluster IDs from PHY. These could be used as representative examples
+    interesting_cluster_ids_file = os.path.join(session_folder,'interesting_clusters_.csv')  # Manually selected cluster IDs from PHY. These could be used as representative examples
     # dir_expsummary = os.path.join(session_folder,'exp_summary.xlsx')
     
     # Extract sampling frequency
@@ -329,11 +329,11 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         sessions_label_stroke = sessions_label_stroke.iloc[:,0].to_list()
     else:
         warning('WARNING: Sessions.csv not found!\n ')
-    if os.path.isfile(interesting_cluster_ids):
-        interesting_cluster_ids = pd.read_csv(interesting_cluster_ids,header = None , index_col= False)
+    if os.path.isfile(interesting_cluster_ids_file):
+        interesting_cluster_ids = pd.read_csv(interesting_cluster_ids_file,header = None , index_col= False)
         interesting_cluster_ids = interesting_cluster_ids.iloc[:,0].to_list()
+        os.makedirs(result_folder_imp_clusters)
     else:
-        interesting_cluster_ids = [0]
         warning('WARNING: interesting_clusters_.csv not found!\n ')
     
     # Channel mapping
@@ -348,8 +348,6 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         os.makedirs(result_folder)
     if not os.path.exists(result_folder_FR_avg):
         os.makedirs(result_folder_FR_avg)
-    if not os.path.exists(result_folder_imp_clusters):
-        os.makedirs(result_folder_imp_clusters)
     geom_path = os.path.join(session_folder, "geom.csv")
     # curation_mask_path = os.path.join(session_folder, 'accept_mask.csv')        # deparcated
     NATIVE_ORDERS = np.load(os.path.join(session_folder, "native_ch_order.npy"))
@@ -824,7 +822,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         list_all_clus.append(z_clus_dict)
         
         # Extracting plots for only important representative single units
-        if np.isin(i_clus,interesting_cluster_ids):
+        if np.isin(i_clus,interesting_cluster_ids) and os.path.isfile(interesting_cluster_ids_file):
             # ISI for each session (this unit)
             local_folder_create = os.path.join(result_folder_imp_clusters,f'clusterid_{i_clus}')
             if not os.path.isdir(local_folder_create):
@@ -984,7 +982,8 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     # savemat(os.path.join(result_folder, "population_stat_responsive_only.mat"), data_dict)
     np.save(os.path.join(result_folder,'all_clus_property.npy'),list_all_clus)
     np.save(os.path.join(result_folder,'all_clus_pca_preprocessed.npy'),scaled_data_list_new)
-    np.save(os.path.join(result_folder_imp_clusters,'amplitude_hist.npy'),lst_amplitudes_all)
-    np.save(os.path.join(result_folder_imp_clusters,'waveforms_all.npy'),lst_waveforms_all)
-    np.save(os.path.join(result_folder_imp_clusters,'clus_depth.npy'),lst_cluster_depth)
+    np.save(os.path.join(result_folder_imp_clusters,'amplitude_hist.npy'),lst_amplitudes_all) # primarily used for representative examples
+    np.save(os.path.join(result_folder_imp_clusters,'waveforms_all.npy'),lst_waveforms_all)     # primarily used for representative examples
+    np.save(os.path.join(result_folder_imp_clusters,'clus_depth.npy'),lst_cluster_depth)    # primarily used for representative examples
+    np.save(os.path.join(result_folder_imp_clusters,'ISI_hist_all.npy'),lst_isi_all)    # primarily used for representative examples
 
