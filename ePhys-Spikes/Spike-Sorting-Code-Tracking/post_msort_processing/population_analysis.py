@@ -308,7 +308,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         TRIAL_KEEP_MASK = np.squeeze(TRIAL_KEEP_MASK[:,0]).astype('bool')      # Trial accept mask 
     else:
         TRIAL_KEEP_MASK = np.ones([trials_start_times.shape[0],],dtype = bool)
-        warning('WARNING: Trial mask not found!\n ')
+        Warning('WARNING: Trial mask not found!\n ')
     if os.path.isfile(sessions_file):
         session_files_list = pd.read_csv(sessions_file, header=None, index_col=False,dtype = np.uint32)
         session_files_list = session_files_list.to_numpy(dtype = np.uint32)
@@ -323,18 +323,18 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         #     np_frr_single_session = list(compress(firing_rate_rasters, mask_session_local1))
         
     else:
-        warning('WARNING: RHDfile_samples.csv not found!\n ')
+        Warning('WARNING: RHDfile_samples.csv not found!\n ')
     if os.path.isfile(sessions_label_stroke):
         sessions_label_stroke = pd.read_csv(sessions_label_stroke,header=None, index_col=False)
         sessions_label_stroke = sessions_label_stroke.iloc[:,0].to_list()
     else:
-        warning('WARNING: Sessions.csv not found!\n ')
+        Warning('WARNING: Sessions.csv not found!\n ')
     if os.path.isfile(interesting_cluster_ids_file):
         interesting_cluster_ids = pd.read_csv(interesting_cluster_ids_file,header = None , index_col= False)
         interesting_cluster_ids = interesting_cluster_ids.iloc[:,0].to_list()
         os.makedirs(result_folder_imp_clusters)
     else:
-        warning('WARNING: interesting_clusters_.csv not found!\n ')
+        Warning('WARNING: interesting_clusters_.csv not found!\n ')
     
     # Channel mapping
     if (CHMAP2X16 == True):    # 2x16 channel map
@@ -758,7 +758,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         filt_signal = readmda(os.path.join(session_folder, "filt.mda")) # caution! big file
         filt_signal = filt_signal - np.mean(filt_signal,axis = 0)   # CMR (common mode rejected)
     else:
-        warning('WARNING: File filt.mda is missing! \n ------------')
+        Warning('WARNING: File filt.mda is missing! \n ------------')
 
     lst_waveforms_all = []
     lst_amplitudes_all = []
