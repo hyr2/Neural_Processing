@@ -203,10 +203,10 @@ def extract_isi(input_dict,Fs,folder_save):
         isi_hist, edges = np.histogram(isi_,bin_edges)
         isi_hist_all_sessions.append(isi_hist)
 
-        plt.figure()
-        plt.plot(edges[:-1], isi_hist)
-        plt.savefig(os.path.join(folder_save,f'_day_{keys_[iter_l]}_ISI.png'))
-        plt.close()
+        # plt.figure()
+        # plt.plot(edges[:-1], isi_hist)
+        # plt.savefig(os.path.join(folder_save,f'_day_{keys_[iter_l]}_ISI.png'))
+        # plt.close()
     
     dict_output = {key:value for key,value in zip(keys_,isi_hist_all_sessions)}
     return dict_output
