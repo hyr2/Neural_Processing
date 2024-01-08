@@ -37,11 +37,14 @@ def extract_acg(input_dict,Fs,folder_save):
 
     for iter_l in range(size_sessions):
         firings_local = input_dict[keys_[iter_l]]
-        firings_local = matlab.int64(firings_local)
-        acg_output_arr = eng.wraper_calc_ACG_metrics(firings_local,Fs,nargout=1)
-        acg_output_arr_np = acg_output_arr.tomemoryview().tolist()
-        acg_output_arr_np = np.array(acg_output_arr_np,dtype = np.float)
-        acg_output_arr_np = np.squeeze(acg_output_arr_np)
+        if firings_local.shape[0] == 0:
+            acg_output_arr_np = np.zeros(time_axis.shape)
+        else:
+            firings_local = matlab.int64(firings_local)
+            acg_output_arr = eng.wraper_calc_ACG_metrics(firings_local,Fs,nargout=1)
+            acg_output_arr_np = acg_output_arr.tomemoryview().tolist()
+            acg_output_arr_np = np.array(acg_output_arr_np,dtype = np.float)
+            acg_output_arr_np = np.squeeze(acg_output_arr_np)
 
         acg_hist_all_sessions.append(acg_output_arr_np)
 
@@ -133,6 +136,7 @@ def func_acg_extract_main(session_folder):
         interesting_cluster_ids = interesting_cluster_ids.iloc[:,0].to_list()
 
     else:
+        interesting_cluster_ids = np.array([0],dtype = np.int16)
         Warning('WARNING: interesting_clusters_.csv not found!\n ')
 
     trial_duration_in_samples = int(total_time*F_SAMPLE)
@@ -171,4 +175,8 @@ def func_acg_extract_main(session_folder):
             # ACG for each session (this unit)
             local_folder_create = result_folder_imp_clusters
             output_dict_acg = extract_acg(dict_local_i_clus,Fs,local_folder_create)
-            # lst_acg_all.append(output_dict_acg)
+            lst_acg_all.append(output_dict_acg)
+
+    if os.path.isfile(interesting_cluster_ids_file):
+        np.save(os.path.join(result_folder_imp_clusters,'ACG_hist_all.npy'),lst_acg_all)    # primarily used for representative examples
+        

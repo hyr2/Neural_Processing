@@ -203,10 +203,10 @@ def extract_isi(input_dict,Fs,folder_save):
         isi_hist, edges = np.histogram(isi_,bin_edges)
         isi_hist_all_sessions.append(isi_hist)
 
-        # plt.figure()
-        # plt.plot(edges[:-1], isi_hist)
-        # plt.savefig(os.path.join(folder_save,f'_day_{keys_[iter_l]}_ISI.png'))
-        # plt.close()
+        plt.figure()
+        plt.plot(edges[:-1], isi_hist)
+        plt.savefig(os.path.join(folder_save,f'_day_{keys_[iter_l]}_ISI.png'))
+        plt.close()
     
     dict_output = {key:value for key,value in zip(keys_,isi_hist_all_sessions)}
     return dict_output
@@ -334,6 +334,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         interesting_cluster_ids = interesting_cluster_ids.iloc[:,0].to_list()
         os.makedirs(result_folder_imp_clusters)
     else:
+        interesting_cluster_ids = np.array([0],dtype = np.int16)
         Warning('WARNING: interesting_clusters_.csv not found!\n ')
     
     # Channel mapping
@@ -982,8 +983,9 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     # savemat(os.path.join(result_folder, "population_stat_responsive_only.mat"), data_dict)
     np.save(os.path.join(result_folder,'all_clus_property.npy'),list_all_clus)
     np.save(os.path.join(result_folder,'all_clus_pca_preprocessed.npy'),scaled_data_list_new)
-    np.save(os.path.join(result_folder_imp_clusters,'amplitude_hist.npy'),lst_amplitudes_all) # primarily used for representative examples
-    np.save(os.path.join(result_folder_imp_clusters,'waveforms_all.npy'),lst_waveforms_all)     # primarily used for representative examples
-    np.save(os.path.join(result_folder_imp_clusters,'clus_depth.npy'),lst_cluster_depth)    # primarily used for representative examples
-    np.save(os.path.join(result_folder_imp_clusters,'ISI_hist_all.npy'),lst_isi_all)    # primarily used for representative examples
+    if os.path.isfile(interesting_cluster_ids_file):
+        np.save(os.path.join(result_folder_imp_clusters,'amplitude_hist.npy'),lst_amplitudes_all) # primarily used for representative examples
+        np.save(os.path.join(result_folder_imp_clusters,'waveforms_all.npy'),lst_waveforms_all)     # primarily used for representative examples
+        np.save(os.path.join(result_folder_imp_clusters,'clus_depth.npy'),lst_cluster_depth)    # primarily used for representative examples
+        np.save(os.path.join(result_folder_imp_clusters,'ISI_hist_all.npy'),lst_isi_all)    # primarily used for representative examples
 
