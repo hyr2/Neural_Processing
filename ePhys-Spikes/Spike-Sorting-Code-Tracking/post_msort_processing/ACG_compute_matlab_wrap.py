@@ -54,6 +54,12 @@ def extract_acg(input_dict,Fs,folder_save):
 
 def func_acg_extract_main(session_folder):
 
+    def generate_hist_from_spiketimes(start_sample,end_sample, spike_times_local, window_in_samples):
+        # n_windows_in_trial = int(np.ceil(end_sample-start_sample/window_in_samples))
+        bin_edges = np.arange(start_sample, end_sample, step=window_in_samples)
+        frq, edges = np.histogram(spike_times_local,bin_edges)
+        return frq, edges
+
     def func_create_dict(sessions_label_stroke,spike_time_local,session_sample_abs):
         
         session_sample_abs_tmp = np.insert(session_sample_abs,0,0)
@@ -161,22 +167,46 @@ def func_acg_extract_main(session_folder):
     
     cluster_all_range = np.arange(0,n_clus)
     interesting_cluster_ids = cluster_all_range[interesting_cluster_ids]
+    lst_acg_all = []
+    lst_filtered_data = []
+    lst_FR_avg = []
+    lst_x_ticks = []
     for i_clus in range(n_clus):
-        
-        spike_time_local = spike_times_by_clus[i_clus]
-        dict_local_i_clus = func_create_dict(sessions_label_stroke,spike_time_local,session_sample_abs)     # FR of a single unit by session
-                
-        lst_acg_all = []
         # Extracting plots for only important representative single units
         if np.isin(i_clus,interesting_cluster_ids) and os.path.isfile(interesting_cluster_ids_file):
-
-            # output_dict_isi = extract_isi(dict_local_i_clus,Fs,local_folder_create)
-            # lst_isi_all.append(output_dict_isi)
+            
+            spike_time_local = spike_times_by_clus[i_clus]
+            dict_local_i_clus = func_create_dict(sessions_label_stroke,spike_time_local,session_sample_abs)     # FR of a single unit by session
+        
+            session_sample_abs_tmp = np.insert(session_sample_abs,0,0)
+        
+            # histogram binning of the FR
+            thiscluster_hist = []
+            thiscluster_edges = []
+            for iter_l in range(len(dict_local_i_clus)):    # loop over sessions
+                start_sample = session_sample_abs_tmp[iter_l]
+                end_sample = session_sample_abs_tmp[iter_l+1]
+                hist_local, hist_edges_local = generate_hist_from_spiketimes(start_sample,end_sample, dict_local_i_clus[sessions_label_stroke[iter_l]], window_in_samples)
+                thiscluster_hist.append(hist_local)
+                thiscluster_edges.append(hist_edges_local)
+                # plt.bar(hist_edges_local[:-1], hist_local)
+            FR_mean_session = [np.mean(local_hist) for local_hist in thiscluster_hist]    
+            FR_mean_session = np.array(FR_mean_session,dtype = float) * Fs/window_in_samples
+            FR_mean_session = FR_mean_session.tolist()
+            x_ticks = list(dict_local_i_clus.keys())
+            lst_FR_avg.append(FR_mean_session)
+            lst_x_ticks.append(x_ticks)
+            
+            
             # ACG for each session (this unit)
             local_folder_create = result_folder_imp_clusters
             output_dict_acg = extract_acg(dict_local_i_clus,Fs,local_folder_create)
             lst_acg_all.append(output_dict_acg)
-
+            
     if os.path.isfile(interesting_cluster_ids_file):
-        np.save(os.path.join(result_folder_imp_clusters,'ACG_hist_all.npy'),lst_acg_all)    # primarily used for representative examples
-        
+        f1 = os.path.join(result_folder_imp_clusters,'FR_avg_by_session.npy')
+        np.save(f1,lst_FR_avg)
+        f2 = os.path.join(result_folder_imp_clusters,'sessions_all.npy')
+        np.save(f2,lst_x_ticks)
+        # np.save(os.path.join(result_folder_imp_clusters,'ACG_hist_all.npy'),lst_acg_all)    # primarily used for representative examples
+
