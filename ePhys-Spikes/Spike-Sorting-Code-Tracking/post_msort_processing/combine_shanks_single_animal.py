@@ -64,6 +64,8 @@ def combine_shanks(input_dir):
     rep_waveform = []   # only used for shanks that have representative single units
     rep_FR = []   # only used for shanks that have representative single units
     rep_sessions = []   # only used for shanks that have representative single units
+    all_FR = []   # only used for shanks that have representative single units
+    all_sessions = []   # only used for shanks that have representative single units
     iter=0
     for name in source_dir_list:
         if os.path.isdir(os.path.join(input_dir,name)):
@@ -73,7 +75,10 @@ def combine_shanks(input_dir):
                 clus_property[iter] = np.load(os.path.join(folder_loc_mat,'Processed/count_analysis/all_clus_property.npy'),allow_pickle=True)  # comes from population_analysis.py
                 celltype[iter] = sio.loadmat(os.path.join(folder_loc_mat,'Processed/cell_type/pop_celltypes.mat'))  # comes from func_CE_BarrelCortex.m 
                 
-                if os.path.isfile(os.path.join(folder_loc_mat,'interesting_clusters_.csv')):
+                all_FR.append(np.load(os.path.join(folder_loc_mat,'Processed','FR_clusters','FR_avg_by_session.npy'),allow_pickle=True))
+                all_sessions.append(np.load(os.path.join(folder_loc_mat,'Processed','FR_clusters','sessions_all.npy'),allow_pickle=True))
+                
+                if os.path.isfile(os.path.join(folder_loc_mat,'interesting_clusters_.csv')):    # for representative units only
                     folder_local_inner = os.path.join(folder_loc_mat,'Processed','important_clusters')
                     rep_acg.append(np.load(os.path.join(folder_local_inner,'ACG_hist_all.npy'),allow_pickle=True))
                     rep_amp_hist.append(np.load(os.path.join(folder_local_inner,'amplitude_hist.npy'),allow_pickle=True))
@@ -108,6 +113,16 @@ def combine_shanks(input_dir):
     filename_save = os.path.join(input_dir,'all_rep_FR.npy')
     np.save(filename_save,lst_FR_full)
     filename_save = os.path.join(input_dir,'all_rep_FR_sessions.npy')
+    np.save(filename_save,lst_sessions_full)
+    
+    # Aggregating data for all units FR
+    lst_FR_full = []
+    lst_sessions_full = []
+    lst_FR_full = [item for sublist in all_FR for item in sublist]   # aggregating double for loop in list comprehension
+    lst_sessions_full = [item for sublist in all_sessions for item in sublist]   # aggregating double for loop in list comprehension
+    filename_save = os.path.join(input_dir,'all_all_FR.npy')
+    np.save(filename_save,lst_FR_full)
+    filename_save = os.path.join(input_dir,'all_all_FR_sessions.npy')
     np.save(filename_save,lst_sessions_full)
     
     # PCA preprocessing raw data concatenated

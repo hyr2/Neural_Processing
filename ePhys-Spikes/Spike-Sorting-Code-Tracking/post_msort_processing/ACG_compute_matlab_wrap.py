@@ -169,9 +169,36 @@ def func_acg_extract_main(session_folder):
     interesting_cluster_ids = cluster_all_range[interesting_cluster_ids]
     lst_acg_all = []
     lst_filtered_data = []
-    lst_FR_avg = []
-    lst_x_ticks = []
+    lst_FR_avg = []     # for representative only
+    lst_x_ticks = []    # for representative only
+    lst_FR_avg_all = [] # for all units
+    lst_x_ticks_all = [] # for all units    
+    
     for i_clus in range(n_clus):
+        
+        # Extracting plots for all units (repeated poorly written code due to time crunch)
+        spike_time_local = spike_times_by_clus[i_clus]
+        dict_local_i_clus = func_create_dict(sessions_label_stroke,spike_time_local,session_sample_abs)     # FR of a single unit by session
+    
+        session_sample_abs_tmp = np.insert(session_sample_abs,0,0)
+    
+        # histogram binning of the FR
+        thiscluster_hist = []
+        thiscluster_edges = []
+        for iter_l in range(len(dict_local_i_clus)):    # loop over sessions
+            start_sample = session_sample_abs_tmp[iter_l]
+            end_sample = session_sample_abs_tmp[iter_l+1]
+            hist_local, hist_edges_local = generate_hist_from_spiketimes(start_sample,end_sample, dict_local_i_clus[sessions_label_stroke[iter_l]], window_in_samples)
+            thiscluster_hist.append(hist_local)
+            thiscluster_edges.append(hist_edges_local)
+            # plt.bar(hist_edges_local[:-1], hist_local)
+        FR_mean_session = [np.mean(local_hist) for local_hist in thiscluster_hist]    
+        FR_mean_session = np.array(FR_mean_session,dtype = float) * Fs/window_in_samples
+        FR_mean_session = FR_mean_session.tolist()
+        x_ticks = list(dict_local_i_clus.keys())
+        lst_FR_avg_all.append(FR_mean_session)
+        lst_x_ticks_all.append(x_ticks)
+        
         # Extracting plots for only important representative single units
         if np.isin(i_clus,interesting_cluster_ids) and os.path.isfile(interesting_cluster_ids_file):
             
@@ -202,11 +229,17 @@ def func_acg_extract_main(session_folder):
             local_folder_create = result_folder_imp_clusters
             output_dict_acg = extract_acg(dict_local_i_clus,Fs,local_folder_create)
             lst_acg_all.append(output_dict_acg)
-            
-    if os.path.isfile(interesting_cluster_ids_file):
+    
+    f1 = os.path.join(result_folder_FR_avg,'FR_avg_by_session.npy')     # Saves all units FR avg
+    np.save(f1,lst_FR_avg_all)      
+    f2 = os.path.join(result_folder_FR_avg,'sessions_all.npy')
+    np.save(f2,lst_x_ticks_all)
+    
+    if os.path.isfile(interesting_cluster_ids_file):    # primarily used for representative examples
         f1 = os.path.join(result_folder_imp_clusters,'FR_avg_by_session.npy')
         np.save(f1,lst_FR_avg)
         f2 = os.path.join(result_folder_imp_clusters,'sessions_all.npy')
         np.save(f2,lst_x_ticks)
-        # np.save(os.path.join(result_folder_imp_clusters,'ACG_hist_all.npy'),lst_acg_all)    # primarily used for representative examples
+        # np.save(os.path.join(result_folder_imp_clusters,'ACG_hist_all.npy'),lst_acg_all)   
+        
 
