@@ -534,22 +534,21 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         np_arr_session_binary = np.zeros([sessions_ids.shape[0],],dtype = bool)     # Did this session spike (output boolean array)
         np_arr_session_binary_up_down = np.zeros([sessions_ids.shape[0],],dtype = np.int8)  # was the FR higher or lower chronically w.r.t baseline
         dict_spikes = {
-            'FR_avg_spont' : [],                                                                                                # trial mask not applied
-            'S_total_spont' : [],     # Here I need to add MUA as well                                                          # trial mask not applied
+            'FR_avg_spont' : [],                                                                                                # trial mask is applied
+            'S_total_spont' : [],     # Here I need to add MUA as well                                                          # trial mask is applied
             'FR_avg_stim' : [],                                                                                                 # trial mask is applied
             'S_total_stim' : []       # Here I need to add MUA as well (this should be total spikes during whisker deflection)  # trial mask is applied
             }
         for iter_l in sessions_ids:
             fr_local = fr_series_ids[iter_l]
             
-            dict_spikes['FR_avg_spont'].append(np.mean(fr_local,axis = (0,1))/window_in_time)               # Avg FR per trial of this unit
-            dict_spikes['S_total_spont'].append(np.mean(np.sum(fr_local,axis = 1)))                         # Total spikes per trial of this unit
-            
-            
             trial_mask_local = trial_keep_session[iter_l].astype('bool')
             fr_local = fr_local[trial_mask_local,:]
             firing_rate_series.append(fr_local/window_in_time)
             fr_rasters_local = fr_rasters_ids[iter_l]
+            
+            dict_spikes['FR_avg_spont'].append(np.mean(fr_local[:,0:t_1],axis = (0,1))/window_in_time)               # Avg FR per trial of this unit
+            dict_spikes['S_total_spont'].append(np.mean(np.sum(fr_local[:,0:t_1],axis = 1)))                         # Total spikes per trial of this unit
             
             dict_spikes['FR_avg_stim'].append(np.mean(fr_local[:,t_1:t_2],axis = (0,1))/window_in_time)     # Avg FR per trial of this unit
             dict_spikes['S_total_stim'].append(np.mean(np.sum(fr_local[:,t_1:t_2],axis = 1)))                # Total spikes per trial of this unit
