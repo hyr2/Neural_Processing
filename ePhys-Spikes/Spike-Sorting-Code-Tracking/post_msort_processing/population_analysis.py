@@ -553,6 +553,9 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             dict_spikes['FR_avg_stim'].append(np.mean(fr_local[:,t_1:t_2],axis = (0,1))/window_in_time)     # Avg FR per trial of this unit
             dict_spikes['S_total_stim'].append(np.mean(np.sum(fr_local[:,t_1:t_2],axis = 1)))                # Total spikes per trial of this unit
             
+            # dict_spikes['FR_avg_spont_bsl1'].append(np.mean(fr_local[:,0:t_1],axis = (0,1))/window_in_time)
+            # dict_spikes['FR_avg_spont_bsl2'].append(np.mean(fr_local[:,0:t_1],axis = (0,1))/window_in_time)
+            
             # plotting rasters by session
             # plt.figure()
             # for iter_t in range(len(fr_rasters_local)):

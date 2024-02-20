@@ -17,6 +17,14 @@ import seaborn as sns
 from copy import deepcopy
 from sklearn.neighbors import KernelDensity
 
+# Data inside output_data.mat explained
+# arr_area_all : area of activation on all animals and all days (Animals X Days)
+# bsl_distances : distance between highest spiking shank and cortical activation centroid at baseline (accepted animals including repeat baselines)
+# chr_distances : distance between highest spiking shank and cortical activation centroid at chronic (accepted animals including repeat baselines)
+# shift_vec_chronic : inter-day shift during chronic stages 
+# shift_vec_early : inter-day shift during baseline stages
+# xaxis_ideal : Days axis (longitudinal sessions)
+
 # input_folder = r'C:\Rice_2023\Data\Results\IOS_results_10_18_2023'
 input_folder = '/home/hyr2-office/Documents/Data/IOS_imaging'
 data_file = os.path.join(input_folder,'output_data.mat')
@@ -34,16 +42,48 @@ arr_area_all = D1['arr_area_all']
 xaxis_ideal = np.squeeze(D1['xaxis_ideal'])
 shift_vec_chronic =D1['shift_vec_chronic'] 
 shift_vec_early = D1['shift_vec_early']
+chr_distances = D1['chr_distances']
+bsl_distances = D1['bsl_distances']
 
-# For the area of activation (averaged over animals n=7)
+# For cortical activity shift vs spiking activity shift
+fig, axes = plt.subplots(1,1, figsize=(2,1.5), dpi=300)
+df_shifts1 = pd.DataFrame(np.transpose(bsl_distances),columns = ['dist'])
+col_tmp = ['bsl']*np.shape(bsl_distances)[1]
+df_shifts1['phase'] = col_tmp
+df_shifts2 = pd.DataFrame(np.transpose(chr_distances),columns = ['dist'])
+col_tmp = ['chr']*np.shape(chr_distances)[1]
+df_shifts2['phase'] = col_tmp
+df_shifts = pd.concat((df_shifts1,df_shifts2),axis = 0)
+sns.barplot(data=df_shifts,y = 'dist',x = 'phase',orient = 'v',color = '#A8A9A8', \
+            linewidth=2.5, edgecolor="k",ax = axes)
+fig.set_size_inches(1,1.5,forward=True)
+sns.despine()
+plt.tick_params(
+    axis='x',          # changes apply to the x-axis
+    which='both',      # both major and minor ticks are affected
+    bottom=False,      # ticks along the bottom edge are off
+    top=False,         # ticks along the top edge are off
+    labelbottom=True) # labels along the bottom edge are off
+plt.tick_params(
+    axis='y',          # changes apply to the x-axis
+    which='both',      # both major and minor ticks are affected
+    right=False,      # ticks along the bottom edge are off
+    left=True)         # ticks along the top edge are off
+axes.set_ylim(0,1.1)
+axes.set_yticks([])
+fig.savefig(os.path.join(output_folder,'CorticalMapVsSpiking.png'),format='png',dpi = 300)
+# sns.catplot(data=df_shifts, y="dist", x="phase",ax=axes[1])
+
+
+# Area of activation plot
 arr_area_mean = np.nanmean(arr_area_all,axis = 0)
 arr_area_count = np.count_nonzero(~np.isnan(arr_area_all),axis=0)
 arr_area_sem = np.nanstd(arr_area_all,axis =0)/np.sqrt(arr_area_count)
-# For the histogram of shifts in cortical activation area (chronic vs subacute/recovery)
-df_shifts1 = pd.DataFrame(np.transpose(-shift_vec_chronic),columns = ['shift'])
+
+df_shifts1 = pd.DataFrame(np.transpose(-shift_vec_chronic),columns = ['dist'])
 col_tmp = ['chro']*np.shape(shift_vec_chronic)[1]
 df_shifts1['phase'] = col_tmp
-df_shifts2 = pd.DataFrame(np.transpose(shift_vec_early),columns = ['shift'])
+df_shifts2 = pd.DataFrame(np.transpose(shift_vec_early),columns = ['dist'])
 col_tmp = ['rec']*np.shape(shift_vec_early)[1]
 df_shifts2['phase'] = col_tmp
 df_shifts = pd.concat((df_shifts1,df_shifts2),axis = 0)
