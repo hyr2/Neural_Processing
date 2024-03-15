@@ -7,7 +7,7 @@ Created on Tue Feb 20 20:53:40 2024
 """
 
 # script for generating Figure 2C
-import os, json
+import os, json, time
 import sys
 sys.path.append('utils')
 import numpy as np
@@ -21,6 +21,7 @@ from utils.read_mda import readmda
 from utils.read_stimtxt import read_stimtxt
 import seaborn as sns
 from natsort import natsorted
+from matplotlib.cm import ScalarMappable
 
 def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH,output_folder):
 
@@ -299,12 +300,45 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH,output_folder):
     
 if __name__ == '__main__':
     
-    # Work on BC7 
-    CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_1x32_128ch_flex_new.mat'
+    # Work on RH7 
+    # CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_1x32_128ch_flex_Pavlo.mat'
     
-    input_dir = '/home/hyr2-office/Documents/Data/NVC/Main-Animals/processed_data_bc7/'
-    source_dir_list = natsorted(os.listdir(input_dir))
-    session_ids = [-3,-2,2,7,14,21,28,42]
+    # input_dir = '/home/hyr2-office/Documents/Data/NVC/Main-Animals/processed_data_rh7/'
+    # source_dir_list = natsorted(os.listdir(input_dir))
+    # session_ids = [-3,-2,2,7,14,21,28,35,42,49,56]
+    
+    # # Generating pkl files 
+    # for Raw_dir in source_dir_list:
+    #     Raw_dir_dir = os.path.join(input_dir,Raw_dir)
+    #     if os.path.isdir(Raw_dir_dir):
+    #         output_folder = os.path.join(Raw_dir_dir,'special_folder_Fig2')
+            
+    #         os.makedirs(output_folder)
+    #         func_pop_analysis(Raw_dir_dir,CHANNEL_MAP_FPATH,output_folder)
+            
+    # # Reading pkl files and generating plots
+    # source_dir_list = natsorted(os.listdir(input_dir))
+    # df_all_clust = pd.DataFrame(data=None,columns = ['cluster_id','shank_num','depth','N_spikes','spont_FR','session'])
+    # # Generating pkl files 
+    # iter_iter = 0
+    # dfs = []
+    # for Raw_dir in source_dir_list:
+    #     Raw_dir_dir = os.path.join(input_dir,Raw_dir)
+    #     if os.path.isdir(Raw_dir_dir):
+    #         output_folder = os.path.join(Raw_dir_dir,'special_folder_Fig2','all_clusters_.pkl')
+    #         df_all_clust = pd.read_pickle(output_folder)
+    #         df_all_clust['session'] = [session_ids[iter_iter]] * df_all_clust.shape[0]
+    #         dfs.append(df_all_clust)
+    #         iter_iter += 1
+    # df_combined_rh7 = pd.concat(dfs)
+    # df_combined_rh7.to_pickle(os.path.join(input_dir,'df_Fig2C.pkl'))
+    
+    # Work on BC7 
+    # CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_1x32_128ch_flex_new.mat'
+    
+    # input_dir = '/home/hyr2-office/Documents/Data/NVC/Main-Animals/processed_data_bc7/'
+    # source_dir_list = natsorted(os.listdir(input_dir))
+    # session_ids = [-3,-2,2,7,14,21,28,42]
     
     # Generating pkl files 
     # for Raw_dir in source_dir_list:
@@ -316,53 +350,358 @@ if __name__ == '__main__':
     #         func_pop_analysis(Raw_dir_dir,CHANNEL_MAP_FPATH,output_folder)
             
     # Reading pkl files and generating plots
-    source_dir_list = natsorted(os.listdir(input_dir))
-    df_all_clust = pd.DataFrame(data=None,columns = ['cluster_id','shank_num','depth','N_spikes','spont_FR','session'])
-    # Generating pkl files 
-    iter_iter = 0
-    dfs = []
-    for Raw_dir in source_dir_list:
-        Raw_dir_dir = os.path.join(input_dir,Raw_dir)
-        if os.path.isdir(Raw_dir_dir):
-            output_folder = os.path.join(Raw_dir_dir,'special_folder_Fig2','all_clusters_.pkl')
-            df_all_clust = pd.read_pickle(output_folder)
-            df_all_clust['session'] = [session_ids[iter_iter]] * df_all_clust.shape[0]
-            dfs.append(df_all_clust)
-            iter_iter += 1
-    df_combined_bc7 = pd.concat(dfs)
-    df_combined_bc7.to_pickle(os.path.join(input_dir,'df_Fig2C.pkl'))
+    # source_dir_list = natsorted(os.listdir(input_dir))
+    # df_all_clust = pd.DataFrame(data=None,columns = ['cluster_id','shank_num','depth','N_spikes','spont_FR','session'])
+    # # Generating pkl files 
+    # iter_iter = 0
+    # dfs = []
+    # for Raw_dir in source_dir_list:
+    #     Raw_dir_dir = os.path.join(input_dir,Raw_dir)
+    #     if os.path.isdir(Raw_dir_dir):
+    #         output_folder = os.path.join(Raw_dir_dir,'special_folder_Fig2','all_clusters_.pkl')
+    #         df_all_clust = pd.read_pickle(output_folder)
+    #         df_all_clust['session'] = [session_ids[iter_iter]] * df_all_clust.shape[0]
+    #         dfs.append(df_all_clust)
+    #         iter_iter += 1
+    # df_combined_bc7 = pd.concat(dfs)
+    # df_combined_bc7.to_pickle(os.path.join(input_dir,'df_Fig2C.pkl'))
     
     # Work on RH8
-    CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_1x32_128ch_flex_Pavlo.mat'
+    # CHANNEL_MAP_FPATH = '/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/Channel_Maps/chan_map_1x32_128ch_flex_Pavlo.mat'
     
-    input_dir = '/home/hyr2-office/Documents/Data/NVC/Main-Animals/processed_data_rh8/'
-    source_dir_list = natsorted(os.listdir(input_dir))
-    session_ids = [-3,-2,2,7,14,21,28,35,42,49,56]
+    # input_dir = '/home/hyr2-office/Documents/Data/NVC/Main-Animals/processed_data_rh8/'
+    # source_dir_list = natsorted(os.listdir(input_dir))
+    # session_ids = [-3,-2,2,7,14,21,28,35,42,49,56]
     
-    # Generating pkl files 
-    for Raw_dir in source_dir_list:
-        Raw_dir_dir = os.path.join(input_dir,Raw_dir)
-        if os.path.isdir(Raw_dir_dir):
-            output_folder = os.path.join(Raw_dir_dir,'special_folder_Fig2')
+    # # Generating pkl files 
+    # for Raw_dir in source_dir_list:
+    #     Raw_dir_dir = os.path.join(input_dir,Raw_dir)
+    #     if os.path.isdir(Raw_dir_dir):
+    #         output_folder = os.path.join(Raw_dir_dir,'special_folder_Fig2')
             
-            os.makedirs(output_folder)
-            func_pop_analysis(Raw_dir_dir,CHANNEL_MAP_FPATH,output_folder)
+    #         os.makedirs(output_folder)
+    #         func_pop_analysis(Raw_dir_dir,CHANNEL_MAP_FPATH,output_folder)
             
-    # Reading pkl files and generating plots
-    source_dir_list = natsorted(os.listdir(input_dir))
-    df_all_clust = pd.DataFrame(data=None,columns = ['cluster_id','shank_num','depth','N_spikes','spont_FR','session'])
-    # Generating pkl files 
-    iter_iter = 0
-    dfs = []
-    for Raw_dir in source_dir_list:
-        Raw_dir_dir = os.path.join(input_dir,Raw_dir)
-        if os.path.isdir(Raw_dir_dir):
-            output_folder = os.path.join(Raw_dir_dir,'special_folder_Fig2','all_clusters_.pkl')
-            df_all_clust = pd.read_pickle(output_folder)
-            df_all_clust['session'] = [session_ids[iter_iter]] * df_all_clust.shape[0]
-            dfs.append(df_all_clust)
-            iter_iter += 1
-    df_combined_rh8 = pd.concat(dfs)
-    df_combined_rh8.to_pickle(os.path.join(input_dir,'df_Fig2C.pkl'))
+    # # Reading pkl files and generating plots
+    # source_dir_list = natsorted(os.listdir(input_dir))
+    # df_all_clust = pd.DataFrame(data=None,columns = ['cluster_id','shank_num','depth','N_spikes','spont_FR','session'])
+    # # Generating pkl files 
+    # iter_iter = 0
+    # dfs = []
+    # for Raw_dir in source_dir_list:
+    #     Raw_dir_dir = os.path.join(input_dir,Raw_dir)
+    #     if os.path.isdir(Raw_dir_dir):
+    #         output_folder = os.path.join(Raw_dir_dir,'special_folder_Fig2','all_clusters_.pkl')
+    #         df_all_clust = pd.read_pickle(output_folder)
+    #         df_all_clust['session'] = [session_ids[iter_iter]] * df_all_clust.shape[0]
+    #         dfs.append(df_all_clust)
+    #         iter_iter += 1
+    # df_combined_rh8 = pd.concat(dfs)
+    # df_combined_rh8.to_pickle(os.path.join(input_dir,'df_Fig2C.pkl'))
+    
+    
+    # OUTPUT PLOTTING
+    
+    t = time.localtime()
+    current_time = time.strftime("%m_%d_%Y_%H_%M", t)
+    current_time = current_time + '_Fig2C'
+    # output_folder = os.path.join(r'C:\Rice_2023\Data\Results',current_time)
+    output_folder = os.path.join('/home/hyr2-office/Documents/Data/NVC/Results',current_time)
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    
+    folder_bc7 = '/home/hyr2-office/Documents/Data/NVC/Main-Animals/processed_data_bc7/df_Fig2C.pkl'
+    folder_rh8 = '/home/hyr2-office/Documents/Data/NVC/Main-Animals/processed_data_rh8/df_Fig2C.pkl'
+    folder_rh7 = '/home/hyr2-office/Documents/Data/NVC/Main-Animals/processed_data_rh7/df_Fig2C.pkl'
+    
+    # Reading files BC7
+    fig,axes = plt.subplots(1,1,figsize = (3,1.5),dpi = 300)
+    df_all_clust_bc7 = pd.read_pickle(folder_bc7)
+    df_all_clust_bc7['depth'] = 800 - df_all_clust_bc7['depth']     # depth correction for plotting
+    df_all_clust_bc7 = df_all_clust_bc7.loc[(df_all_clust_bc7['shank_num'] == 3)]
+    # df_bsl = df_all_clust_bc7.loc[(df_all_clust_bc7['session'] == -3) & (df_all_clust_bc7['shank_num'] == 0)]
+    df_all_clust_bc7 = df_all_clust_bc7.loc[(df_all_clust_bc7['spont_FR'] > 0.5)]   # rejected sparse units
+    # df_sa = df_all_clust_bc7.loc[(df_all_clust_bc7['session'] == 2) & (df_all_clust_bc7['shank_num'] == 0)]
+    # df_rec = df_all_clust_bc7.loc[(df_all_clust_bc7['session'] == 14) & (df_all_clust_bc7['shank_num'] == 0)]
+    # df_chr = df_all_clust_bc7.loc[(df_all_clust_bc7['session'] == 42) & (df_all_clust_bc7['shank_num'] == 0)]
+    # df_all = pd.concat((df_bsl,df_sa,df_rec,df_chr),axis=0)
+    cmap_1 = sns.color_palette("Spectral", as_cmap=True).reversed()
+    sns.stripplot(data=df_all_clust_bc7,x='session',y='depth',hue='spont_FR',palette=cmap_1,ax = axes)
+    sns.despine(left = True)
+    axes.set_yticks([])
+    axes.legend([],[], frameon=False)
+    
+    
+    # For Figure 4: Beyond Peri Infarct
+    # Selected BC7 shankD
+    fig,axes = plt.subplots(1,1,figsize = (3,1.5),dpi = 300)
+    df_all_clust_rh7 = pd.read_pickle(folder_bc7)
+    df_all_clust_rh7['depth'] = 800 - df_all_clust_rh7['depth']     # depth correction for plotting
+    df_all_clust_rh7 = df_all_clust_rh7.loc[(df_all_clust_rh7['shank_num'] == 3)]
+    # df_bsl = df_all_clust_bc7.loc[(df_all_clust_bc7['session'] == -3) & (df_all_clust_bc7['shank_num'] == 0)]
+    df_all_clust_rh7 = df_all_clust_rh7.loc[(df_all_clust_rh7['spont_FR'] > 1.25)]   # rejected sparse units
+    # df_sa = df_all_clust_bc7.loc[(df_all_clust_bc7['session'] == 2) & (df_all_clust_bc7['shank_num'] == 0)]
+    # df_rec = df_all_clust_bc7.loc[(df_all_clust_bc7['session'] == 14) & (df_all_clust_bc7['shank_num'] == 0)]
+    # df_chr = df_all_clust_bc7.loc[(df_all_clust_bc7['session'] == 42) & (df_all_clust_bc7['shank_num'] == 0)]
+    # df_all = pd.concat((df_bsl,df_sa,df_rec,df_chr),axis=0)
+    cmap_1 = sns.color_palette("Spectral", as_cmap=True).reversed()
+    df_all_clust_rh7_bsl = df_all_clust_rh7.loc[(df_all_clust_rh7['session'] == -3)]
+    df_all_clust_rh7_2 = df_all_clust_rh7.loc[(df_all_clust_rh7['session'] == 2)]
+    df_all_clust_rh7_7 = df_all_clust_rh7.loc[(df_all_clust_rh7['session'] == 7)]
+    df_all_clust_rh7_21 = df_all_clust_rh7.loc[(df_all_clust_rh7['session'] == 21)]
+    df_all_clust_rh7_56 = df_all_clust_rh7.loc[(df_all_clust_rh7['session'] == 42)]
+    
+    fig,axes = plt.subplots(1,1,figsize = (1,4.5),dpi = 300)
+    sns.stripplot(data=df_all_clust_rh7_bsl,x='session',y='depth',hue='spont_FR',palette=cmap_1,ax = axes,jitter = 0.25,size = 11,edgecolor = 'k',linewidth=1,alpha = 0.7)
+    sns.despine(top = True, right = True, bottom = True)
+    axes.legend([],[], frameon=False)
+    axes.set_xticks([])
+    axes.set_yticks([800,400,0])
+    # norm = plt.Normalize(0.5,20)
+    # sm =  ScalarMappable(norm=norm, cmap=cmap_1)
+    # sm.set_array([])
+    # cbar = fig.colorbar(sm, ax=axes)
+    # cbar.ax.set_title("scale")
+    # cbar.ax.set_title('')
+    fig.set_size_inches(1,4.5)
+    filename_save = os.path.join(output_folder,'RH7_shankA_Stroke_Spont_FR_bsl.svg')
+    plt.savefig(filename_save,format = 'svg',dpi = 500,transparent=True)
+    fig,axes = plt.subplots(1,1,figsize = (1,4.5),dpi = 300)
+    sns.stripplot(data=df_all_clust_rh7_2,x='session',y='depth',hue='spont_FR',palette=cmap_1,ax = axes,jitter = 0.25,size = 11,edgecolor = 'k',linewidth=1,alpha = 0.7)
+    sns.despine(top = True, right = True, bottom = True)
+    axes.legend([],[], frameon=False)
+    axes.set_xticks([])
+    axes.set_yticks([800,400,0])
+    # norm = plt.Normalize(0.5,20)
+    # sm =  ScalarMappable(norm=norm, cmap=cmap_1)
+    # sm.set_array([])
+    # cbar = fig.colorbar(sm, ax=axes)
+    # cbar.ax.set_title("scale")
+    # cbar.ax.set_title('')
+    fig.set_size_inches(1,4.5)
+    filename_save = os.path.join(output_folder,'RH7_shankA_Stroke_Spont_FR_2.svg')
+    plt.savefig(filename_save,format = 'svg',dpi = 500,transparent=True)
+    fig,axes = plt.subplots(1,1,figsize = (1,4.5),dpi = 300)
+    sns.stripplot(data=df_all_clust_rh7_7,x='session',y='depth',hue='spont_FR',palette=cmap_1,ax = axes,jitter = 0.25,size = 11,edgecolor = 'k',linewidth=1,alpha = 0.7)
+    sns.despine(top = True, right = True, bottom = True)
+    axes.legend([],[], frameon=False)
+    axes.set_xticks([])
+    axes.set_yticks([800,400,0])
+    # norm = plt.Normalize(0.5,20)
+    # sm =  ScalarMappable(norm=norm, cmap=cmap_1)
+    # sm.set_array([])
+    # cbar = fig.colorbar(sm, ax=axes)
+    # cbar.ax.set_title("scale")
+    # cbar.ax.set_title('')
+    fig.set_size_inches(1,4.5)
+    filename_save = os.path.join(output_folder,'RH7_shankA_Stroke_Spont_FR_7.svg')
+    plt.savefig(filename_save,format = 'svg',dpi = 500,transparent=True)
+    fig,axes = plt.subplots(1,1,figsize = (1,4.5),dpi = 300)
+    sns.stripplot(data=df_all_clust_rh7_21,x='session',y='depth',hue='spont_FR',palette=cmap_1,ax = axes,jitter = 0.25,size = 11,edgecolor = 'k',linewidth=1,alpha = 0.7)
+    sns.despine(top = True, right = True, bottom = True)
+    axes.legend([],[], frameon=False)
+    axes.set_xticks([])
+    axes.set_yticks([800,400,0])
+    # norm = plt.Normalize(0.5,20)
+    # sm =  ScalarMappable(norm=norm, cmap=cmap_1)
+    # sm.set_array([])
+    # cbar = fig.colorbar(sm, ax=axes)
+    # cbar.ax.set_title("scale")
+    # cbar.ax.set_title('')
+    fig.set_size_inches(1,4.5)
+    filename_save = os.path.join(output_folder,'RH7_shankA_Stroke_Spont_FR_21.svg')
+    plt.savefig(filename_save,format = 'svg',dpi = 500,transparent=True)
+    fig,axes = plt.subplots(1,1,figsize = (1,4.5),dpi = 300)
+    # df_all_clust_rh8_56 = df_all_clust_rh7_56.loc[(df_all_clust_rh7_56['spont_FR'] > 1)]
+    sns.stripplot(data=df_all_clust_rh7_56,x='session',y='depth',hue='spont_FR',palette=cmap_1,ax = axes,jitter = 0.25,size = 11,edgecolor = 'k',linewidth=1,alpha = 0.7)
+    sns.despine(top = True, right = True, bottom = True)
+    axes.legend([],[], frameon=False)
+    axes.set_xticks([])
+    axes.set_yticks([800,400,0])
+    # norm = plt.Normalize(0.5,20)
+    # sm =  ScalarMappable(norm=norm, cmap=cmap_1)
+    # sm.set_array([])
+    # cbar = fig.colorbar(sm, ax=axes)
+    # cbar.ax.set_title("scale")
+    # cbar.ax.set_title('')
+    fig.set_size_inches(1,4.5)
+    filename_save = os.path.join(output_folder,'RH7_shankA_Stroke_Spont_FR_56.svg')
+    plt.savefig(filename_save,format = 'svg',dpi = 500,transparent=True)
+    
+    
+    
+    # df_all_clust_rh8 = df_all_clust_rh8.filter(items = ['N_spikes','session'])
+    # sz = df_all_clust_rh8.groupby('session').sum()
+    # sz = np.squeeze(sz.to_numpy())
+    # sz = 1000*sz / np.mean(sz[0:2])
+    # x = df_all_clust_rh8['session'].unique()
+    # y = np.ones(x.shape)
+    # plt.scatter(x, y , s = sz, alpha = 1, c = '#4d4e4d')
+    
+    # RH7
+    
+    # Reading files RH7
+    fig,axes = plt.subplots(1,1,figsize = (3,1.5),dpi = 300)
+    df_all_clust_rh7 = pd.read_pickle(folder_rh7)
+    df_all_clust_rh7['depth'] = 800 - df_all_clust_rh7['depth']     # depth correction for plotting
+    df_all_clust_rh7 = df_all_clust_rh7.loc[(df_all_clust_rh7['shank_num'] == 1)]
+    # df_bsl = df_all_clust_bc7.loc[(df_all_clust_bc7['session'] == -3) & (df_all_clust_bc7['shank_num'] == 0)]
+    # df_bsl = df_bsl.loc[(df_bsl['spont_FR'] > 1)]   # rejected sparse units
+    # df_sa = df_all_clust_bc7.loc[(df_all_clust_bc7['session'] == 2) & (df_all_clust_bc7['shank_num'] == 0)]
+    # df_rec = df_all_clust_bc7.loc[(df_all_clust_bc7['session'] == 14) & (df_all_clust_bc7['shank_num'] == 0)]
+    # df_chr = df_all_clust_bc7.loc[(df_all_clust_bc7['session'] == 42) & (df_all_clust_bc7['shank_num'] == 0)]
+    # df_all = pd.concat((df_bsl,df_sa,df_rec,df_chr),axis=0)
+    cmap_1 = sns.color_palette("Spectral", as_cmap=True).reversed()
+    df_all_clust_rh7_bsl = df_all_clust_rh7.loc[(df_all_clust_rh7['session'] == -3)]
+    df_all_clust_rh7_7 = df_all_clust_rh7.loc[(df_all_clust_rh7['session'] == 14)]
+    df_all_clust_rh7_21 = df_all_clust_rh7.loc[(df_all_clust_rh7['session'] == 28)]
+    df_all_clust_rh7_56 = df_all_clust_rh7.loc[(df_all_clust_rh7['session'] == 42)]
+    
+    fig,axes = plt.subplots(1,1,figsize = (1,4.5),dpi = 300)
+    sns.stripplot(data=df_all_clust_rh7_bsl,x='session',y='depth',hue='spont_FR',palette=cmap_1,ax = axes,jitter = 0.25,size = 11,edgecolor = 'k',linewidth=1,alpha = 0.7)
+    sns.despine(top = True, right = True, bottom = True)
+    axes.legend([],[], frameon=False)
+    axes.set_xticks([])
+    axes.set_yticks([800,400,0])
+    # norm = plt.Normalize(0.5,20)
+    # sm =  ScalarMappable(norm=norm, cmap=cmap_1)
+    # sm.set_array([])
+    # cbar = fig.colorbar(sm, ax=axes)
+    # cbar.ax.set_title("scale")
+    # cbar.ax.set_title('')
+    fig.set_size_inches(1,4.5)
+    filename_save = os.path.join(output_folder,'RH7_shankA_Stroke_Spont_FR_bsl.svg')
+    plt.savefig(filename_save,format = 'svg',dpi = 500,transparent=True)
+    fig,axes = plt.subplots(1,1,figsize = (1,4.5),dpi = 300)
+    sns.stripplot(data=df_all_clust_rh7_7,x='session',y='depth',hue='spont_FR',palette=cmap_1,ax = axes,jitter = 0.25,size = 11,edgecolor = 'k',linewidth=1,alpha = 0.7)
+    sns.despine(top = True, right = True, bottom = True)
+    axes.legend([],[], frameon=False)
+    axes.set_xticks([])
+    axes.set_yticks([800,400,0])
+    # norm = plt.Normalize(0.5,20)
+    # sm =  ScalarMappable(norm=norm, cmap=cmap_1)
+    # sm.set_array([])
+    # cbar = fig.colorbar(sm, ax=axes)
+    # cbar.ax.set_title("scale")
+    # cbar.ax.set_title('')
+    fig.set_size_inches(1,4.5)
+    filename_save = os.path.join(output_folder,'RH7_shankA_Stroke_Spont_FR_7.svg')
+    plt.savefig(filename_save,format = 'svg',dpi = 500,transparent=True)
+    fig,axes = plt.subplots(1,1,figsize = (1,4.5),dpi = 300)
+    sns.stripplot(data=df_all_clust_rh7_21,x='session',y='depth',hue='spont_FR',palette=cmap_1,ax = axes,jitter = 0.25,size = 11,edgecolor = 'k',linewidth=1,alpha = 0.7)
+    sns.despine(top = True, right = True, bottom = True)
+    axes.legend([],[], frameon=False)
+    axes.set_xticks([])
+    axes.set_yticks([800,400,0])
+    # norm = plt.Normalize(0.5,20)
+    # sm =  ScalarMappable(norm=norm, cmap=cmap_1)
+    # sm.set_array([])
+    # cbar = fig.colorbar(sm, ax=axes)
+    # cbar.ax.set_title("scale")
+    # cbar.ax.set_title('')
+    fig.set_size_inches(1,4.5)
+    filename_save = os.path.join(output_folder,'RH7_shankA_Stroke_Spont_FR_21.svg')
+    plt.savefig(filename_save,format = 'svg',dpi = 500,transparent=True)
+    fig,axes = plt.subplots(1,1,figsize = (1,4.5),dpi = 300)
+    # df_all_clust_rh8_56 = df_all_clust_rh7_56.loc[(df_all_clust_rh7_56['spont_FR'] > 1)]
+    sns.stripplot(data=df_all_clust_rh7_56,x='session',y='depth',hue='spont_FR',palette=cmap_1,ax = axes,jitter = 0.25,size = 11,edgecolor = 'k',linewidth=1,alpha = 0.7)
+    sns.despine(top = True, right = True, bottom = True)
+    axes.legend([],[], frameon=False)
+    axes.set_xticks([])
+    axes.set_yticks([800,400,0])
+    # norm = plt.Normalize(0.5,20)
+    # sm =  ScalarMappable(norm=norm, cmap=cmap_1)
+    # sm.set_array([])
+    # cbar = fig.colorbar(sm, ax=axes)
+    # cbar.ax.set_title("scale")
+    # cbar.ax.set_title('')
+    fig.set_size_inches(1,4.5)
+    filename_save = os.path.join(output_folder,'RH7_shankA_Stroke_Spont_FR_56.svg')
+    plt.savefig(filename_save,format = 'svg',dpi = 500,transparent=True)
+    
+    # RH8
+    
+    # Reading files RH8
+    df_all_clust_rh8 = pd.read_pickle(folder_rh8)
+    df_all_clust_rh8['depth'] = 800 - df_all_clust_rh8['depth']     # depth correction for plotting
+    df_all_clust_rh8 = df_all_clust_rh8.loc[(df_all_clust_rh8['shank_num'] == 0)]
+    # df_bsl = df_all_clust_rh8.loc[(df_all_clust_rh8['session'] == -3) & (df_all_clust_rh8['shank_num'] == 0)]
+    # df_bsl = df_bsl.loc[(df_bsl['spont_FR'] > 1)]   # rejected sparse units
+    # df_sa = df_all_clust_rh8.loc[(df_all_clust_rh8['session'] == 2) & (df_all_clust_rh8['shank_num'] == 0)]
+    # df_rec = df_all_clust_rh8.loc[(df_all_clust_rh8['session'] == 7) & (df_all_clust_rh8['shank_num'] == 0)]
+    # df_chr = df_all_clust_rh8.loc[(df_all_clust_rh8['session'] == 49) & (df_all_clust_rh8['shank_num'] == 0)]
+    # df_all = pd.concat((df_bsl,df_sa,df_rec,df_chr),axis=0)
+    cmap_1 = sns.color_palette("Spectral", as_cmap=True).reversed()
+    # df_all_clust_rh8 = df_all_clust_rh8.loc[(df_all_clust_rh8['session'] == -3) | (df_all_clust_rh8['session'] == 2) | (df_all_clust_rh8['session'] == 7) | (df_all_clust_rh8['session'] == 21) | (df_all_clust_rh8['session'] == 56)]
+    df_all_clust_rh8_bsl = df_all_clust_rh8.loc[(df_all_clust_rh8['session'] == -3)]
+    df_all_clust_rh8_7 = df_all_clust_rh8.loc[(df_all_clust_rh8['session'] == 7)]
+    df_all_clust_rh8_21 = df_all_clust_rh8.loc[(df_all_clust_rh8['session'] == 21)]
+    df_all_clust_rh8_56 = df_all_clust_rh8.loc[(df_all_clust_rh8['session'] == 56)]
+    # plt.colorbar(label="Y Values")
+    
+    fig,axes = plt.subplots(1,1,figsize = (1,4.5),dpi = 300)
+    sns.stripplot(data=df_all_clust_rh8_bsl,x='session',y='depth',hue='spont_FR',palette=cmap_1,ax = axes,jitter = 0.25,size = 11,edgecolor = 'k',linewidth=1,alpha = 0.7)
+    sns.despine(top = True, right = True, bottom = True)
+    axes.legend([],[], frameon=False)
+    axes.set_xticks([])
+    axes.set_yticks([800,400,0])
+    # norm = plt.Normalize(0.5,20)
+    # sm =  ScalarMappable(norm=norm, cmap=cmap_1)
+    # sm.set_array([])
+    # cbar = fig.colorbar(sm, ax=axes)
+    # cbar.ax.set_title("scale")
+    # cbar.ax.set_title('')
+    fig.set_size_inches(1,4.5)
+    filename_save = os.path.join(output_folder,'RH8_shankA_Stroke_Spont_FR_bsl.svg')
+    plt.savefig(filename_save,format = 'svg',dpi = 500,transparent=True)
+    fig,axes = plt.subplots(1,1,figsize = (1,4.5),dpi = 300)
+    sns.stripplot(data=df_all_clust_rh8_7,x='session',y='depth',hue='spont_FR',palette=cmap_1,ax = axes,jitter = 0.25,size = 11,edgecolor = 'k',linewidth=1,alpha = 0.7)
+    sns.despine(top = True, right = True, bottom = True)
+    axes.legend([],[], frameon=False)
+    axes.set_xticks([])
+    axes.set_yticks([800,400,0])
+    # norm = plt.Normalize(0.5,20)
+    # sm =  ScalarMappable(norm=norm, cmap=cmap_1)
+    # sm.set_array([])
+    # cbar = fig.colorbar(sm, ax=axes)
+    # cbar.ax.set_title("scale")
+    # cbar.ax.set_title('')
+    fig.set_size_inches(1,4.5)
+    filename_save = os.path.join(output_folder,'RH8_shankA_Stroke_Spont_FR_7.svg')
+    plt.savefig(filename_save,format = 'svg',dpi = 500,transparent=True)
+    fig,axes = plt.subplots(1,1,figsize = (1,4.5),dpi = 300)
+    sns.stripplot(data=df_all_clust_rh8_21,x='session',y='depth',hue='spont_FR',palette=cmap_1,ax = axes,jitter = 0.25,size = 11,edgecolor = 'k',linewidth=1,alpha = 0.7)
+    sns.despine(top = True, right = True, bottom = True)
+    axes.legend([],[], frameon=False)
+    axes.set_xticks([])
+    axes.set_yticks([800,400,0])
+    # norm = plt.Normalize(0.5,20)
+    # sm =  ScalarMappable(norm=norm, cmap=cmap_1)
+    # sm.set_array([])
+    # cbar = fig.colorbar(sm, ax=axes)
+    # cbar.ax.set_title("scale")
+    # cbar.ax.set_title('')
+    fig.set_size_inches(1,4.5)
+    filename_save = os.path.join(output_folder,'RH8_shankA_Stroke_Spont_FR_21.svg')
+    plt.savefig(filename_save,format = 'svg',dpi = 500,transparent=True)
+    fig,axes = plt.subplots(1,1,figsize = (1,4.5),dpi = 300)
+    df_all_clust_rh8_56 = df_all_clust_rh8_56.loc[(df_all_clust_rh8_56['spont_FR'] > 1)]
+    sns.stripplot(data=df_all_clust_rh8_56,x='session',y='depth',hue='spont_FR',palette=cmap_1,ax = axes,jitter = 0.25,size = 11,edgecolor = 'k',linewidth=1,alpha = 0.7)
+    sns.despine(top = True, right = True, bottom = True)
+    axes.legend([],[], frameon=False)
+    axes.set_xticks([])
+    axes.set_yticks([800,400,0])
+    # norm = plt.Normalize(0.5,20)
+    # sm =  ScalarMappable(norm=norm, cmap=cmap_1)
+    # sm.set_array([])
+    # cbar = fig.colorbar(sm, ax=axes)
+    # cbar.ax.set_title("scale")
+    # cbar.ax.set_title('')
+    fig.set_size_inches(1,4.5)
+    filename_save = os.path.join(output_folder,'RH8_shankA_Stroke_Spont_FR_56.svg')
+    plt.savefig(filename_save,format = 'svg',dpi = 500,transparent=True)
+    
+    
+    
     
     
