@@ -755,7 +755,8 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         frq, edges = np.histogram(spike_times_local,bin_edges)
         return frq, edges
     
-    lst_filtered_data = []
+    lst_filtered_data = []  # used for PCA and classification of response type 
+    lst_filtered_data_1ms = []  # for 1 ms and used in population coupling
     
     if os.path.isfile(os.path.join(session_folder, "filt.mda")):
         filt_signal = readmda(os.path.join(session_folder, "filt.mda")) # caution! big file
@@ -775,13 +776,14 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         dict_local_i_clus = func_create_dict(sessions_label_stroke,spike_time_local,session_sample_abs)     # FR of a single unit by session
         session_sample_abs_tmp = np.insert(session_sample_abs,0,0)
         
-        # histogram binning of the FR
+        # histogram binning of the FR (2 s binning)
         thiscluster_hist = []
         thiscluster_edges = []
         for iter_l in range(len(dict_local_i_clus)):    # loop over sessions
             start_sample = session_sample_abs_tmp[iter_l]
             end_sample = session_sample_abs_tmp[iter_l+1]
             hist_local, hist_edges_local = generate_hist_from_spiketimes(start_sample,end_sample, dict_local_i_clus[sessions_label_stroke[iter_l]], window_in_samples)
+            hist_edges_local = hist_edges_local[:-1]
             thiscluster_hist.append(hist_local)
             thiscluster_edges.append(hist_edges_local)
             # ax.bar(hist_edges_local[:-1], hist_local)
@@ -791,16 +793,47 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         x_ticks = [local_arr.shape[0] for local_arr in thiscluster_edges]
         x_ticks = [sum(x_ticks[:i+1]) for i in range(len(x_ticks))]
         
-        Num_to_drop = all_edges_thiscluster.shape[0] - all_FR_thiscluster.shape[0]
-        all_edges_thiscluster = all_edges_thiscluster[:-Num_to_drop]
+        # Num_to_drop = all_edges_thiscluster.shape[0] - all_FR_thiscluster.shape[0]
+        # all_edges_thiscluster = all_edges_thiscluster[:-Num_to_drop]
         
         all_FR_thiscluster_f = np.abs(savgol_filter(all_FR_thiscluster,200,3,mode = 'nearest'))
         # fig, ax = plt.subplots()
         # ax.plot(all_FR_thiscluster_f)
         # ax.set_xticks(x_ticks)
         # ax.set_xticklabels(dict_local_i_clus.keys())
-        
         lst_filtered_data.append(all_FR_thiscluster_f)
+        
+        i_clus_dict  = {}
+        
+        # histogram binning of the FR (1 ms binning)
+        thiscluster_hist = []
+        thiscluster_edges = []
+        thiscluster_time = []   #session times
+        thiscluster_N = []  #num of spikes in this session
+        for iter_l in range(len(dict_local_i_clus)):    # loop over sessions
+            start_sample = session_sample_abs_tmp[iter_l]
+            end_sample = session_sample_abs_tmp[iter_l+1]
+            thiscluster_time.append((end_sample - start_sample)/Fs)
+            thiscluster_N.append(dict_local_i_clus[sessions_label_stroke[iter_l]].shape[0])
+            hist_local, hist_edges_local = generate_hist_from_spiketimes(start_sample,end_sample, dict_local_i_clus[sessions_label_stroke[iter_l]], 1e-3 * Fs)
+            hist_edges_local = hist_edges_local[:-1]
+            hist_local = hist_local.astype(dtype = np.float64)/1e-3     # FR in Hz
+            filtered_signal = scipy.ndimage.gaussian_filter1d(hist_local,10.19) # 12 ms half-width gaussian kernel
+            thiscluster_hist.append(filtered_signal)
+            thiscluster_edges.append(hist_edges_local)
+        # all_FR_thiscluster = np.concatenate(thiscluster_hist, axis = 0)
+        all_edges_thiscluster = np.concatenate(thiscluster_edges, axis = 0)
+        x_ticks = [local_arr.shape[0] for local_arr in thiscluster_edges]
+        x_ticks = [sum(x_ticks[:i+1]) for i in range(len(x_ticks))]
+        all_edges_thiscluster = all_edges_thiscluster/Fs
+        # lst_filtered_data_1ms.append(all_FR_thiscluster)
+        # plt.figure()
+        # plt.plot(all_edges_thiscluster,all_FR_thiscluster)
+        
+        i_clus_dict['FR_session'] = thiscluster_hist
+        i_clus_dict['length_session'] = thiscluster_time
+        i_clus_dict['spike_count_session'] = thiscluster_N
+        # i_clus_dict['spike_count_session'] = all_edges_thiscluster
         
         # Need to add facilitating cell vs adapting cell vs no change cell
         # clus_property, firing_rate_avg, firing_rate_sum, Spikes_num, firing_rate_series, burst_dict = single_cluster_main(i_clus)
@@ -812,7 +845,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         depth = int(clus_loc[i_clus,1])  # triangulation by Jiaao
         # Get shank ID from primary channel for the cluster
         # shank_num = get_shanknum_from_msort_id(prim_ch)
-        i_clus_dict  = {}
+        
         i_clus_dict['cluster_id'] = i_clus + 1 # to align with the discard_noise_viz.py code cluster order [folder: figs_allclus_waveforms]
         i_clus_dict['total_spike_count'] = N_spikes_local
         i_clus_dict['depth'] =  depth
@@ -840,7 +873,8 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
        
         iter_local = iter_local+1
         
-    # 
+    # Stuff for population coupling script
+    time_FR_session = [iter_l/Fs for iter_l in thiscluster_edges]   # in seconds
     # For clustering and ML    
     # Scaling the data ()
     X_in = np.transpose(np.stack(lst_filtered_data))
@@ -982,12 +1016,14 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     # avg_FR_inh = np.array([shankA_inh,shankB_inh,shankC_inh,shankD_inh],dtype = float)
     # avg_FR_act = np.array([shankA_act,shankB_act,shankC_act,shankD_act],dtype = float)
    
+    # Saving files here
     # savemat(os.path.join(result_folder, "population_stat_responsive_only.mat"), data_dict)
     np.save(os.path.join(result_folder,'all_clus_property.npy'),list_all_clus)
-    np.save(os.path.join(result_folder,'all_clus_pca_preprocessed.npy'),scaled_data_list_new)
-    if os.path.isfile(interesting_cluster_ids_file):
-        np.save(os.path.join(result_folder_imp_clusters,'amplitude_hist.npy'),lst_amplitudes_all) # primarily used for representative examples
-        np.save(os.path.join(result_folder_imp_clusters,'waveforms_all.npy'),lst_waveforms_all)     # primarily used for representative examples
-        np.save(os.path.join(result_folder_imp_clusters,'clus_depth.npy'),lst_cluster_depth)    # primarily used for representative examples
-        np.save(os.path.join(result_folder_imp_clusters,'ISI_hist_all.npy'),lst_isi_all)    # primarily used for representative examples
+    np.save(os.path.join(result_folder,'all_clus_property_star.npy'),time_FR_session)
+    # np.save(os.path.join(result_folder,'all_clus_pca_preprocessed.npy'),scaled_data_list_new)
+    # if os.path.isfile(interesting_cluster_ids_file):
+        # np.save(os.path.join(result_folder_imp_clusters,'amplitude_hist.npy'),lst_amplitudes_all) # primarily used for representative examples
+        # np.save(os.path.join(result_folder_imp_clusters,'waveforms_all.npy'),lst_waveforms_all)     # primarily used for representative examples
+        # np.save(os.path.join(result_folder_imp_clusters,'clus_depth.npy'),lst_cluster_depth)    # primarily used for representative examples
+        # np.save(os.path.join(result_folder_imp_clusters,'ISI_hist_all.npy'),lst_isi_all)    # primarily used for representative examples
 
