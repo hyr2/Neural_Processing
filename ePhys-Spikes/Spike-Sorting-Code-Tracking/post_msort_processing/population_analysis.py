@@ -414,6 +414,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     clus_loc = clus_loc.to_numpy()
     trial_duration_in_samples = int(total_time*F_SAMPLE)
     window_in_samples = int(WINDOW_LEN_IN_SEC*F_SAMPLE)
+    pc_time_bin = 1e-3 # 10 ms
     # read channel map
     geom = pd.read_csv(geom_path, header=None).values
     n_ch_this_session = geom.shape[0]
@@ -815,11 +816,11 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
             end_sample = session_sample_abs_tmp[iter_l+1]
             thiscluster_time.append((end_sample - start_sample)/Fs)
             thiscluster_N.append(dict_local_i_clus[sessions_label_stroke[iter_l]].shape[0])
-            hist_local, hist_edges_local = generate_hist_from_spiketimes(start_sample,end_sample, dict_local_i_clus[sessions_label_stroke[iter_l]], 1e-3 * Fs)
+            hist_local, hist_edges_local = generate_hist_from_spiketimes(start_sample,end_sample, dict_local_i_clus[sessions_label_stroke[iter_l]], pc_time_bin * Fs)
             hist_edges_local = hist_edges_local[:-1]
-            hist_local = hist_local.astype(dtype = np.float64)/1e-3     # FR in Hz
-            filtered_signal = scipy.ndimage.gaussian_filter1d(hist_local,10.19) # 12 ms half-width gaussian kernel
-            thiscluster_hist.append(filtered_signal)
+            hist_local = hist_local.astype(dtype = np.float64)/pc_time_bin     # FR in Hz
+            # filtered_signal = scipy.ndimage.gaussian_filter1d(hist_local,4*10.19) # 4*12 ms half-width gaussian kernel
+            thiscluster_hist.append(hist_local)
             thiscluster_edges.append(hist_edges_local)
         # all_FR_thiscluster = np.concatenate(thiscluster_hist, axis = 0)
         all_edges_thiscluster = np.concatenate(thiscluster_edges, axis = 0)
@@ -830,7 +831,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         # plt.figure()
         # plt.plot(all_edges_thiscluster,all_FR_thiscluster)
         
-        i_clus_dict['FR_session'] = thiscluster_hist
+        i_clus_dict['FR_session'] = thiscluster_hist    # unfiltered 1 ms binned spikes
         i_clus_dict['length_session'] = thiscluster_time
         i_clus_dict['spike_count_session'] = thiscluster_N
         # i_clus_dict['spike_count_session'] = all_edges_thiscluster
