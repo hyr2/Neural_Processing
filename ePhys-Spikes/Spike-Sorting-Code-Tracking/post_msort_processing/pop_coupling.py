@@ -5,6 +5,26 @@ import os
 from matplotlib import pyplot as plt
 import scipy.ndimage as sc_i
 import scipy.signal as sc_s
+import copy
+
+def func_invariant_params(f_i_M):   
+    # function computes the 2N invariant parameters after shuffling. N is the number of neurons (row index)
+    tmp_sum_temporal = np.sum(f_i_M,dtype=np.int32,axis = 0)
+    custom_bins = np.linspace(0,6,7)
+    hist, bin_edges = np.histogram(tmp_sum_temporal, bins=custom_bins)
+    bin_edges = bin_edges[:-1]
+
+    return (bin_edges,hist,np.sum(f_i_M,axis=1))
+
+def replace_submatrix(mat, ind1, ind2, mat_replace):
+    # mat is the input matrix
+    # ind1 is the rows
+    # ind2 is the columns
+    # mat_replace is the replacement matrix of size ind1 x ind2 sizes
+  for i, index in enumerate(ind1):
+    mat[index, ind2] = mat_replace[i, :]
+  return mat
+    
 
 input_dir_tmp = '/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh11/Shank_3/Processed/count_analysis'
 
@@ -81,11 +101,9 @@ for iter_i in range(num_units_on_shank):
     f_i_M[iter_i,:] = np.reshape(A1[iter_i]['FR_session'][iter_s] * 1e-3,(1,-1))
 
 f_i_M[f_i_M > 1] = 1    # Correcting for any double spikes in the time bin. This should not happen and hence is set to 1. Thus increasing the purity of the single units
+f_i_M_original = copy.deepcopy(f_i_M)
 # important invariant parameters
-tmp_sum_temporal = np.sum(f_i_M,dtype=np.int32,axis = 0)
-custom_bins = np.linspace(0,6,7)
-hist, bin_edges = np.histogram(tmp_sum_temporal, bins=custom_bins)
-bin_edges = bin_edges[:-1]
+bin_edges,hist,spk_c_i = func_invariant_params(f_i_M)
 plt.plot(bin_edges,hist/hist.sum(),linewidth = 3)     # prob vs #synchronous spikes
 
 # for finding submatrix
@@ -97,18 +115,30 @@ c = sc_s.correlate(f_i_M, patter_M, 'valid')
 c = np.around(c)
 c = c.astype(np.int8)
 overlaps = np.where(c == max_peak)
-
+f_i_M[f_i_M == -1] = 0
 # for swapping submatrix
 rows_o = np.unique(overlaps[0])
 for iter_i in rows_o:
     indx_flip_r = np.where(overlaps[0] == iter_i)[0]
     indx_flip_c = overlaps[1][indx_flip_r]
     indx_flip_r = overlaps[0][indx_flip_r]
-    f_i_M[iter_i,indx_flip_c]
-
-
-
     
+    tmp_replacement_0 = np.zeros((2,indx_flip_c.shape[0]))
+    tmp_replacement_0[1,:] = 1 
+    tmp_replacement_1 = copy.deepcopy(tmp_replacement_0)
+    tmp_replacement_1[[0,1]] = tmp_replacement_1[[1,0]]
     
+    indx_rows = [iter_i,iter_i+1]
+    indx_col = list(indx_flip_c)
+    f_i_M = replace_submatrix(f_i_M,indx_rows,indx_col,tmp_replacement_0)
+    indx_col = list(indx_flip_c+1)
+    f_i_M = replace_submatrix(f_i_M,indx_rows,indx_col,tmp_replacement_1)
+    
+    # f_i_M[[iter_i,iter_i+1]][:,list(indx_flip_c)] = tmp_replacement_0          # advanced non-contiguous slicing (replacement doesn't work)
+    # f_i_M[[iter_i,iter_i+1]][:,list(indx_flip_c+1)] = tmp_replacement_1        # advanced non-contiguous slicing (replacement doesn't work)
+    
+# f_i_M is now the shuffled activity matrix
+
+
     
     
