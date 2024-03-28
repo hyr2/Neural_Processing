@@ -5,7 +5,8 @@ import os
 from matplotlib import pyplot as plt
 import scipy.ndimage as sc_i
 import scipy.signal as sc_s
-import copy
+import copy, time
+import pandas as pd
 
 def func_invariant_params(f_i_M):   
     # function computes the 2N invariant parameters after shuffling. N is the number of neurons (row index)
@@ -26,10 +27,24 @@ def replace_submatrix(mat, ind1, ind2, mat_replace):
   return mat
     
 
+script_name = '_pop_coupling'
+t = time.localtime()
+current_time = time.strftime("%m_%d_%Y_%H_%M", t)
+current_time = current_time + script_name
+output_folder = os.path.join('/home/hyr2-office/Documents/Data/NVC/Results',current_time)
+if not os.path.exists(output_folder):
+    os.makedirs(output_folder)
+
+
 input_dir_tmp = '/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh11/Shank_3/Processed/count_analysis'
+input_dir_tmp1 = '/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh11/Shank_1/Processed/count_analysis'
 
 A1 = np.load(os.path.join(input_dir_tmp,'all_clus_property.npy'),allow_pickle=True)
+# A3 = np.load(os.path.join(input_dir_tmp1,'all_clus_property.npy'),allow_pickle=True)
+# A1 = np.concatenate((A1,A3),axis = 0)
+# del A3
 A2 = np.load(os.path.join(input_dir_tmp,'all_clus_property_star.npy'),allow_pickle=True)
+
 
 num_units_on_shank = len(A1)
 num_sessions = len(A2)
@@ -57,42 +72,105 @@ for iter_s in range(num_sessions):   # loop over sessions
     # plt.plot(time_bins,filtered_signal)
     indx_l = np.arange(0,filtered_signal.shape[0],decimate_f)
     time_bins = time_bins[indx_l]
-    filtered_signal = sc_s.decimate(filtered_signal,5,ftype = 'iir',zero_phase=True)
+    filtered_signal = sc_s.decimate(filtered_signal,decimate_f,ftype = 'iir',zero_phase=True)
     
     # saving all population rates here
     arr_temporal.append(time_bins)
     arr_pop_rate.append(filtered_signal)
     
+    # fig, axes = plt.subplots(1,1, figsize=(10,12), dpi=100)
+    # axes.plot()
+    
     # computing mean population rates
     arr_mean_pop_rate.append(np.mean(filtered_signal))
     
-    
-    # plt.plot(time_bins,filtered_signal)
+# Plotting for all sessions
+fig, ax = plt.subplots(2,1, figsize=(10,12), dpi=100)
+ax = ax.flatten()
+ax[0].plot(arr_temporal[0],arr_pop_rate[0])
+ax[0].set_xlim([150,151.5])
+ax[0].set_ylim([0,500])
+# fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
+# ax = ax.flatten()
+ax[1].plot(arr_temporal[1],arr_pop_rate[1])
+ax[1].set_xlim([2000,2001.5])
+ax[1].set_ylim([0,500])
+filename_save = os.path.join(output_folder,'popRate_bsl.png')
+fig.savefig(filename_save,dpi = 300)
+
+# Plotting for all sessions
+fig, ax = plt.subplots(3,1, figsize=(10,12), dpi=100)
+ax = ax.flatten()
+ax[0].plot(arr_temporal[2],arr_pop_rate[2])
+ax[0].set_xlim([3400,3401.5])
+ax[0].set_ylim([0,700])
+# fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
+# ax = ax.flatten()
+ax[1].plot(arr_temporal[3],arr_pop_rate[3])
+ax[1].set_xlim([4800,4801.5])
+ax[1].set_ylim([0,700])
+ax[2].plot(arr_temporal[4],arr_pop_rate[4])
+ax[2].set_xlim([6000,6001.5])
+ax[2].set_ylim([0,700])
+filename_save = os.path.join(output_folder,'popRate_day2day7day14.png')
+fig.savefig(filename_save,dpi = 300)
+
 
 # Population Coupling Coefficients with the population 
 # (single session) iter_s
+session_ids = ['session' + str(iter_l) for iter_l in range(num_sessions)]
 c_i = []    # population coupling of unit i
+df_c_i = pd.DataFrame(data=None, index=range(num_units_on_shank) , columns = [session_ids])
 spk_c_i = []   # mean firing rate of this unit
-for iter_i in range(num_units_on_shank):
+for iter_s in range(num_sessions):
+    for iter_i in range(num_units_on_shank):
+        
+        f_i = sc_i.gaussian_filter1d(A1[iter_i]['FR_session'][iter_s],10.19/np.sqrt(2))
+        f_i_mod = A1[iter_i]['spike_count_session'][iter_s]
+        
+        f_j_sum = np.zeros(f_i.shape,dtype = np.float64)    #initialize array
+        for iter_j in range(num_units_on_shank):            # this is the summation over the units except for i
+            if iter_j == iter_i:
+                continue
+            filtered_signal = sc_i.gaussian_filter1d(A1[iter_j]['FR_session'][iter_s],10.19/np.sqrt(2))
+            avg_fr_local = A1[iter_j]['spike_count_session'][iter_s] / A1[iter_j]['length_session'][iter_s]
+            f_j = filtered_signal - avg_fr_local
+            f_j_sum += f_j
+        
+        c_i_local = np.dot(f_i,f_j_sum) / f_i_mod
+        df_c_i.iat[iter_i,iter_s] = c_i_local
+        c_i.append(c_i_local)
+        spk_c_i.append(f_i_mod)
     
-    f_i = sc_i.gaussian_filter1d(A1[iter_i]['FR_session'][iter_s],10.19/np.sqrt(2))
-    f_i_mod = A1[iter_i]['spike_count_session'][iter_s]
-    
-    f_j_sum = np.zeros(f_i.shape,dtype = np.float64)    #initialize array
-    for iter_j in range(num_units_on_shank):        
-        
-        if iter_j == iter_i:
-            continue
-        
-        filtered_signal = sc_i.gaussian_filter1d(A1[iter_j]['FR_session'][iter_s],10.19/np.sqrt(2))
-        avg_fr_local = A1[iter_j]['spike_count_session'][iter_s] / A1[iter_j]['length_session'][iter_s]
-        
-        f_j = filtered_signal - avg_fr_local
-        
-        f_j_sum += f_j
-    
-    c_i.append(np.dot(f_i,f_j_sum) / f_i_mod)
-    spk_c_i.append(f_i_mod)
+# plotting c_i
+x = np.arange(0,num_units_on_shank)
+fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
+plt.bar(x,height = df_c_i.iloc[:,0],alpha = 0.5)    # baseline 1
+plt.bar(x,height = df_c_i.iloc[:,1],alpha = 0.5)    # baseline 2
+ax.axis('off')
+filename_save = os.path.join(output_folder,'c_i_baselines.png')
+fig.savefig(filename_save,dpi = 300)
+
+fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
+plt.bar(x,height = df_c_i.iloc[:,0],alpha = 0.5)    # baseline 1
+plt.bar(x,height = df_c_i.iloc[:,2],alpha = 0.5)    # baseline 2
+ax.axis('off')
+filename_save = os.path.join(output_folder,'c_i_baselinesvsday2.png')
+fig.savefig(filename_save,dpi = 300)
+
+fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
+plt.bar(x,height = df_c_i.iloc[:,0],alpha = 0.5)    # baseline 1
+plt.bar(x,height = df_c_i.iloc[:,3],alpha = 0.5)    # baseline 2
+ax.axis('off')
+filename_save = os.path.join(output_folder,'c_i_baselinevsday7.png')
+fig.savefig(filename_save,dpi = 300)
+
+fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
+plt.bar(x,height = df_c_i.iloc[:,0],alpha = 0.5)    # baseline 1
+plt.bar(x,height = df_c_i.iloc[:,6],alpha = 0.5)    # baseline 2
+ax.axis('off')
+filename_save = os.path.join(output_folder,'c_i_baselinevsday28.png')
+fig.savefig(filename_save,dpi = 300)
     
 ## Raster Marginals Model (random shuffling) 
 # (single session) iter_s
@@ -101,11 +179,12 @@ for iter_i in range(num_units_on_shank):
     f_i_M[iter_i,:] = np.reshape(A1[iter_i]['FR_session'][iter_s] * 1e-3,(1,-1))
 
 f_i_M[f_i_M > 1] = 1    # Correcting for any double spikes in the time bin. This should not happen and hence is set to 1. Thus increasing the purity of the single units
-f_i_M_original = copy.deepcopy(f_i_M)
 # important invariant parameters
 bin_edges,hist,spk_c_i = func_invariant_params(f_i_M)
-plt.plot(bin_edges,hist/hist.sum(),linewidth = 3)     # prob vs #synchronous spikes
-
+fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
+ax.plot(bin_edges,hist/hist.sum(),linewidth = 3)     # prob vs #synchronous spikes
+filename_save = os.path.join(output_folder,'prob_synchspikes_original.png')
+fig.savefig(filename_save,dpi = 300)
 # for finding submatrix
 f_i_M[f_i_M == 0] = -1
 patter_M = np.array([[1,-1],[-1,1]],dtype=np.int8)
@@ -138,7 +217,11 @@ for iter_i in rows_o:
     # f_i_M[[iter_i,iter_i+1]][:,list(indx_flip_c+1)] = tmp_replacement_1        # advanced non-contiguous slicing (replacement doesn't work)
     
 # f_i_M is now the shuffled activity matrix
-
+bin_edges_new,hist_new,spk_c_i_new = func_invariant_params(f_i_M)
+fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
+ax.plot(bin_edges_new,hist_new/hist_new.sum(),linewidth = 3)     # prob vs #synchronous spikes
+filename_save = os.path.join(output_folder,'prob_synchspikes_shuffle.png')
+fig.savefig(filename_save,dpi = 300)
 
     
     
