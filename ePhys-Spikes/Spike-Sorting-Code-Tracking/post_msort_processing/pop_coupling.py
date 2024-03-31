@@ -1,12 +1,39 @@
 # Population coupling script
 
 import numpy as np
-import os
+import os, re, pickle
 from matplotlib import pyplot as plt
 import scipy.ndimage as sc_i
 import scipy.signal as sc_s
+import scipy.stats as sc_ss
 import copy, time
 import pandas as pd
+import seaborn as sns
+
+import scipy.stats as sc_st
+
+def get_lower_tri_heatmap(df, output):
+    # function used to plot lower half of a triangle using seaborn
+    
+    df = df.astype('float')
+    # mask = np.zeros_like(df, dtype=np.bool)
+    # mask[np.triu_indices_from(mask)] = True
+
+    # Want diagonal elements as well
+    # mask[np.diag_indices_from(mask)] = False
+
+    # Set up the matplotlib figure
+    f, ax = plt.subplots(figsize=(11, 9))
+
+    # Generate a custom diverging colormap
+    cmap = sns.dark_palette("xkcd:golden", 8)
+    cmap = sns.dark_palette("#79C",as_cmap=True).reversed()
+
+    # Draw the heatmap with the mask and correct aspect ratio
+    sns_plot = sns.heatmap(data=df,cmap=cmap,vmax = 0.15,vmin = 0.00,square=True,linewidths= 2,cbar_kws={"shrink": .5})
+    # save to file
+    fig = sns_plot.get_figure()
+    fig.savefig(output,dpi = 300)
 
 def func_invariant_params(f_i_M):   
     # function computes the 2N invariant parameters after shuffling. N is the number of neurons (row index)
@@ -26,202 +53,213 @@ def replace_submatrix(mat, ind1, ind2, mat_replace):
     mat[index, ind2] = mat_replace[i, :]
   return mat
     
-
-script_name = '_pop_coupling'
-t = time.localtime()
-current_time = time.strftime("%m_%d_%Y_%H_%M", t)
-current_time = current_time + script_name
-output_folder = os.path.join('/home/hyr2-office/Documents/Data/NVC/Results',current_time)
-if not os.path.exists(output_folder):
-    os.makedirs(output_folder)
-
-
-input_dir_tmp = '/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh11/Shank_3/Processed/count_analysis'
-input_dir_tmp1 = '/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh11/Shank_1/Processed/count_analysis'
-
-A1 = np.load(os.path.join(input_dir_tmp,'all_clus_property.npy'),allow_pickle=True)
-# A3 = np.load(os.path.join(input_dir_tmp1,'all_clus_property.npy'),allow_pickle=True)
-# A1 = np.concatenate((A1,A3),axis = 0)
-# del A3
-A2 = np.load(os.path.join(input_dir_tmp,'all_clus_property_star.npy'),allow_pickle=True)
-
-
-num_units_on_shank = len(A1)
-num_sessions = len(A2)
-
-# for iter_l in range(num_units_on_shank):
-#     thisUnit_fr = A1[iter_l]['FR_session']
-#     thisUnit_Spkcount = A1[iter_l]['spike_count_session']
-#     for iter_s in range(num_sessions):
-#         local_fr = thisUnit_fr[iter_s]
-#         time_bins = A2[iter_s]
-
-arr_pop_rate = []    # for all sessions     (sampling rate: 1000/decimate_f)
-arr_temporal = []    # time bins for all sessions
-arr_mean_pop_rate = [] # mean pop rate for all sessions
-
-decimate_f = 5
-
-# Computing population rate for this shank (all sessions)
-for iter_s in range(num_sessions):   # loop over sessions
-    time_bins = A2[iter_s]
-    local_fr = np.zeros(time_bins.shape,dtype = np.float64)
-    for iter_l in range(num_units_on_shank):     # sum over units
-        local_fr += A1[iter_l]['FR_session'][iter_s]    # sum with 1 ms resolution                                
-    filtered_signal = sc_i.gaussian_filter1d(local_fr,10.19) # 12 ms half-width gaussian kernel
-    # plt.plot(time_bins,filtered_signal)
-    indx_l = np.arange(0,filtered_signal.shape[0],decimate_f)
-    time_bins = time_bins[indx_l]
-    filtered_signal = sc_s.decimate(filtered_signal,decimate_f,ftype = 'iir',zero_phase=True)
+def process_single_shank(folder_input,session_list):
+    A1 = np.load(os.path.join(folder_input,'all_clus_property.npy'),allow_pickle=True)
+    A2 = np.load(os.path.join(folder_input,'all_clus_property_star.npy'),allow_pickle=True)
+    # with open('saved_dictionary.pkl', 'rb') as f:
+    #     df_spk_times = pickle.load(f)
     
-    # saving all population rates here
-    arr_temporal.append(time_bins)
-    arr_pop_rate.append(filtered_signal)
+    num_units_on_shank = len(A1)
+    num_sessions = len(A2)
     
-    # fig, axes = plt.subplots(1,1, figsize=(10,12), dpi=100)
-    # axes.plot()
+    arr_pop_rate = []    # for all sessions     (sampling rate: 1000/decimate_f)
+    arr_temporal = []    # time bins for all sessions
+    arr_mean_pop_rate = [] # mean pop rate for all sessions
+
+    decimate_f = 5
+
+    # Population Coupling Coefficients with the population 
+    session_ids = ['session' + str(iter_l) for iter_l in range(num_sessions)]
+    c_i = []    # population coupling of unit i
+    df_c_i_pr = pd.DataFrame(data=None, index=range(num_units_on_shank) , columns = [session_list])
+    spk_c_i = []   # mean firing rate of this unit
+    for iter_s in range(num_sessions):
+        for iter_i in range(num_units_on_shank):
+            
+            f_i = sc_i.gaussian_filter1d(A1[iter_i]['FR_session'][iter_s],10.19/np.sqrt(2))
+            f_i_mod = A1[iter_i]['spike_count_session'][iter_s]
+            
+            f_j_sum = np.zeros(f_i.shape,dtype = np.float64)    #initialize array
+            for iter_j in range(num_units_on_shank):            # this is the summation over the units except for i
+                if iter_j == iter_i:
+                    continue
+                filtered_signal = sc_i.gaussian_filter1d(A1[iter_j]['FR_session'][iter_s],10.19/np.sqrt(2))
+                # avg_fr_local = A1[iter_j]['spike_count_session'][iter_s] / A1[iter_j]['length_session'][iter_s]
+                # f_j = filtered_signal - avg_fr_local
+                f_j = filtered_signal
+                f_j_sum = f_j_sum + f_j
+            f_j_sum = f_j_sum/(num_units_on_shank-1)    
+            # c_i_local = np.dot(f_i,f_j_sum) / f_i_mod
+            # df_c_i.iat[iter_i,iter_s] = c_i_local
+            df_c_i_pr.iat[iter_i,iter_s] = sc_ss.pearsonr(f_j_sum,f_i)[0]        # definition used is: DOI: https://doi.org/10.7554/eLife.56053
+            
+            # c_i.append(c_i_local)
+            spk_c_i.append(f_i_mod)
+    return df_c_i_pr
+
+if __name__ == '__main__':
+
+    script_name = '_pop_coupling'
+    t = time.localtime()
+    current_time = time.strftime("%m_%d_%Y_%H_%M", t)
+    current_time = current_time + script_name
+    output_folder = os.path.join('/home/hyr2-office/Documents/Data/NVC/Results',current_time)
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
     
-    # computing mean population rates
-    arr_mean_pop_rate.append(np.mean(filtered_signal))
     
-# Plotting for all sessions
-fig, ax = plt.subplots(2,1, figsize=(10,12), dpi=100)
-ax = ax.flatten()
-ax[0].plot(arr_temporal[0],arr_pop_rate[0])
-ax[0].set_xlim([150,151.5])
-ax[0].set_ylim([0,500])
-# fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
-# ax = ax.flatten()
-ax[1].plot(arr_temporal[1],arr_pop_rate[1])
-ax[1].set_xlim([2000,2001.5])
-ax[1].set_ylim([0,500])
-filename_save = os.path.join(output_folder,'popRate_bsl.png')
-fig.savefig(filename_save,dpi = 300)
-
-# Plotting for all sessions
-fig, ax = plt.subplots(3,1, figsize=(10,12), dpi=100)
-ax = ax.flatten()
-ax[0].plot(arr_temporal[2],arr_pop_rate[2])
-ax[0].set_xlim([3400,3401.5])
-ax[0].set_ylim([0,700])
-# fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
-# ax = ax.flatten()
-ax[1].plot(arr_temporal[3],arr_pop_rate[3])
-ax[1].set_xlim([4800,4801.5])
-ax[1].set_ylim([0,700])
-ax[2].plot(arr_temporal[4],arr_pop_rate[4])
-ax[2].set_xlim([6000,6001.5])
-ax[2].set_ylim([0,700])
-filename_save = os.path.join(output_folder,'popRate_day2day7day14.png')
-fig.savefig(filename_save,dpi = 300)
-
-
-# Population Coupling Coefficients with the population 
-# (single session) iter_s
-session_ids = ['session' + str(iter_l) for iter_l in range(num_sessions)]
-c_i = []    # population coupling of unit i
-df_c_i = pd.DataFrame(data=None, index=range(num_units_on_shank) , columns = [session_ids])
-spk_c_i = []   # mean firing rate of this unit
-for iter_s in range(num_sessions):
-    for iter_i in range(num_units_on_shank):
+    input_dir_list = ['/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh3/Shank_2/Processed/count_analysis',
+                      '/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_bc7/Shank_2/Processed/count_analysis',
+                      '/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_bc7/Shank_3/Processed/count_analysis',
+                      '/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh8/Shank_1/Processed/count_analysis',
+                      '/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh8/Shank_3/Processed/count_analysis',
+                      '/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh11/Shank_0/Processed/count_analysis',
+                      '/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh11/Shank_1/Processed/count_analysis',
+                      '/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh11/Shank_3/Processed/count_analysis',
+                      '/home/hyr2-office/Documents/Data/NVC/Tracking/processed_data_rh7/Shank_3/Processed/count_analysis'
+                      
+        ]
+    
+    dict_config =  {}
+    dict_config['rh3'] = np.array([-3,-2,14,21,28,49])
+    dict_config['bc7'] = np.array([-3,-2,14,21,28,42])
+    dict_config['rh8'] = np.array([-3,-2,14,21,28,35,42,49,56])
+    dict_config['rh11'] = np.array([-3,-2,14,21,28,35,42,49])
+    dict_config['rh7'] = np.array([-3,-2,14,21,28,35,42,49])
+    result_df = pd.DataFrame(data=None,columns = [dict_config['rh8'].tolist()])
+    result_df.columns = dict_config['rh8'].tolist()
+    for shank_id in input_dir_list:
         
-        f_i = sc_i.gaussian_filter1d(A1[iter_i]['FR_session'][iter_s],10.19/np.sqrt(2))
-        f_i_mod = A1[iter_i]['spike_count_session'][iter_s]
+        # Get session for the mouse (using regular expressions)
+        pattern = re.compile(r'processed_data_.*?/')
+        match = pattern.search(shank_id)
+        indx_str = match.group()[15:-1]
+        # Call main processing function for c_i ie coupling coefficient
+        df_c_i_pr = process_single_shank(shank_id,dict_config[indx_str].tolist())
+        df_c_i_pr.columns = dict_config[indx_str].tolist()
+        result_df = pd.concat([result_df, df_c_i_pr], axis=0)
+
+    with open(os.path.join(output_folder,'pop_coupling_tracked.pkl'), 'wb') as f:    # saves all spike times 
+        pickle.dump(result_df,f)
         
-        f_j_sum = np.zeros(f_i.shape,dtype = np.float64)    #initialize array
-        for iter_j in range(num_units_on_shank):            # this is the summation over the units except for i
-            if iter_j == iter_i:
-                continue
-            filtered_signal = sc_i.gaussian_filter1d(A1[iter_j]['FR_session'][iter_s],10.19/np.sqrt(2))
-            avg_fr_local = A1[iter_j]['spike_count_session'][iter_s] / A1[iter_j]['length_session'][iter_s]
-            f_j = filtered_signal - avg_fr_local
-            f_j_sum += f_j
         
-        c_i_local = np.dot(f_i,f_j_sum) / f_i_mod
-        df_c_i.iat[iter_i,iter_s] = c_i_local
-        c_i.append(c_i_local)
-        spk_c_i.append(f_i_mod)
+    # significance matrix for baseline vs chronic
+    df_sig_matrix = pd.DataFrame(data = None, columns = [0,21,28,42,49],index = [0,21,28,42,49])
+    # df_sig_matrix_ks = pd.Series(data=None, index = [21,28,42,49])
     
-# plotting c_i
-x = np.arange(0,num_units_on_shank)
-fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
-plt.bar(x,height = df_c_i.iloc[:,0],alpha = 0.5)    # baseline 1
-plt.bar(x,height = df_c_i.iloc[:,1],alpha = 0.5)    # baseline 2
-ax.axis('off')
-filename_save = os.path.join(output_folder,'c_i_baselines.png')
-fig.savefig(filename_save,dpi = 300)
+    result_df.fillna(0,inplace = True)
+    result_df.drop(columns=[14,35,56],inplace=True)
+    delta_c_bsl = result_df.iloc[:,0] - result_df.iloc[:,1]
+    delta_c_bsl = delta_c_bsl.to_numpy(dtype=float)
+    bsl_avg = (result_df.iloc[:,0] + result_df.iloc[:,1])/2
+    # delta_c_bsl_14 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,2].to_numpy(dtype = float)
+    delta_c_bsl_21 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,2].to_numpy(dtype = float)
+    delta_c_bsl_28 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,3].to_numpy(dtype = float)
+    # delta_c_bsl_35 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,5].to_numpy(dtype = float)
+    delta_c_bsl_42 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,4].to_numpy(dtype = float)
+    delta_c_bsl_49 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,5].to_numpy(dtype = float)
+    
+    # df_sig_matrix.at[0,14] = sc_st.ttest_ind(delta_c_bsl,delta_c_bsl_14)[1]
+    df_sig_matrix.at[0,21] = sc_st.ttest_ind(delta_c_bsl,delta_c_bsl_21)[1]
+    df_sig_matrix.at[0,28] = sc_st.ttest_ind(delta_c_bsl,delta_c_bsl_28)[1]
+    # sc_st.ttest_rel(delta_c_bsl,delta_c_bsl_35)     # this one is bad for some reason. Remove day 35 since its not common to all animals and has mostly nans
+    df_sig_matrix.at[0,42] = sc_st.ttest_ind(delta_c_bsl,delta_c_bsl_42)[1]
+    df_sig_matrix.at[0,49] = sc_st.ttest_ind(delta_c_bsl,delta_c_bsl_49)[1]
+    # df_sig_matrix.at[14,21] = sc_st.ttest_ind(delta_c_bsl_14,delta_c_bsl_21)[1]
+    # df_sig_matrix.at[14,28] = sc_st.ttest_ind(delta_c_bsl_14,delta_c_bsl_28)[1]
+    # df_sig_matrix.at[14,42] = sc_st.ttest_ind(delta_c_bsl_14,delta_c_bsl_42)[1]
+    # df_sig_matrix.at[14,49] = sc_st.ttest_ind(delta_c_bsl_14,delta_c_bsl_49)[1]
+    df_sig_matrix.at[21,28] = sc_st.ttest_ind(delta_c_bsl_21,delta_c_bsl_28)[1]
+    df_sig_matrix.at[21,42] = sc_st.ttest_ind(delta_c_bsl_21,delta_c_bsl_42)[1]
+    df_sig_matrix.at[21,49] = sc_st.ttest_ind(delta_c_bsl_21,delta_c_bsl_49)[1]
+    df_sig_matrix.at[28,42] = sc_st.ttest_ind(delta_c_bsl_28,delta_c_bsl_42)[1]
+    df_sig_matrix.at[28,49] = sc_st.ttest_ind(delta_c_bsl_28,delta_c_bsl_49)[1]
+    df_sig_matrix.at[42,49] = sc_st.ttest_ind(delta_c_bsl_42,delta_c_bsl_49)[1]
+    
+    # Plotting scatter plot
+    result_df.replace(0, np.nan,inplace=True)
+    chrr1 = result_df.iloc[:,2:].mean(axis=1).to_numpy()
+    # chrr2 = result_df.iloc[:,4:6].mean(axis=1).to_numpy()
+    bsl = result_df.iloc[:,0:2].to_numpy()
+    bsl = bsl.astype(dtype=float)
+    x = np.linspace(-0.1,0.45)
+    y = x
+    y1 = x + np.nanmean(bsl[:,0] - bsl[:,1]) + np.nanstd(bsl[:,0] - bsl[:,1])
+    y2 = x - np.nanmean(bsl[:,0] - bsl[:,1]) - np.nanstd(bsl[:,0] - bsl[:,1])
+    fg,ax = plt.subplots(1,1)
+    ax.plot(x,y1,'--',c = 'k',alpha = 0.2)
+    ax.plot(x,y2,'--',c = 'k',alpha = 0.2)
+    ax.plot(x,y,'#3a3a3a')
+    ax.scatter(np.nanmean(bsl,axis=1),chrr1,alpha = 0.3,s = 25,c = '#4873b7',linewidth=0)
+    fg.set_size_inches(3,3)
+    sns.despine()
+    fg.savefig(os.path.join(output_folder,'Fig6_scatter_bsl_vs_chr.png'),dpi = 300)
+    # ax[1].plot(x,y1,'--',c = '#3a3a3a',alpha = 0.3)
+    # ax[1].plot(x,y2,'--',c = '#3a3a3a',alpha = 0.3)
+    # ax[1].plot(x,y,'#3a3a3a')
+    # ax[1].scatter(np.nanmean(bsl,axis=1),chrr2,alpha = 0.5)
+    
+    # Bar plot and statistical test
+    # zero c_i typically means that the sesssion was missing from this animal/shank OR the unit had zero spikes in the session ie not found in the longitudinal tracking
+    result_df_melted = result_df.melt(var_name = 'session',value_name = 'c_i')
+    session_axis = result_df_melted.session.unique()
+    result_df_melted.loc[(result_df_melted.loc[:,'session'] >= 21),'session'] = 'chronic'
+    result_df_melted.loc[(result_df_melted.loc[:,'session'] == -3) | (result_df_melted.loc[:,'session'] == -2),'session'] = 'bsl'
+    df_chronic = result_df_melted.loc[result_df_melted['session'] == 'chronic','c_i']
+    df_bsl = result_df_melted.loc[result_df_melted['session'] == 'bsl','c_i']
+    df_chronic.dropna(axis = 0,inplace=True)
+    df_bsl.dropna(axis = 0,inplace=True)
+    fig,axes = plt.subplots(1,1)
+    sns.barplot(data=result_df_melted, x="session", y="c_i",errorbar = 'se',ax = axes,linewidth=3.5,color = '#a9a8a9',alpha=0.9,edgecolor='k',width=0.9)
+    axes.set(xlabel=None, ylabel = None,title = None)
+    axes.legend().set_visible(False)
+    axes.tick_params(
+        axis='y',          # changes apply to the x-axis
+        which='both',      # both major and minor ticks are affected
+        right=False,      # ticks along the bottom edge are off
+        left=True) # labels along the bottom edge are off
+    axes.set_ylim(bottom = 0,top = 0.12)
+    axes.set_yticks([0,0.05,0.1])
+    fig.set_size_inches((2.5, 3), forward=True)
+    sns.despine()
+    fig.savefig(os.path.join(output_folder,'Ci_barplot_bsl_vs_chr.png'),dpi = 300)
+    sc_st.ttest_ind(df_bsl,df_chronic,alternative= 'less')  # stat test for bar plot
+    
+    # prob distribution of the coupling coefficients  CDF
+    fg,axes = plt.subplots(1,1)
+    sns.kdeplot(data=result_df_melted, x = 'c_i',hue = 'session',palette = ['#4f85b0','#060606'],linewidth = 3,ax = axes,cumulative=True,common_norm=False, common_grid=True)     # CDF
+    axes.set_xlim(-0.1,0.35)
+    axes.set(xlabel=None, ylabel = None,title = None)
+    axes.legend().set_visible(False)
+    axes.tick_params(
+        axis='y',          # changes apply to the x-axis
+        which='both',      # both major and minor ticks are affected
+        right=False,      # ticks along the bottom edge are off
+        left=True) # labels along the bottom edge are off
+    axes.set_ylim(bottom = 0,top = 0.12)
+    axes.set_xticks([-0.1,0,0.1,0.2,0.3])
+    axes.set_yticks([0,0.5,1])
+    axes.set_ylim(0.0,1)
+    sns.despine()
+    fg.set_size_inches(4,2.5)
+    fg.savefig(os.path.join(output_folder,'Ci_CDF_bsl_vs_chr.png'),dpi = 300)
+    sc_st.kstest(df_bsl,df_chronic,alternative = 'greater')  # Stat tests KS Test to check if the distribution is the same or not
 
-fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
-plt.bar(x,height = df_c_i.iloc[:,0],alpha = 0.5)    # baseline 1
-plt.bar(x,height = df_c_i.iloc[:,2],alpha = 0.5)    # baseline 2
-ax.axis('off')
-filename_save = os.path.join(output_folder,'c_i_baselinesvsday2.png')
-fig.savefig(filename_save,dpi = 300)
+    # prob distribution of the coupling coefficients PDF
+    fg,axes = plt.subplots(1,1)
+    sns.kdeplot(data=result_df_melted, x = 'c_i',hue = 'session',palette = ['#4f85b0','#060606'],ax = axes,common_norm=False, common_grid=False,linewidth = 3)     # PDF
+    axes.set(xlabel=None, ylabel = None,title = None)
+    axes.legend().set_visible(False)
+    axes.set_xlim(-0.1,0.3)
+    axes.set_xticks([-0.1,0,0.1,0.2,0.3])
+    axes.set_ylim(0.0,7.5)
+    fg.set_size_inches(4,2.5)
+    sns.despine()
+    fg.savefig(os.path.join(output_folder,'Ci_PDF_bsl_vs_chr.png'),dpi = 300)
+    
 
-fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
-plt.bar(x,height = df_c_i.iloc[:,0],alpha = 0.5)    # baseline 1
-plt.bar(x,height = df_c_i.iloc[:,3],alpha = 0.5)    # baseline 2
-ax.axis('off')
-filename_save = os.path.join(output_folder,'c_i_baselinevsday7.png')
-fig.savefig(filename_save,dpi = 300)
-
-fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
-plt.bar(x,height = df_c_i.iloc[:,0],alpha = 0.5)    # baseline 1
-plt.bar(x,height = df_c_i.iloc[:,6],alpha = 0.5)    # baseline 2
-ax.axis('off')
-filename_save = os.path.join(output_folder,'c_i_baselinevsday28.png')
-fig.savefig(filename_save,dpi = 300)
+    # Add marginal plots and how they change over sessions ie pdf of # of simultaneous spikes 
     
-## Raster Marginals Model (random shuffling) 
-# (single session) iter_s
-f_i_M = np.empty((num_units_on_shank,A1[0]['FR_session'][iter_s].shape[0]),dtype = np.int8)
-for iter_i in range(num_units_on_shank):
-    f_i_M[iter_i,:] = np.reshape(A1[iter_i]['FR_session'][iter_s] * 1e-3,(1,-1))
-
-f_i_M[f_i_M > 1] = 1    # Correcting for any double spikes in the time bin. This should not happen and hence is set to 1. Thus increasing the purity of the single units
-# important invariant parameters
-bin_edges,hist,spk_c_i = func_invariant_params(f_i_M)
-fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
-ax.plot(bin_edges,hist/hist.sum(),linewidth = 3)     # prob vs #synchronous spikes
-filename_save = os.path.join(output_folder,'prob_synchspikes_original.png')
-fig.savefig(filename_save,dpi = 300)
-# for finding submatrix
-f_i_M[f_i_M == 0] = -1
-patter_M = np.array([[1,-1],[-1,1]],dtype=np.int8)
-max_peak = np.prod(patter_M.shape)
-# c will contain max_peak where the overlap is perfect
-c = sc_s.correlate(f_i_M, patter_M, 'valid')
-c = np.around(c)
-c = c.astype(np.int8)
-overlaps = np.where(c == max_peak)
-f_i_M[f_i_M == -1] = 0
-# for swapping submatrix
-rows_o = np.unique(overlaps[0])
-for iter_i in rows_o:
-    indx_flip_r = np.where(overlaps[0] == iter_i)[0]
-    indx_flip_c = overlaps[1][indx_flip_r]
-    indx_flip_r = overlaps[0][indx_flip_r]
-    
-    tmp_replacement_0 = np.zeros((2,indx_flip_c.shape[0]))
-    tmp_replacement_0[1,:] = 1 
-    tmp_replacement_1 = copy.deepcopy(tmp_replacement_0)
-    tmp_replacement_1[[0,1]] = tmp_replacement_1[[1,0]]
-    
-    indx_rows = [iter_i,iter_i+1]
-    indx_col = list(indx_flip_c)
-    f_i_M = replace_submatrix(f_i_M,indx_rows,indx_col,tmp_replacement_0)
-    indx_col = list(indx_flip_c+1)
-    f_i_M = replace_submatrix(f_i_M,indx_rows,indx_col,tmp_replacement_1)
-    
-    # f_i_M[[iter_i,iter_i+1]][:,list(indx_flip_c)] = tmp_replacement_0          # advanced non-contiguous slicing (replacement doesn't work)
-    # f_i_M[[iter_i,iter_i+1]][:,list(indx_flip_c+1)] = tmp_replacement_1        # advanced non-contiguous slicing (replacement doesn't work)
-    
-# f_i_M is now the shuffled activity matrix
-bin_edges_new,hist_new,spk_c_i_new = func_invariant_params(f_i_M)
-fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
-ax.plot(bin_edges_new,hist_new/hist_new.sum(),linewidth = 3)     # prob vs #synchronous spikes
-filename_save = os.path.join(output_folder,'prob_synchspikes_shuffle.png')
-fig.savefig(filename_save,dpi = 300)
 
     
     
