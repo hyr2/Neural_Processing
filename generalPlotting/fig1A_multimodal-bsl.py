@@ -14,9 +14,18 @@ from scipy import signal
 import seaborn as sns
 sys.path.append('/home/hyr2-office/Documents/git/Neural_SP/Neural_Processing/ePhys-LFP/')
 from Support import *
+import time
 
 # Input processed data from IOS matlab scripts (IOS_process_2.m)
 source_dir = '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig1/data/fig1A/'
+
+t = time.localtime()
+current_time = time.strftime("%m_%d_%Y_%H_%M", t) + '_fig1'
+# output_folder = os.path.join(r'C:\Rice_2023\Data\Results',current_time)
+output_folder = os.path.join('/home/hyr2-office/Documents/Data/NVC/Results',current_time)
+
+if not os.path.exists(output_folder):
+    os.makedirs(output_folder)
 
 wv_580_bsl1 = io.loadmat(os.path.join(source_dir,'580nm_processed.mat'))
 wv_580_bsl1 = wv_580_bsl1['ROI_time_series_img']
@@ -74,15 +83,16 @@ fig.subplots_adjust(right=0.75)
 # twin1.set_ylim(bottom = -55.4,top = 45)
 
 
-ax.plot(time_axis_ios,wv_580_bsl1[:,6]*100*20,linewidth = 2.5, color = '#949494')  # IOS
-ax.plot(time_axis_lfp, 25*avg_trialsD, linewidth = 2.5, color = 'b')   # lfp
-ax.plot(time_axis_FR,avg_FR,linewidth = 1, color = 'k')    # FR
+ax.plot(time_axis_ios,wv_580_bsl1[:,6]*100*20,linewidth = 2.5, color = '#1f77b4',alpha = 0.75)  # IOS
+# ax.plot(time_axis_lfp, 25*avg_trialsD, linewidth = 2.5, color = 'b')   # lfp  (Lan suggested to remove LFP)
+ax.plot(time_axis_FR,avg_FR,linewidth = 2, color = '#d00808',alpha = 0.75)    # FR
 # plt.plot(time_axis_ios,wv_580_bsl1[:,6])
 ax.set_xlim(0.5,13)
 ax.set_ylim(-30,43.4)
 # sns.despine()
 ax.axis('off')
-filename_save = '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig1/subfigures/all_modality.png'
+filename_save = os.path.join(output_folder,'all_modality.png')
+# '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig1/subfigures/all_modality.png'
 plt.savefig(filename_save)
 
 
