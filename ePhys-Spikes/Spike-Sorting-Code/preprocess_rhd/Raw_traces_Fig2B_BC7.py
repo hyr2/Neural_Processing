@@ -41,10 +41,10 @@ if not os.path.exists(output_folder):
 
 # Loading data (RH11 23-07-19)
 Raw_dir = '/home/hyr2-office/Documents/Data/Raw_ePhys_Trace'    
-chan_map_path = os.path.join(Raw_dir,'chan_map_1x32_128ch_flex_Pavlo.mat')
+chan_map_path = os.path.join(Raw_dir,'chan_map_1x32_128ch_flex_new.mat')
 filenames = os.listdir(Raw_dir)
 filenames = list(filter(lambda x: x.endswith(".rhd"), filenames))
-filenames = list(filter(lambda x: "rh11" in x, filenames))    
+filenames = list(filter(lambda x: "bc7" in x, filenames))       
 filenames = natsorted(filenames)
 data_dict = read_data(os.path.join(Raw_dir, filenames[0]))
 
@@ -80,9 +80,9 @@ df_tmp = df_tmp.sort_values(by = 'Depth', ascending = True,axis = 0)
 selected_indx = df_tmp['indexx'].to_numpy()
 ephys_data = ephys_data[selected_indx,:]
 for iter_i in range(len(selected_indx)):
-    ephys_data[iter_i,:] = ephys_data[iter_i,:] + 250*(iter_i+1)
+    ephys_data[iter_i,:] = ephys_data[iter_i,:] + 310*(iter_i+1)
 fig,ax = plt.subplots(1,1,figsize = (4,6))
-plt.plot(ephys_data[:,9000:12000].T,color = '#4d4e4d',linewidth = 1.5)
+plt.plot(ephys_data[0:16,2000:6000].T,color = '#4d4e4d',linewidth = 1)
 sns.despine(top = True, bottom =True,left = True)
 ax.set_xticks([])
 ax.set_yticks([])
@@ -100,7 +100,7 @@ ephys_data = ephys_data[selected_indx,:]
 for iter_i in range(len(selected_indx)):
     ephys_data[iter_i,:] = ephys_data[iter_i,:] + 250*(iter_i+1)
 fig,ax = plt.subplots(1,1,figsize = (4,6))
-ax.plot(ephys_data[:,9000:12000].T,color = '#4d4e4d',linewidth = 1.5)
+ax.plot(ephys_data[:,9000:12000].T,color = '#4d4e4d',linewidth = 1.25)
 sns.despine(top = True, bottom =True,left = True)
 ax.set_xticks([])
 ax.set_yticks([])
@@ -136,7 +136,7 @@ ephys_data = ephys_data[selected_indx,:]
 for iter_i in range(len(selected_indx)):
     ephys_data[iter_i,:] = ephys_data[iter_i,:] + 250*(iter_i+1)
 fig,ax = plt.subplots(1,1,figsize = (4,6))
-ax.plot(ephys_data[:,1143932:1151462].T,color = '#4d4e4d',linewidth = 1)
+ax.plot(ephys_data[:,12000:15000].T,color = '#4d4e4d',linewidth = 1)
 sns.despine(top = True, bottom =True,left = True)
 ax.set_xticks([])
 ax.set_yticks([])

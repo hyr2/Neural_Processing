@@ -18,7 +18,7 @@ from utils.read_mda import readmda
 from scipy.io import loadmat
 from Support import filter_Savitzky_fast
 import pandas as pd
-
+import time
 
 
 
@@ -58,7 +58,13 @@ def FR_all_trials(firing_stamp, t_trial_start, trial_duration_in_samples, window
     return firing_rate_series_by_trial
 
 source_dir = '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig2/tmp_bc7/21-12-09/'
-filename_save = '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig2/tmp_clusters_2cbsl/'
+t = time.localtime()
+current_time = time.strftime("%m_%d_%Y_%H_%M", t) + '_fig3F'
+# output_folder = os.path.join(r'C:\Rice_2023\Data\Results',current_time)
+filename_save = os.path.join('/home/hyr2-office/Documents/Data/NVC/Results',current_time)
+if not os.path.exists(filename_save):
+    os.makedirs(filename_save)
+
 # Raster plotting
 Firings_bsl = readmda(os.path.join(source_dir,'firings_clean_merged.mda'))
 file_pre_ms = os.path.join(source_dir,'pre_MS.json')
@@ -133,7 +139,7 @@ y_local = 0
 for iter_t in range(len(firing_rate_series_10)):
     raster_local = firing_rate_series_10[iter_t]
     y_local = iter_t + np.ones(raster_local.shape)
-    plt.plot(raster_local,y_local,color = 'blue',marker = "o",linestyle = 'None', markersize = 3)
+    plt.plot(raster_local,y_local,color = 'k',marker = "o",linestyle = 'None', markersize = 8,alpha = 0.5,markeredgewidth = 0)
 plt.xlim(2,3.5)
 plt.axis('off')
 plt.savefig(os.path.join(filename_save,'rh7-10-17-22-cluster10_raster.svg'),format = 'svg')
@@ -142,7 +148,7 @@ plt.figure()
 for iter_t in range(len(firing_rate_series_351)):
     raster_local = firing_rate_series_351[iter_t]
     y_local = iter_t + np.ones(raster_local.shape)
-    plt.plot(raster_local,y_local,color = 'red',marker = "o",linestyle = 'None',markersize = 3)
+    plt.plot(raster_local,y_local,color = 'red',marker = "o",linestyle = 'None',markersize = 6,alpha = 0.5, markeredgewidth = 0)
 plt.xlim(2,3.5)
 plt.axis('off')
 plt.savefig(os.path.join(filename_save,'rh7-10-17-22-cluster351_raster.svg'),format = 'svg')
