@@ -179,7 +179,7 @@ def full_panel_plot_fig6(result_df,output_folder,str_filesave_flag):
         which='both',      # both major and minor ticks are affected
         right=False,      # ticks along the bottom edge are off
         left=True) # labels along the bottom edge are off
-    axes.set_ylim(bottom = 0,top = 0.12)
+    # axes.set_ylim(bottom = 0,top = 0.12)
     axes.set_yticks([0,0.05,0.1])
     fig.set_size_inches((2.5, 3), forward=True)
     sns.despine()
@@ -203,10 +203,10 @@ def full_panel_plot_fig6(result_df,output_folder,str_filesave_flag):
     axes.set_yticks([0,0.5,1])
     axes.set_ylim(0.0,1.05)
     sns.despine()
-    fg.set_size_inches(3,2.5)
+    fg.set_size_inches(4,2.5)
     filename_l = f'Ci_{str_filesave_flag}_CDF_bsl_vs_chr.png'
     fg.savefig(os.path.join(output_folder,filename_l),dpi = 300)
-    df_sig_array[1] = sc_st.kstest(df_bsl,df_chronic)[1]  # Stat tests KS Test to check if the distribution is the same or not
+    df_sig_array[1] = sc_st.kstest(df_bsl,df_chronic,method = 'exact')[1]  # Stat tests KS Test to check if the distribution is the same or not
 
     # prob distribution of the coupling coefficients PDF
     fg,axes = plt.subplots(1,1)
@@ -229,6 +229,12 @@ def full_panel_plot_fig6(result_df,output_folder,str_filesave_flag):
     plt.close('all')
 
 def full_panel_plot_fig6_celltype(result_df_p,result_df_ni,output_folder,str_filesave_flag):
+    
+    i_index = [('NI'),('P')]
+    # multi_index = pd.MultiIndex.from_tuples(multi_index, names = ['celltype'])
+    df_stat_test = pd.DataFrame({
+    },columns = ['mean','dist'],index = i_index)
+    
     # For figure 6F cell type analysis with population coupling
     df_sig_array = pd.Series(data = None,index = [0,1])
 
@@ -281,7 +287,7 @@ def full_panel_plot_fig6_celltype(result_df_p,result_df_ni,output_folder,str_fil
     sns.despine()
     filename_l = f'Ci_pyr_barplot_bsl_vs_chr.png'
     fig.savefig(os.path.join(output_folder,filename_l),dpi = 300)
-    df_sig_array[0] = sc_st.ttest_ind(df_bsl,df_chronic)[1]  # stat test for bar plot
+    df_stat_test.loc['P','mean'] = sc_st.ttest_ind(df_bsl,df_chronic)[1]  # stat test for bar plot
     # Bar plot and statistical test for NI
     result_df_melted_ni = result_df_ni.melt(var_name = 'session',value_name = 'c_i')
     session_axis = result_df_melted_ni.session.unique()
@@ -308,7 +314,7 @@ def full_panel_plot_fig6_celltype(result_df_p,result_df_ni,output_folder,str_fil
     sns.despine()
     filename_l = f'Ci_NI_barplot_bsl_vs_chr.png'
     fig.savefig(os.path.join(output_folder,filename_l),dpi = 300)
-    df_sig_array[1] = sc_st.ttest_ind(df_bsl,df_chronic)[1]  # stat test for bar plot
+    df_stat_test.loc['NI','mean'] = sc_st.ttest_ind(df_bsl,df_chronic)[1]  # stat test for bar plot
     
     
     # prob distribution of the coupling coefficients  CDF
@@ -338,9 +344,19 @@ def full_panel_plot_fig6_celltype(result_df_p,result_df_ni,output_folder,str_fil
     fg.set_size_inches(3,2.5)
     filename_l = f'Ci_CDF_celltype.png'
     fg.savefig(os.path.join(output_folder,filename_l),dpi = 300)
-    df_sig_array[1] = sc_st.kstest(df_bsl,df_chronic)[1]  # Stat tests KS Test to check if the distribution is the same or not
     
+    result_melted_df_bsl = result_melted_df_bsl.filter(['c_i','celltype'])
+    result_melted_df_chr = result_melted_df_chr.filter(['c_i','celltype'])
     
+    result_melted_df_bsl_P = result_melted_df_bsl.loc[result_melted_df_bsl['celltype'] == 'P']
+    result_melted_df_bsl_NI = result_melted_df_bsl.loc[result_melted_df_bsl['celltype'] == 'NI']
+    result_melted_df_chr_P = result_melted_df_chr.loc[result_melted_df_chr['celltype'] == 'P']
+    result_melted_df_chr_NI = result_melted_df_chr.loc[result_melted_df_chr['celltype'] == 'NI']
+    
+    df_stat_test.loc['P','dist'] = sc_st.kstest(result_melted_df_bsl_P['c_i'],result_melted_df_chr_P['c_i'])[1]  # Stat tests KS Test to check if the distribution is the same or not
+    df_stat_test.loc['NI','dist'] = sc_st.kstest(result_melted_df_bsl_NI['c_i'],result_melted_df_chr_NI['c_i'])[1]  # Stat tests KS Test to check if the distribution is the same or not
+    
+    df_stat_test.to_csv(os.path.join(output_folder,'stat_tests.csv'))
     
     # save statistical tests with multi-index
     # df_sig_array.index = ['barplot','CDF']
@@ -404,7 +420,7 @@ if __name__ == '__main__':
     
     # Importing data from Figure 5 and correlating with Figure 5's PCA clusters
     # Note that the numbers of clustered into each category are slighlty different because this was a 2nd code run from the one used to generate Fig5.
-    with open(os.path.join('/home/hyr2-office/Documents/Data/NVC/Results/PAPER_RESULTS/Fig5/Fig5_plots_04_17_2024_11_46','Fig6_dictionary.pkl'), 'rb') as f:
+    with open(os.path.join('/home/hyr2-office/Documents/Data/NVC/Results/PAPER_RESULTS/Fig5/Fig5_plots_04_19_2024_10_25','Fig6_dictionary.pkl'), 'rb') as f:
         dict_fig5 = pickle.load(f)
         
     mask_reject = dict_fig5['mask_reject']
@@ -449,3 +465,35 @@ if __name__ == '__main__':
     output_foldertmp = os.path.join(output_folder,'detuned_pos') 
     os.makedirs(output_foldertmp)
     full_panel_plot_fig6(result_df_pos_detuned,output_foldertmp,'detuned_pos')
+
+    # For Lan. Checking if the potentiated cells had stronger Ci than other cells before stroke.
+    df_bsl_potentiate = result_df_up.loc[:,(-3,-2)]
+    df_bsl_potentiate_n = pd.concat((result_df_nc.loc[:,(-3,-2)],result_df_dn.loc[:,(-3,-2)]) , axis = 0)
+    
+    df_bsl_potentiate_melt = df_bsl_potentiate.melt(var_name = 'potentiate',value_name = 'c_i') 
+    df_bsl_potentiate_melt['potentiate'] = 'Y'
+    df_bsl_potentiateN_melt = df_bsl_potentiate_n.melt(var_name = 'potentiate',value_name = 'c_i') 
+    df_bsl_potentiateN_melt['potentiate'] = 'N'
+    df_bsl_potentiate_melt.reset_index(inplace=True,drop = True)
+    df_bsl_potentiateN_melt.reset_index(inplace=True,drop = True)
+    df_potentiate_final = pd.concat((df_bsl_potentiate_melt,df_bsl_potentiateN_melt),axis = 0)
+    df_potentiate_final.reset_index(inplace = True, drop = True)
+    df_potentiate_final.dropna(axis = 0,inplace=True)
+    
+    
+    fig,axes = plt.subplots(1,1)
+    sns.barplot(data=df_potentiate_final, x="potentiate", y="c_i",errorbar = 'se',ax = axes,linewidth=3.5,color = '#a9a8a9',alpha=0.9,edgecolor='k',width=0.9)
+    axes.set(xlabel=None, ylabel = None,title = None)
+    axes.legend().set_visible(False)
+    axes.tick_params(
+        axis='y',          # changes apply to the x-axis
+        which='both',      # both major and minor ticks are affected
+        right=False,      # ticks along the bottom edge are off
+        left=True) # labels along the bottom edge are off
+    axes.set_ylim(bottom = 0,top = 0.1)
+    axes.set_yticks([0,0.05,0.1])
+    fig.set_size_inches((4, 5), forward=True)
+    sns.despine()
+    filename_l = f'Ci_potnetiatedonly_preVSpost.png'
+    fig.savefig(os.path.join(output_folder,filename_l),dpi = 300)
+    sc_st.ttest_ind(df_potentiate_final.loc[df_potentiate_final['potentiate'] == 'Y','c_i'],df_potentiate_final.loc[df_potentiate_final['potentiate'] == 'N','c_i'])[1]  # stat test for bar plot
