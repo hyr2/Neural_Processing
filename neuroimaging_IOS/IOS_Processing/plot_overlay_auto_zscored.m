@@ -2,7 +2,7 @@ function plot_overlay_auto_zscored(sample_img,delRR_z,selpathOut,name_pic)
 % Plots overlay of activation region over a raw image of the brain
 
 
-sample_img = adapthisteq(sample_img,'Distribution','rayleigh','Alpha',0.5);
+sample_img = adapthisteq(sample_img,'Distribution','rayleigh','Alpha',0.625);
 F = SpeckleFigure(sample_img, [0,1] , 'visible', true);
 F.showOverlay(zeros(size(delRR_z)),[0,1], zeros(size(delRR_z)),'use_divergent_cmap', false);
 

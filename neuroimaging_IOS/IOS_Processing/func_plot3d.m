@@ -103,12 +103,16 @@ y_bsl = (y_axis(1) + y_axis(2))/2;
 y_axis = y_axis - y_bsl;
 x_bsl = (x_axis(1) + x_axis(2))/2;
 x_axis = x_axis - x_bsl;
+
 % area = area/max(area);
 colors = [0,0,1;0,0,1];
 sz_tmp = size(x_axis,1) - size(bsl_indx,2);
 s2 = zeros(sz_tmp,3);
 colors = vertcat(colors,s2);
 
+% Baseline variation
+x_shift_bsl = abs(x_axis(2) - x_axis(1));
+y_shift_bsl = abs(y_axis(2) - y_axis(1));
 
 out_arr{3} = mean(y_axis(ind_z));
 
@@ -158,7 +162,7 @@ set(fig,'Position',[50 50 400 800])
 set(gcf, 'color', 'none');   
 set(gca, 'color', 'none');
 rez = [800,1600]; %set desired [horizontal vertical] resolution
-ylim([-1,0.6]);
+ylim([-1,0.75]);
 zlim([-6,56]);
 yticks([]);
 % set(fig,'PaperPosition',[0 0 rez/100],'PaperUnits','inches');
@@ -180,6 +184,6 @@ distance_shifts = sqrt(delta_x.^2 + delta_y.^2);
 out_arr{4} = z_axis;        % the day axis for this animal corresponds to distancce_shifts only (not the actual day axis)
 out_arr{5} = distance_shifts; % relative shifts between datapoints
 
-
+out_arr{6} = sqrt(x_shift_bsl.^2 + y_shift_bsl.^2);     % The shift in baseline (value is quoted in the text of the paper)
 
 end

@@ -314,6 +314,10 @@ shift_vec_chronic = [out_rh3{5}(find(out_rh3{4} >= 21))',out_rh7{5}(find(out_rh7
     out_rh8{5}(find(out_rh8{4} >= 21))',out_rh9{5}(find(out_rh9{4} >= 21))',...
     out_rh11{5}(find(out_rh11{4} >= 21))',out_bc8{5}(find(out_bc8{4} >= 21))'];
 
+% For quoting value of shift during baseline sessions (averaged all mice)
+vec_bsl_shift = [out_rh3{6},out_rh7{6},out_rh8{6},out_rh9{6},out_rh11{6},out_bc8{6},out_bhc7{6},out_bc8{6},out_bc7{6}]; % I include bhc7 which has good baselines
+fprintf('Quote in Fig1 Text. Inter-session shift during pre-stroke sessions: %0.3f +/- %0.3f\n', mean(vec_bsl_shift),std(vec_bsl_shift)/sqrt(length(vec_bsl_shift)));
+
 % For Figure 1H (new)
 day_local = 2;
 shift_vec_2 = [out_rh3{5}(find(out_rh3{4} == day_local))',out_rh7{5}(find(out_rh7{4} == day_local))',...

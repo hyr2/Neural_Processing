@@ -63,7 +63,7 @@ amin = mean(sample_img(:),'omitnan') - 1.5*tmp_std;
 amax = mean(sample_img(:),'omitnan') + 2.75*tmp_std;
 
 %% Adding Vessel segmentation using adaptive thresholding
-T = adaptthresh(sample_img,0.825);
+T = adaptthresh(sample_img,0.791);
 BW_vessel = imbinarize(sample_img,T);
 BW_vessel = double(BW_vessel);
 BW_vessel(BW_vessel == 0) = NaN;
@@ -109,6 +109,7 @@ try
         % ActMask_local = (delRR <= c_limits_480(2)) & (delRR >= c_limits_480(1));                % Binary mask absolute
         % ActMask_local = activation_region.*delRR <= thresh_580;      % Absolute threshold based on experience
         ActMask_local_z = activation_region.*delRR_z < z_thresh;     % Following threshold set by Zeiger et al (2021)    % Binary mask using Z score
+        ActMask_local_z = func_filter_spatial_binary(ActMask_local_z,2);    % lowpass filtering the binary mask (post threshold)
         % Area_local_raw = sum(ActMask_local(:));
         % Area_local_Z = sum(ActMask_local_z);
         labeledImage = bwlabel(ActMask_local_z);    % label each discontinuous area to a unique value
