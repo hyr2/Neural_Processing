@@ -109,12 +109,12 @@ def full_panel_plot_fig6(result_df,output_folder,str_filesave_flag):
     delta_c_bsl = result_df.iloc[:,0] - result_df.iloc[:,1]
     delta_c_bsl = delta_c_bsl.to_numpy(dtype=float)
     bsl_avg = (result_df.iloc[:,0] + result_df.iloc[:,1])/2
-    # delta_c_bsl_14 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,2].to_numpy(dtype = float)
+
     delta_c_bsl_21 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,2].to_numpy(dtype = float)
     delta_c_bsl_28 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,3].to_numpy(dtype = float)
-    # delta_c_bsl_35 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,5].to_numpy(dtype = float)
     delta_c_bsl_42 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,4].to_numpy(dtype = float)
     delta_c_bsl_49 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,5].to_numpy(dtype = float)
+    
     
     # df_sig_matrix.at[0,14] = sc_st.ttest_ind(delta_c_bsl,delta_c_bsl_14)[1]
     df_sig_matrix.at[0,21] = sc_st.ttest_ind(delta_c_bsl,delta_c_bsl_21)[1]
@@ -132,9 +132,31 @@ def full_panel_plot_fig6(result_df,output_folder,str_filesave_flag):
     df_sig_matrix.at[28,42] = sc_st.ttest_ind(delta_c_bsl_28,delta_c_bsl_42)[1]
     df_sig_matrix.at[28,49] = sc_st.ttest_ind(delta_c_bsl_28,delta_c_bsl_49)[1]
     df_sig_matrix.at[42,49] = sc_st.ttest_ind(delta_c_bsl_42,delta_c_bsl_49)[1]
-    
-    
     get_lower_tri_heatmap(df_sig_matrix,os.path.join(output_folder,f'{str_filesave_flag}_significance_matrix_variation.png'))     # plotting significance matrix
+    
+    # Lan modified statistical test :
+    delta_c_bsl = result_df.iloc[:,0] - result_df.iloc[:,1]     # 1st
+    delta_c_bsl = delta_c_bsl.to_numpy(dtype=float)
+    bsl_avg = (result_df.iloc[:,0] + result_df.iloc[:,1])/2     
+
+    delta_c_bsl_21 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,2].to_numpy(dtype = float)
+    delta_c_bsl_28 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,3].to_numpy(dtype = float)
+    delta_c_bsl_42 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,4].to_numpy(dtype = float)
+    delta_c_bsl_49 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,5].to_numpy(dtype = float)
+
+    # df_sig_matrix.at[0,14] = sc_st.ttest_ind(delta_c_bsl,delta_c_bsl_14)[1]
+    df_sig_matrix.at[0,21] = sc_st.ttest_ind(delta_c_bsl,delta_c_bsl_21)[1]
+    df_sig_matrix.at[0,28] = sc_st.ttest_ind(delta_c_bsl,delta_c_bsl_28)[1]
+    df_sig_matrix.at[0,42] = sc_st.ttest_ind(delta_c_bsl,delta_c_bsl_42)[1]
+    df_sig_matrix.at[0,49] = sc_st.ttest_ind(delta_c_bsl,delta_c_bsl_49)[1]
+    df_sig_matrix.at[21,28] = sc_st.ttest_ind(delta_c_bsl,result_df.iloc[:,3].to_numpy(dtype = float) - result_df.iloc[:,2].to_numpy(dtype = float))[1]
+    df_sig_matrix.at[21,42] = sc_st.ttest_ind(delta_c_bsl,result_df.iloc[:,4].to_numpy(dtype = float) - result_df.iloc[:,2].to_numpy(dtype = float))[1]
+    df_sig_matrix.at[21,49] = sc_st.ttest_ind(delta_c_bsl,result_df.iloc[:,5].to_numpy(dtype = float) - result_df.iloc[:,2].to_numpy(dtype = float))[1]
+    df_sig_matrix.at[28,42] = sc_st.ttest_ind(delta_c_bsl,result_df.iloc[:,4].to_numpy(dtype = float) - result_df.iloc[:,3].to_numpy(dtype = float))[1]
+    df_sig_matrix.at[28,49] = sc_st.ttest_ind(delta_c_bsl,result_df.iloc[:,5].to_numpy(dtype = float) - result_df.iloc[:,3].to_numpy(dtype = float))[1]
+    df_sig_matrix.at[42,49] = sc_st.ttest_ind(delta_c_bsl,result_df.iloc[:,5].to_numpy(dtype = float) - result_df.iloc[:,4].to_numpy(dtype = float))[1]
+    
+    get_lower_tri_heatmap(df_sig_matrix,os.path.join(output_folder,f'{str_filesave_flag}_significance_matrix_variation_lan.png'))     # plotting significance matrix
     
     # Plotting scatter plot
     result_df.replace(0, np.nan,inplace=True)
@@ -211,6 +233,7 @@ def full_panel_plot_fig6(result_df,output_folder,str_filesave_flag):
     # prob distribution of the coupling coefficients PDF
     fg,axes = plt.subplots(1,1)
     sns.kdeplot(data=result_df_melted, x = 'c_i',hue = 'session',palette = ['#4f85b0','#060606'],ax = axes,common_norm=False, common_grid=False,linewidth = 3)     # PDF
+    # sns.histplot(data=result_df_melted, x = 'c_i',hue = 'session',palette = ['#4f85b0','#060606'],ax = axes,common_norm=False, linewidth = 3)     # PDF
     axes.set(xlabel=None, ylabel = None,title = None)
     axes.legend().set_visible(False)
     axes.set_xlim(-0.1,0.3)
@@ -219,6 +242,27 @@ def full_panel_plot_fig6(result_df,output_folder,str_filesave_flag):
     fg.set_size_inches(3,2.5)
     sns.despine()
     filename_l = f'Ci_{str_filesave_flag}_PDF_bsl_vs_chr.png'
+    fg.savefig(os.path.join(output_folder,filename_l),dpi = 300)
+    
+    # Change to averaged only counts histogram (non aggregated days)
+    result_df_bsl = result_df.iloc[:,0:2].mean(axis = 1,skipna = True)
+    result_df_chr = result_df.iloc[:,2:].mean(axis = 1,skipna = True)
+    result_df_new = pd.DataFrame(data = None, columns = ['bsl','chr'])
+    result_df_new.loc[:,'bsl'] = result_df_bsl
+    result_df_new.loc[:,'chr'] = result_df_chr
+    result_df_melted = result_df_new.melt(var_name = 'session',value_name = 'c_i')
+    fg,axes = plt.subplots(1,1)
+    # sns.histplot(data=result_df_melted, x = 'c_i',hue = 'session',palette = ['#4f85b0','#060606'],ax = axes,common_norm=False, linewidth = 2,fill=False )     # PDF
+    sns.histplot(data=result_df_melted, x = 'c_i',hue = 'session',palette = ['#4f85b0','#060606'],ax = axes,common_norm=False, linewidth = 2,fill=False, kde=True, line_kws = {'linewidth':2.5},alpha = 0.9)     # PDF
+    # sns.histplot(data=result_df_melted, x = 'c_i',hue = 'session',palette = ['#4f85b0','#060606'],ax = axes,common_norm=False, linewidth = 0, kde=True, line_kws = {'linewidth':3.5},fill=False )     # PDF
+    axes.set(xlabel=None, ylabel = None,title = None)
+    axes.legend().set_visible(False)
+    axes.set_xlim(-0.1,0.65)
+    axes.set_xticks([-0.1,0,0.1,0.2,0.3,0.4,0.5,0.6])
+    # axes.set_ylim(0.0,7.5)
+    fg.set_size_inches(3,2.5)
+    sns.despine()
+    filename_l = f'Ci_{str_filesave_flag}_PDF_bsl_vs_chr_modified_lan.png'
     fg.savefig(os.path.join(output_folder,filename_l),dpi = 300)
     
     # save statistical tests

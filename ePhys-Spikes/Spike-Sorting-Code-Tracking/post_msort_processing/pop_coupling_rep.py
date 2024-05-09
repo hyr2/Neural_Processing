@@ -82,11 +82,11 @@ for iter_s in range(num_sessions):
 # plotting figure 6C
 df_c_i_pr['x_jitter'] = np.random.random_integers(low = -4,high = 4,size=(len(df_c_i_pr),))
 for iter_ll in dict_config['rh11']:
-    df_c_i_pr['depth'] = 800 - depth_list
+    # df_c_i_pr['depth'] = 800 - depth_list
     df_c_i_pr_bsl = df_c_i_pr.filter(items = [iter_ll,'depth','x_jitter'])
     df_c_i_pr_bsl.columns = ['Ci','depth','jitter']
     df_c_i_pr_bsl['depth'] = df_c_i_pr_bsl['depth'].astype(np.int16)
-    
+    df_c_i_pr_bsl['Ci'] = np.exp(np.array(df_c_i_pr_bsl['Ci'],dtype = np.float64))
     
     # cmap_1 = sns.color_palette("Spectral", as_cmap=True).reversed()
     fig,axes = plt.subplots(1,1,figsize = (1,4.5),dpi = 300)
