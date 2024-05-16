@@ -55,10 +55,10 @@ if __name__ == '__main__':
             # func_convert2MS(Raw_dir)
 
             # Population analysis
-            func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
+            # func_pop_analysis(Raw_dir,CHANNEL_MAP_FPATH)
 
             # Extracting representative examples data
-            # func_acg_extract_main(Raw_dir)
+            func_acg_extract_main(Raw_dir,CHANNEL_MAP_FPATH)
 
             # Calling matlab scripts from python
             # eng.func_CE_BarrelCortex(Raw_dir,F_SAMPLE,CHANNEL_MAP_FPATH,nargout=0)

@@ -16,6 +16,69 @@ from sklearn.preprocessing import StandardScaler,MinMaxScaler
 import seaborn as sns
 import matlab.engine
 
+def extract_waveforms_and_amplitude(filt_mda_single_channel,spiketimes_all_sessions,Fs,waveform_len=4e-3):
+    # filt_mda_single_channel: the raw (filtered) electrophysiology data from a single electrode (the primary channel for the unit in question)
+    # spiketimes_all_sessions: the spike times in samples of the unit organized by session
+    # Fs: Sampling rate of the electrophysiological data
+    # waveform_len: 4ms by default but can be changed
+    spk_amp_series = []
+    waveforms_all = [] # only store the real-time waveforms at primary channel for each cluster
+    proper_spike_times_by_clus = []
+    
+    keys_ = spiketimes_all_sessions.keys()
+    keys_ = np.array(list(keys_))    
+    size_sessions = len(spiketimes_all_sessions)
+
+    waveform_len = waveform_len * Fs    # in samples
+    TRANSIENT_AMPLITUDE_VALID_DURATION = 7e-4 # seconds (duration of data before and after each spike that we consider when deciding the transient amplitude)
+    TAVD_NSAMPLE = int(np.ceil(TRANSIENT_AMPLITUDE_VALID_DURATION*Fs))
+
+    for iter_session in range(size_sessions):
+        tmp_spk_stamp = spiketimes_all_sessions[keys_[iter_session]].astype(int)    # spike times
+        
+        tmp_spk_stamp = tmp_spk_stamp[(tmp_spk_stamp>=int((waveform_len-1)/2)) & (tmp_spk_stamp<=(filt_mda_single_channel.shape[0]-1-int(waveform_len/2)))]
+        tmp_spk_start = tmp_spk_stamp - int((waveform_len-1)/2)
+        waveforms_this_cluster = filt_mda_single_channel[np.array(tmp_spk_start[:,None]+np.arange(waveform_len),dtype = np.int64)] # (n_events, n_sample)
+        waveforms_this_cluster_avg = np.mean(waveforms_this_cluster,axis = 0)
+        waveforms_all.append(waveforms_this_cluster_avg)    # by session
+        
+        # Amplitude histogram computation here
+        waveform_peaks   = np.max(waveforms_this_cluster[:, int(waveform_len//2-TAVD_NSAMPLE):int(waveform_len//2+TAVD_NSAMPLE)],axis = 1) 
+        waveform_troughs = np.min(waveforms_this_cluster[:, int(waveform_len//2-TAVD_NSAMPLE):int(waveform_len//2+TAVD_NSAMPLE)],axis = 1)
+        tmp_amp_series = (waveform_peaks-waveform_troughs) * (1-2*(waveform_peaks<0))
+        spk_amp_series.append(tmp_amp_series)   # by session
+        
+    dict_out_amp_hist = {key:value for key,value in zip(keys_,spk_amp_series)}      # for a S.U ordered by session
+    dict_out_all_waveforms = {key:value for key,value in zip(keys_,waveforms_all)}  # for a S.U ordered by session
+    
+    return (dict_out_amp_hist,dict_out_all_waveforms)
+
+def extract_isi(input_dict,Fs,folder_save):    
+    # This function is used to plot the ISI for a single unit 
+    # input_dict: contains spike times in samples arranged by session
+    # Fs: the sampling rate  
+    keys_ = input_dict.keys()
+    keys_ = np.array(list(keys_))    
+    
+    size_sessions = len(input_dict)
+    n_bins=100
+    bin_edges = np.linspace(0, 100, n_bins+1)    # bin edges for the ISI histogram
+    isi_hist_all_sessions = []  # the ISI is 0 to 100 ms with a bin size of 1 ms
+    
+    for iter_l in range(size_sessions):
+        isi_ = 1000*np.diff(input_dict[keys_[iter_l]])/Fs    #(in ms)
+        isi_hist, edges = np.histogram(isi_,bin_edges)
+        isi_hist_all_sessions.append(isi_hist)
+
+        plt.figure()
+        plt.plot(edges[:-1], isi_hist)
+        plt.savefig(os.path.join(folder_save,f'_day_{keys_[iter_l]}_ISI.png'))
+        plt.close()
+    
+    dict_output = {key:value for key,value in zip(keys_,isi_hist_all_sessions)}
+    return dict_output
+        
+
 def extract_acg(input_dict,Fs,folder_save):    
     # This function is used to plot the ACG for a single unit 
     # input_dict: contains spike times in samples arranged by session
@@ -165,6 +228,32 @@ def func_acg_extract_main(session_folder):
         spike_times_by_clus[i] = np.array(spike_times_by_clus[i])
         spike_count_by_clus[i] = spike_times_by_clus[i].shape[0]
     
+    if os.path.isfile(os.path.join(session_folder, "filt.mda")):
+        filt_signal = readmda(os.path.join(session_folder, "filt.mda")) # caution! big file
+        filt_signal = filt_signal - np.mean(filt_signal,axis = 0)   # CMR (common mode rejected)
+    else:
+        Warning('WARNING: File filt.mda is missing! \n ------------')
+
+    lst_waveforms_all = []
+    lst_amplitudes_all = []
+    lst_cluster_depth = []
+    lst_isi_all = []
+
+    # Read cluster locations
+    clus_loc = pd.read_csv(os.path.join(session_folder,'clus_locations_clean_merged.csv'),header = None)
+    clus_loc = clus_loc.to_numpy()
+
+    # get primary channel for each label
+    pri_ch_lut = -1*np.ones(n_clus, dtype=int)
+    tmp_cnt = 0
+    for (spk_ch, spk_lbl) in zip(firings[0,:], spike_labels):
+        if pri_ch_lut[spk_lbl-1]==-1:
+            pri_ch_lut[spk_lbl-1] = spk_ch-1
+            if tmp_cnt == n_clus-1:
+                break
+            else:
+                tmp_cnt += 1
+
     cluster_all_range = np.arange(0,n_clus)
     interesting_cluster_ids = cluster_all_range[interesting_cluster_ids]
     lst_acg_all = []
@@ -199,6 +288,8 @@ def func_acg_extract_main(session_folder):
         lst_FR_avg_all.append(FR_mean_session)
         lst_x_ticks_all.append(x_ticks)
         
+        depth = int(clus_loc[i_clus,1])  # triangulation by Jiaao
+
         # Extracting plots for only important representative single units
         if np.isin(i_clus,interesting_cluster_ids) and os.path.isfile(interesting_cluster_ids_file):
             
@@ -229,11 +320,30 @@ def func_acg_extract_main(session_folder):
             local_folder_create = result_folder_imp_clusters
             output_dict_acg = extract_acg(dict_local_i_clus,Fs,local_folder_create)
             lst_acg_all.append(output_dict_acg)
+        
+        # Extracting plots for only important representative single units
+        if np.isin(i_clus,interesting_cluster_ids) and os.path.isfile(interesting_cluster_ids_file):
+            # ISI for each session (this unit)
+            local_folder_create = os.path.join(result_folder_imp_clusters,f'clusterid_{i_clus}')
+            if not os.path.isdir(local_folder_create):
+                os.makedirs(local_folder_create)
+            output_dict_isi = extract_isi(dict_local_i_clus,Fs,local_folder_create)
+            lst_isi_all.append(output_dict_isi)
+            # Waveform on shank (this unit)
+            (output_dict_amp,output_dict_waveforms) = extract_waveforms_and_amplitude(filt_signal[pri_ch_lut[i_clus],:],dict_local_i_clus,Fs)
+            lst_waveforms_all.append(output_dict_waveforms)
+            lst_amplitudes_all.append(output_dict_amp)
+            lst_cluster_depth.append(depth)
     
     f1 = os.path.join(result_folder_FR_avg,'FR_avg_by_session.npy')     # Saves all units FR avg
     np.save(f1,lst_FR_avg_all)      
     f2 = os.path.join(result_folder_FR_avg,'sessions_all.npy')
     np.save(f2,lst_x_ticks_all)
+    np.save(os.path.join(result_folder_imp_clusters,'amplitude_hist.npy'),lst_amplitudes_all) # primarily used for representative examples
+    np.save(os.path.join(result_folder_imp_clusters,'waveforms_all.npy'),lst_waveforms_all)     # primarily used for representative examples
+    np.save(os.path.join(result_folder_imp_clusters,'clus_depth.npy'),lst_cluster_depth)    # primarily used for representative examples
+    np.save(os.path.join(result_folder_imp_clusters,'ISI_hist_all.npy'),lst_isi_all)    # primarily used for representative examples
+    
     
     if os.path.isfile(interesting_cluster_ids_file):    # primarily used for representative examples
         f1 = os.path.join(result_folder_imp_clusters,'FR_avg_by_session.npy')
