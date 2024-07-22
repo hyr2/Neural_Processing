@@ -59,7 +59,7 @@ def FR_all_trials(firing_stamp, t_trial_start, trial_duration_in_samples, window
 
 source_dir = '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig2/tmp_bc7/21-12-09/'
 t = time.localtime()
-current_time = time.strftime("%m_%d_%Y_%H_%M", t) + '_fig3F'
+current_time = time.strftime("%m_%d_%Y_%H_%M", t) + '_fig2D'
 # output_folder = os.path.join(r'C:\Rice_2023\Data\Results',current_time)
 filename_save = os.path.join('/home/hyr2-office/Documents/Data/NVC/Results',current_time)
 if not os.path.exists(filename_save):
@@ -91,29 +91,74 @@ time_seq = int(np.ceil(time_seq * Fs/2))
 # number of clusters
 num_clusters = np.unique(Firings_bsl[2,:]).shape[0]
 trial_duration_in_samples = total_time * F_SAMPLE
-window_in_samples = 50e-3 * F_SAMPLE
+time_window = 20e-3
+window_in_samples = time_window * F_SAMPLE
 
 # plot and save waveform profile for each cluster in the curated data
-# for iter_l in range(num_clusters):
-#     filename_save_local = os.path.join(filename_save,'FR' + str(iter_l+1) + '.png')
-#     firing_local = Firings_bsl[1,Firings_bsl[2,:] == iter_l+1]
-#     prim_ch_local = np.squeeze(np.unique(Firings_bsl[0,Firings_bsl[2,:] == iter_l+1])) - 1           # subtract 1 since conventionally prim_channels in .mda start from 1 instead of 0
-#     if prim_ch_local.size != 1:
-#         raise ValueError("Issue in primary channel. Cluster has more than one primary channel!\n")
+for iter_l in range(num_clusters):
+    filename_save_local = os.path.join(filename_save,'FR' + str(iter_l+1) + '.png')
+    firing_local = Firings_bsl[1,Firings_bsl[2,:] == iter_l+1]
+    prim_ch_local = np.squeeze(np.unique(Firings_bsl[0,Firings_bsl[2,:] == iter_l+1])) - 1           # subtract 1 since conventionally prim_channels in .mda start from 1 instead of 0
+    if prim_ch_local.size != 1:
+        raise ValueError("Issue in primary channel. Cluster has more than one primary channel!\n")
     
-#     y = templates[int(prim_ch_local),:,iter_l]
-#     plt.plot(y)
-#     loc_local = geom[int(prim_ch_local),:]
-#     plt.title('ClusterID:' + str(iter_l+1) + str(loc_local))
-#     plt.text(80, -75, firing_local.shape[0] , fontsize=12, color='red', ha='center', va='center')
-#     plt.savefig(filename_save_local,dpi = 100, format = 'png')
-#     plt.clf()
-#     plt.close()
+    y = templates[int(prim_ch_local),:,iter_l]
+    x_axis = np.linspace(-1,1,y.shape[0])    # 2 ms 
+    plt.plot(y, color = 'k', linewidth = 3.5)
+    loc_local = geom[int(prim_ch_local),:]
+    plt.title('ClusterID:' + str(iter_l+1) + str(loc_local))
+    plt.text(80, -75, firing_local.shape[0] , fontsize=12, color='red', ha='center', va='center')
+    plt.savefig(filename_save_local,dpi = 100, format = 'png')
+    plt.clf()
+    plt.close()
+
+
+
+for iter_clust in range(num_clusters):
+    
+    firings_bsl_nr = Firings_bsl[1,Firings_bsl[2,:] == iter_clust+1]  #12 with firings.mda
+    
+    firing_rate_series_nr = raster_all_trials(
+        firings_bsl_nr, 
+        trials_bsl, 
+        trial_duration_in_samples, 
+        window_in_samples
+        )
+    # plt.plot(firing_raster,y1,color = 'black',marker = ".",linestyle = 'None')
+    fig,ax = plt.subplots(1,1)
+    y_local = 0
+    for iter_t in range(len(firing_rate_series_nr)):
+        raster_local = firing_rate_series_nr[iter_t]
+        y_local = iter_t + np.ones(raster_local.shape)
+        ax.plot(raster_local,y_local,color = 'k',marker = "o",linestyle = 'None', markersize = 3,alpha = 0.5,markeredgewidth = 0)
+    ax.set_xlim(2,3.5)
+    fig.set_size_inches(7,4)
+    ax.axis('off')
+    fig.savefig(os.path.join(filename_save,f'cluster_{iter_clust+1}_raster.png'),format = 'png',dpi = 350)
+    plt.close(fig)
     
     
-firings_bsl_351 = Firings_bsl[1,Firings_bsl[2,:] == 351]
-firings_bsl_10 = Firings_bsl[1,Firings_bsl[2,:] == 10]
-firings_bsl_nr = Firings_bsl[1,Firings_bsl[2,:] == 184]
+    # plt.plot(firing_raster,y1,color = 'black',marker = ".",linestyle = 'None')
+    firing_rate_series_nr = FR_all_trials(firings_bsl_nr, 
+    trials_bsl, 
+    trial_duration_in_samples, 
+    window_in_samples
+    )
+    fig,ax = plt.subplots(1,1)
+    x_axis = np.linspace(0,13.5,firing_rate_series_nr.shape[1])
+    ax.plot(x_axis,filter_Savitzky_fast(np.mean(firing_rate_series_nr/time_window,axis = 0)),'k',linewidth = 4)
+    ax.set_xlim(2,3.5)
+    fig.set_size_inches(3.5,2)
+    # ax.axis('off')
+    fig.savefig(os.path.join(filename_save,f'cluster_{iter_clust+1}_FR.png'),format = 'png',dpi = 350)
+    plt.close(fig)
+    
+    
+    
+    
+firings_bsl_351 = Firings_bsl[1,Firings_bsl[2,:] == 37]
+firings_bsl_10 = Firings_bsl[1,Firings_bsl[2,:] == 38]
+firings_bsl_nr = Firings_bsl[1,Firings_bsl[2,:] == 39]  #12 with firings.mda
 
 
 firing_rate_series_351 = raster_all_trials(
@@ -135,31 +180,32 @@ firing_rate_series_nr = raster_all_trials(
     window_in_samples
     )
 # plt.plot(firing_raster,y1,color = 'black',marker = ".",linestyle = 'None')
+fig,ax = plt.subplots(1,1)
 y_local = 0
 for iter_t in range(len(firing_rate_series_10)):
     raster_local = firing_rate_series_10[iter_t]
     y_local = iter_t + np.ones(raster_local.shape)
-    plt.plot(raster_local,y_local,color = 'k',marker = "o",linestyle = 'None', markersize = 8,alpha = 0.5,markeredgewidth = 0)
-plt.xlim(2,3.5)
-plt.axis('off')
-plt.savefig(os.path.join(filename_save,'rh7-10-17-22-cluster10_raster.svg'),format = 'svg')
+    ax.plot(raster_local,y_local,color = 'k',marker = "o",linestyle = 'None', markersize = 8,alpha = 0.5,markeredgewidth = 0)
+ax.set_xlim(2,3.5)
+ax.axis('off')
+fig.savefig(os.path.join(filename_save,'rh7-10-17-22-clusterA_raster.svg'),format = 'svg')
 y_local = 0
-plt.figure()
+fig,ax = plt.subplots(1,1)
 for iter_t in range(len(firing_rate_series_351)):
     raster_local = firing_rate_series_351[iter_t]
     y_local = iter_t + np.ones(raster_local.shape)
-    plt.plot(raster_local,y_local,color = 'red',marker = "o",linestyle = 'None',markersize = 6,alpha = 0.5, markeredgewidth = 0)
-plt.xlim(2,3.5)
+    ax.plot(raster_local,y_local,color = 'red',marker = "o",linestyle = 'None',markersize = 6,alpha = 0.5, markeredgewidth = 0)
+ax.set_xlim(2,3.5)
 plt.axis('off')
-plt.savefig(os.path.join(filename_save,'rh7-10-17-22-cluster351_raster.svg'),format = 'svg')
-plt.figure()
+plt.savefig(os.path.join(filename_save,'rh7-10-17-22-clusterB_raster.svg'),format = 'svg')
+fig,ax = plt.subplots(1,1)
 for iter_t in range(len(firing_rate_series_nr)):
     raster_local = firing_rate_series_nr[iter_t]
     y_local = iter_t + np.ones(raster_local.shape)
-    plt.plot(raster_local,y_local,color = 'blue',marker = "o",linestyle = 'None',markersize = 3)
-plt.xlim(2,3.5)
+    ax.plot(raster_local,y_local,color = 'blue',marker = "o",linestyle = 'None',markersize = 3)
+ax.set_xlim(2,3.5)
 plt.axis('off')
-plt.savefig(os.path.join(filename_save,'rh7-10-17-22-cluster184_raster.svg'),format = 'svg')
+plt.savefig(os.path.join(filename_save,'rh7-10-17-22-clusterC_raster.svg'),format = 'svg')
 
 
 # Firing rate average over trial (single cluster)
@@ -187,19 +233,19 @@ plt.plot(x_axis,filter_Savitzky_fast(np.mean(firing_rate_series_10,axis = 0)),'b
 plt.axis('off')
 plt.xlim(2,3.5)
 plt.ylim(0,2)
-plt.savefig(os.path.join(filename_save,'rh7-10-17-22-cluster10_FR.svg'),format = 'svg')
+plt.savefig(os.path.join(filename_save,'rh7-10-17-22-clusterA_FR.svg'),format = 'svg')
 plt.figure()
 plt.plot(x_axis,filter_Savitzky_fast(np.mean(firing_rate_series_351,axis = 0)),'r',linewidth = 3)
 plt.axis('off')
 plt.xlim(2,3.5)
 plt.ylim(0,2)
-plt.savefig(os.path.join(filename_save,'rh7-10-17-22-cluster351_FR.svg'),format = 'svg')
+plt.savefig(os.path.join(filename_save,'rh7-10-17-22-clusterB_FR.svg'),format = 'svg')
 plt.figure()
 plt.plot(x_axis,filter_Savitzky_fast(np.mean(firing_rate_series_nr,axis = 0)),'b',linewidth = 3)
 plt.axis('off')
 plt.xlim(2,3.5)
 plt.ylim(0,2)
-plt.savefig(os.path.join(filename_save,'rh7-10-17-22-cluster184_FR.svg'),format = 'svg')
+plt.savefig(os.path.join(filename_save,'rh7-10-17-22-clusterC_FR.svg'),format = 'svg')
 # filename_save = '/home/hyr2-office/Documents/Paper/Single-Figures-SVG/Fig2/subfigures/'
 
 
@@ -224,7 +270,7 @@ for iter_l in cluster_ID:
     # plt.savefig(os.path.join(filename_save,'bc7-12-09-21_'+str(cluster_ID)+'.svg'),format = 'svg')
     
 # For spike overlap plots
-filename_save = '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig2/tmp_combined/'
+# filename_save = '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig2/tmp_combined/'
 source_dir = '/home/hyr2-office/Documents/Paper/SIngle-Figures-SVG-LuanVersion/Fig2/tmp_bc7/21-12-31/'
 Firings_bsl = readmda(os.path.join(source_dir,'firings_clean_merged.mda'))
 file_pre_ms = os.path.join(source_dir,'pre_MS.json')

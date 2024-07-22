@@ -27,8 +27,13 @@ colors = vertcat(colors,s2);
 
 
 ind_z = find(z_axis > 21);
-out_arr{1} = mean(area(ind_z));
-out_arr{2} = mean(x_axis(ind_z));
+if isempty(ind_z)
+    out_arr{1} = 0.5;
+    out_arr{2} = NaN; 
+else
+    out_arr{1} = mean(area(ind_z));
+    out_arr{2} = mean(x_axis(ind_z));
+end
 
 out_arr{6} = helper_fill_nans(xaxis_ideal,xaxis_in(2:end),area);    % The area array
 
@@ -90,7 +95,7 @@ set(gca, 'color', 'none');
 rez = [800,1600]; %set desired [horizontal vertical] resolution
 % set(fig,'PaperPosition',[0 0 rez/100],'PaperUnits','inches');
 % exportgraphics(ax,fullfile(filename_fig,'Y.png'));
-xlim([-0.75,0.85]);
+xlim([-0.75,0.85]);     % xlim([-1,0.85]);  For supplementary Sx2 (special axis)
 zlim([-6,56]);
 xticks([]);
 figsave(fig,fullfile(filename_fig,'X.png'),rez,2.5,0);
@@ -114,7 +119,13 @@ colors = vertcat(colors,s2);
 x_shift_bsl = abs(x_axis(2) - x_axis(1));
 y_shift_bsl = abs(y_axis(2) - y_axis(1));
 
-out_arr{3} = mean(y_axis(ind_z));
+if isempty(ind_z)
+    out_arr{3} = NaN;
+else
+    out_arr{3} = mean(y_axis(ind_z));
+end
+
+
 
 z_axis = z_axis(~isnan(y_axis));
 % area = area(~isnan(y_axis));

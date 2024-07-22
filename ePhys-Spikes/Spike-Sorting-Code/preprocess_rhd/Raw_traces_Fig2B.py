@@ -28,6 +28,14 @@ def filterSignal_MUA(input_signal,Fs, axis_value = 0):
     sos = signal.butter(10, cutoff, btype = 'bandpass', output = 'sos', fs = Fs)  # IIR filter
     signal_out = signal.sosfiltfilt(sos, input_signal, axis = axis_value)
     return signal_out
+def filterSignal_LFP(input_signal,Fs, axis_value = 0):
+    # Prep
+    signal_out = np.empty((input_signal.shape),dtype=np.single)
+
+    cutoff = np.array([30,80])
+    sos = signal.butter(5, cutoff, btype = 'bandpass', output = 'sos', fs = Fs)  # IIR filter
+    signal_out = signal.sosfiltfilt(sos, input_signal, axis = axis_value)
+    return signal_out
 
 
 # output_foldeer
@@ -167,5 +175,60 @@ ax.set_xticks([])
 ax.set_yticks([])
 filename_save = os.path.join(output_folder,'Fig3C_3.png')
 plt.savefig(filename_save,dpi=300,format='png')
+
+
+# EXTRA NOT FOR PAPER
+
+# Selecting single shank and all rows
+ephys_data = data_dict['amplifier_data']
+df_tmp = df.loc[df['Shank'] == 0]
+indx_accepted = deepcopy(list(df_tmp.index))
+df_tmp['indexx'] = indx_accepted
+df_tmp = df_tmp.sort_values(by = 'Depth', ascending = True,axis = 0)
+selected_indx = df_tmp['indexx'].to_numpy()
+ephys_data = ephys_data[selected_indx,:]
+for iter_i in range(3):
+    ephys_data[iter_i,:] = ephys_data[iter_i,:] + 250*(iter_i+1)
+fig,ax = plt.subplots(1,1,figsize = (4,6))
+plt.plot(ephys_data[0:3,9000:12000].T,color = '#4d4e4d',linewidth = 1.5)
+sns.despine(top = True, bottom =True,left = True)
+ax.set_xticks([])
+ax.set_yticks([])
+filename_save = os.path.join(output_folder,'RAW_TRACE_EXTRA_0.png')
+plt.savefig(filename_save,dpi=300,format='png')
+
+
+ephys_1 = ephys_data[0:3,9000:12000]
+ephys_lfp = filterSignal_LFP(ephys_1.T, Fs)
+ephys_mua = filterSignal_MUA(ephys_1.T, Fs)
+
+ephys_lfp = ephys_lfp.T
+for iter_i in range(3):
+    ephys_lfp[iter_i,:] = ephys_lfp[iter_i,:] + 250*(iter_i+1)
+fig,ax = plt.subplots(1,1,figsize = (4,6))
+plt.plot(ephys_lfp.T,color = '#4d4e4d',linewidth = 1.5)
+sns.despine(top = True, bottom =True,left = True)
+ax.set_xticks([])
+ax.set_yticks([])
+filename_save = os.path.join(output_folder,'RAW_TRACE_EXTRA_lfp.png')
+plt.savefig(filename_save,dpi=300,format='png')
+
+
+ephys_mua = ephys_mua.T
+for iter_i in range(3):
+    ephys_mua[iter_i,:] = ephys_mua[iter_i,:] + 250*(iter_i+1)
+fig,ax = plt.subplots(1,1,figsize = (4,6))
+plt.plot(ephys_mua.T,color = '#4d4e4d',linewidth = 1.5)
+sns.despine(top = True, bottom =True,left = True)
+ax.set_xticks([])
+ax.set_yticks([])
+filename_save = os.path.join(output_folder,'RAW_TRACE_EXTRA_mua.png')
+plt.savefig(filename_save,dpi=300,format='png')
+
+
+
+
+
+
 
 

@@ -60,8 +60,8 @@ def save_trial_ephys_resample(path_whole_mda, path_dest, *, trial_stamps, resamp
     return trials_npz
 
 if __name__ == "__main__":
-    session_spk_dir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/spikesort_out/processed_data_bc7/2021-12-06"
-    outputdir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/mytempfolder/"
+    session_spk_dir = "/home/hyr2-office/Documents/TransferToPC/LFP_CSD"
+    outputdir = session_spk_dir
     rel_dir = "BC7/2021-12-06"
     fig_dir = "/media/hanlin/Liuyang_10T_backup/jiaaoZ/128ch/spikeSorting128chHaad/tmp_figs/bc7_lfp_test_230301-dn500hz_30-100hz-2021-12-06"
     path_wholemda = os.path.join(outputdir, rel_dir, "converted_data.mda")

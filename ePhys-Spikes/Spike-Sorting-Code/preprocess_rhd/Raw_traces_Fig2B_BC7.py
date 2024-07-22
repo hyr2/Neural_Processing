@@ -25,7 +25,7 @@ def filterSignal_MUA(input_signal,Fs, axis_value = 0):
     signal_out = np.empty((input_signal.shape),dtype=np.single)
 
     cutoff = np.array([500,3000])
-    sos = signal.butter(10, cutoff, btype = 'bandpass', output = 'sos', fs = Fs)  # IIR filter
+    sos = signal.butter(4, cutoff, btype = 'bandpass', output = 'sos', fs = Fs)  # IIR filter
     signal_out = signal.sosfiltfilt(sos, input_signal, axis = axis_value)
     return signal_out
 
@@ -146,26 +146,28 @@ plt.savefig(filename_save,dpi=300,format='png')
 
 # For Figure 3C
 # Selecting single shank and all rows
-Os = 50000
-ephys_data = data_dict['amplifier_data']
-df_tmp = df.loc[df['Shank'] == 3]
-indx_accepted = deepcopy(list(df_tmp.index))
-df_tmp['indexx'] = indx_accepted
-df_tmp = df_tmp.sort_values(by = 'Depth', ascending = True,axis = 0)
-selected_indx = df_tmp['indexx'].to_numpy()
-ephys_data = ephys_data[selected_indx,:]
-for iter_i in range(len(selected_indx)):
-    ephys_data[iter_i,:] = ephys_data[iter_i,:] + 250*(iter_i+1)
-fig,ax = plt.subplots(1,1,figsize = (4,6))
-yy = ephys_data[0:3,1143900:1151499]
-yy = filterSignal_MUA(yy, Fs,axis_value=1)
-for iter_i in range(yy.shape[0]):
-    yy[iter_i,:] = yy[iter_i,:] + 650*(iter_i+1)
-ax.plot(yy.T,color = '#4d4e4d',linewidth = 1.5)
-sns.despine(top = True, bottom =True,left = True)
-ax.set_xticks([])
-ax.set_yticks([])
-filename_save = os.path.join(output_folder,'Fig3C_3.png')
-plt.savefig(filename_save,dpi=300,format='png')
+# Os = 50000
+# ephys_data = data_dict['amplifier_data']
+# df_tmp = df.loc[df['Shank'] == 3]
+# indx_accepted = deepcopy(list(df_tmp.index))
+# df_tmp['indexx'] = indx_accepted
+# df_tmp = df_tmp.sort_values(by = 'Depth', ascending = True,axis = 0)
+# selected_indx = df_tmp['indexx'].to_numpy()
+# ephys_data = ephys_data[selected_indx,:]
+# for iter_i in range(len(selected_indx)):
+#     ephys_data[iter_i,:] = ephys_data[iter_i,:] + 250*(iter_i+1)
+# fig,ax = plt.subplots(1,1,figsize = (4,6))
+# yy = ephys_data[0:3,1143900:1151499]
+# yy = filterSignal_MUA(yy, Fs,axis_value=1)
+# for iter_i in range(yy.shape[0]):
+#     yy[iter_i,:] = yy[iter_i,:] + 650*(iter_i+1)
+# ax.plot(yy.T,color = '#4d4e4d',linewidth = 1.5)
+# sns.despine(top = True, bottom =True,left = True)
+# ax.set_xticks([])
+# ax.set_yticks([])
+# filename_save = os.path.join(output_folder,'Fig3C_3.png')
+# plt.savefig(filename_save,dpi=300,format='png')
+
+
 
 

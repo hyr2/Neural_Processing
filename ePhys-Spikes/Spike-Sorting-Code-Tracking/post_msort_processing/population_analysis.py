@@ -1,5 +1,5 @@
 import os, json
-import sys
+import sys, pickle
 sys.path.append('utils')
 import numpy as np
 from matplotlib import pyplot as plt
@@ -272,6 +272,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     sessions_file = os.path.join(session_folder,'RHDfile_samples.csv')    # RHD samples for files (all sessions) [ending sample of each file if you ignore first entry]
     result_folder = os.path.join(session_folder,'Processed', 'count_analysis')
     result_folder_FR_avg = os.path.join(session_folder,'Processed', 'FR_clusters')
+    result_folder_spktimes = os.path.join(session_folder,'Processed', 'spike_times')
     result_folder_imp_clusters = os.path.join(session_folder,'Processed', 'important_clusters')
     sessions_label_stroke = os.path.join(parent_dir,'Sessions.csv')
     interesting_cluster_ids_file = os.path.join(session_folder,'interesting_clusters_.csv')  # Manually selected cluster IDs from PHY. These could be used as representative examples
@@ -332,7 +333,7 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     if os.path.isfile(interesting_cluster_ids_file):
         interesting_cluster_ids = pd.read_csv(interesting_cluster_ids_file,header = None , index_col= False)
         interesting_cluster_ids = interesting_cluster_ids.iloc[:,0].to_list()
-        os.makedirs(result_folder_imp_clusters)
+        # os.makedirs(result_folder_imp_clusters)
     else:
         interesting_cluster_ids = np.array([0],dtype = np.int16)
         Warning('WARNING: interesting_clusters_.csv not found!\n ')
@@ -349,6 +350,10 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         os.makedirs(result_folder)
     if not os.path.exists(result_folder_FR_avg):
         os.makedirs(result_folder_FR_avg)
+    if not os.path.exists(result_folder_spktimes):
+        os.makedirs(result_folder_spktimes)
+        
+        
     geom_path = os.path.join(session_folder, "geom.csv")
     # curation_mask_path = os.path.join(session_folder, 'accept_mask.csv')        # deparcated
     NATIVE_ORDERS = np.load(os.path.join(session_folder, "native_ch_order.npy"))
@@ -777,6 +782,9 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         dict_local_i_clus = func_create_dict(sessions_label_stroke,spike_time_local,session_sample_abs)     # FR of a single unit by session
         session_sample_abs_tmp = np.insert(session_sample_abs,0,0)
         
+        with open(os.path.join(result_folder_spktimes,f'clus_{i_clus}.pkl'), 'wb') as f:    # saves all spike times 
+            pickle.dump(dict_local_i_clus, f)
+        
         # histogram binning of the FR (2 s binning)
         thiscluster_hist = []
         thiscluster_edges = []
@@ -858,19 +866,19 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
         # Append to output dataframe of all units in current session
         list_all_clus.append(z_clus_dict)
         
-        # Extracting plots for only important representative single units
-        if np.isin(i_clus,interesting_cluster_ids) and os.path.isfile(interesting_cluster_ids_file):
-            # ISI for each session (this unit)
-            local_folder_create = os.path.join(result_folder_imp_clusters,f'clusterid_{i_clus}')
-            if not os.path.isdir(local_folder_create):
-                os.makedirs(local_folder_create)
-            output_dict_isi = extract_isi(dict_local_i_clus,Fs,local_folder_create)
-            lst_isi_all.append(output_dict_isi)
-            # Waveform on shank (this unit)
-            (output_dict_amp,output_dict_waveforms) = extract_waveforms_and_amplitude(filt_signal[pri_ch_lut[i_clus],:],dict_local_i_clus,Fs)
-            lst_waveforms_all.append(output_dict_waveforms)
-            lst_amplitudes_all.append(output_dict_amp)
-            lst_cluster_depth.append(depth)
+        # # Extracting plots for only important representative single units
+        # if np.isin(i_clus,interesting_cluster_ids) and os.path.isfile(interesting_cluster_ids_file):
+        #     # ISI for each session (this unit)
+        #     local_folder_create = os.path.join(result_folder_imp_clusters,f'clusterid_{i_clus}')
+        #     if not os.path.isdir(local_folder_create):
+        #         os.makedirs(local_folder_create)
+        #     output_dict_isi = extract_isi(dict_local_i_clus,Fs,local_folder_create)
+        #     lst_isi_all.append(output_dict_isi)
+        #     # Waveform on shank (this unit)
+        #     (output_dict_amp,output_dict_waveforms) = extract_waveforms_and_amplitude(filt_signal[pri_ch_lut[i_clus],:],dict_local_i_clus,Fs)
+        #     lst_waveforms_all.append(output_dict_waveforms)
+        #     lst_amplitudes_all.append(output_dict_amp)
+        #     lst_cluster_depth.append(depth)
        
         iter_local = iter_local+1
         
@@ -878,47 +886,47 @@ def func_pop_analysis(session_folder,CHANNEL_MAP_FPATH):
     time_FR_session = [iter_l/Fs for iter_l in thiscluster_edges]   # in seconds
     # For clustering and ML    
     # Scaling the data ()
-    X_in = np.transpose(np.stack(lst_filtered_data))
-    scaled_data_list = [
-        StandardScaler().fit_transform(X_in),
-        MaxAbsScaler().fit_transform(X_in),
-        RobustScaler(quantile_range=(25, 75)).fit_transform(X_in)   # bad since outliers units are left intact ie their FR is much different to the rest
-        ]
-    # Plotting scaled outputs
+    # X_in = np.transpose(np.stack(lst_filtered_data))
+    # scaled_data_list = [
+    #     StandardScaler().fit_transform(X_in),
+    #     MaxAbsScaler().fit_transform(X_in),
+    #     RobustScaler(quantile_range=(25, 75)).fit_transform(X_in)   # bad since outliers units are left intact ie their FR is much different to the rest
+    #     ]
+    # # Plotting scaled outputs
     
-    # randomly sample 100 datapoints from each phase of stroke
-    x_ticks[-1] = X_in.shape[0]
-    days_this_dataset = list(dict_local_i_clus.keys())
-    days_this_dataset = np.array(days_this_dataset,dtype = np.int8)
+    # # randomly sample 100 datapoints from each phase of stroke
+    # x_ticks[-1] = X_in.shape[0]
+    # days_this_dataset = list(dict_local_i_clus.keys())
+    # days_this_dataset = np.array(days_this_dataset,dtype = np.int8)
     
-    samples_temporal_phase = [x_ticks[np.where(days_this_dataset < 0)[0][-1]], x_ticks[np.where(days_this_dataset < 21)[0][-1]] , x_ticks[np.where(days_this_dataset < 28)[0][-1]] , x_ticks[-1] ]
+    # samples_temporal_phase = [x_ticks[np.where(days_this_dataset < 0)[0][-1]], x_ticks[np.where(days_this_dataset < 21)[0][-1]] , x_ticks[np.where(days_this_dataset < 28)[0][-1]] , x_ticks[-1] ]
      
-    scaled_data_list_new = []
-    for iter_l in range(len(scaled_data_list)):
+    # scaled_data_list_new = []
+    # for iter_l in range(len(scaled_data_list)):
         
-        arr_local_tmp = scaled_data_list[iter_l][0:samples_temporal_phase[0],:]
-        phase_bsl = np.array([np.random.choice(arr_local_tmp[:,iter_ll],200,replace=False) for iter_ll in range(arr_local_tmp.shape[1])],dtype = np.single)
+    #     arr_local_tmp = scaled_data_list[iter_l][0:samples_temporal_phase[0],:]
+    #     phase_bsl = np.array([np.random.choice(arr_local_tmp[:,iter_ll],200,replace=False) for iter_ll in range(arr_local_tmp.shape[1])],dtype = np.single)
         
-        arr_local_tmp = scaled_data_list[iter_l][samples_temporal_phase[0]:samples_temporal_phase[1],:]
-        phase_rec1 = np.array([np.random.choice(arr_local_tmp[:,iter_ll],100,replace=False) for iter_ll in range(arr_local_tmp.shape[1])],dtype = np.single)
+    #     arr_local_tmp = scaled_data_list[iter_l][samples_temporal_phase[0]:samples_temporal_phase[1],:]
+    #     phase_rec1 = np.array([np.random.choice(arr_local_tmp[:,iter_ll],100,replace=False) for iter_ll in range(arr_local_tmp.shape[1])],dtype = np.single)
         
-        arr_local_tmp = scaled_data_list[iter_l][samples_temporal_phase[1]:samples_temporal_phase[2],:]
-        phase_rec2 = np.array([np.random.choice(arr_local_tmp[:,iter_ll],100,replace=False) for iter_ll in range(arr_local_tmp.shape[1])],dtype = np.single)
+    #     arr_local_tmp = scaled_data_list[iter_l][samples_temporal_phase[1]:samples_temporal_phase[2],:]
+    #     phase_rec2 = np.array([np.random.choice(arr_local_tmp[:,iter_ll],100,replace=False) for iter_ll in range(arr_local_tmp.shape[1])],dtype = np.single)
 
-        arr_local_tmp = scaled_data_list[iter_l][samples_temporal_phase[2]:samples_temporal_phase[3],:]
-        phase_chr = np.array([np.random.choice(arr_local_tmp[:,iter_ll],400,replace=False) for iter_ll in range(arr_local_tmp.shape[1])],dtype = np.single)
+    #     arr_local_tmp = scaled_data_list[iter_l][samples_temporal_phase[2]:samples_temporal_phase[3],:]
+    #     phase_chr = np.array([np.random.choice(arr_local_tmp[:,iter_ll],400,replace=False) for iter_ll in range(arr_local_tmp.shape[1])],dtype = np.single)
         
-        # combing all phases: 100 samples from pre-stroke, 100 samples from recovery phase and 100 samples from chronic phase post stroke
-        phase_all_local = np.concatenate((phase_bsl,phase_rec1,phase_rec2,phase_chr),axis = 1)
+    #     # combing all phases: 100 samples from pre-stroke, 100 samples from recovery phase and 100 samples from chronic phase post stroke
+    #     phase_all_local = np.concatenate((phase_bsl,phase_rec1,phase_rec2,phase_chr),axis = 1)
         
-        # filtering (lowpass)
-        phase_all_local = savgol_filter(phase_all_local,17,3,mode = 'nearest',axis = 1)
-        scaled_data_list_new.append(phase_all_local)
-        # Creating FDataGrid object for sklearn-fda
-        # scaled_data_list_new.append(skfda.FDataGrid(
-        #     data_matrix = phase_all_local,
-        #     grid_points = None
-        #     ))
+    #     # filtering (lowpass)
+    #     phase_all_local = savgol_filter(phase_all_local,17,3,mode = 'nearest',axis = 1)
+    #     scaled_data_list_new.append(phase_all_local)
+    #     # Creating FDataGrid object for sklearn-fda
+    #     # scaled_data_list_new.append(skfda.FDataGrid(
+    #     #     data_matrix = phase_all_local,
+    #     #     grid_points = None
+    #     #     ))
         
         
     

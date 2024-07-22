@@ -9,14 +9,16 @@ import scipy.stats as sc_ss
 import copy, time
 import pandas as pd
 import seaborn as sns
-
+from sklearn import datasets, linear_model
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
 import scipy.stats as sc_st
 
 def get_lower_tri_heatmap(df, output):
     # function used to plot lower half of a triangle using seaborn
     
     df = df.astype('float')
-    df[df < 0.09] = 0     # to create a binary mask for this matrix: 0.1 means 0.05 for one-sided test
+    df[df < 0.05] = 0     # to create a binary mask for this matrix: 0.1 means 0.05 for one-sided test
     
     # mask = np.zeros_like(df, dtype=np.bool)
     # mask[np.triu_indices_from(mask)] = True
@@ -74,6 +76,7 @@ def process_single_shank(folder_input,session_list):
     session_ids = ['session' + str(iter_l) for iter_l in range(num_sessions)]
     c_i = []    # population coupling of unit i
     df_c_i_pr = pd.DataFrame(data=None, index=range(num_units_on_shank) , columns = [session_list])
+    df_fr_spont = pd.DataFrame(data=None, index=range(num_units_on_shank) , columns = [session_list])
     spk_c_i = []   # mean firing rate of this unit
     for iter_s in range(num_sessions):
         for iter_i in range(num_units_on_shank):
@@ -94,18 +97,20 @@ def process_single_shank(folder_input,session_list):
             # c_i_local = np.dot(f_i,f_j_sum) / f_i_mod
             # df_c_i.iat[iter_i,iter_s] = c_i_local
             df_c_i_pr.iat[iter_i,iter_s] = sc_ss.pearsonr(f_j_sum,f_i)[0]        # definition used is: DOI: https://doi.org/10.7554/eLife.56053
+            df_fr_spont.iat[iter_i,iter_s] = A1[iter_i]['FR_avg_spont'][iter_s]
             
             # c_i.append(c_i_local)
             spk_c_i.append(f_i_mod)
-    return df_c_i_pr
+    return df_c_i_pr,df_fr_spont
 
 def full_panel_plot_fig6(result_df,output_folder,str_filesave_flag):
     # significance matrix for baseline vs chronic
     df_sig_matrix = pd.DataFrame(data = None, columns = [0,21,28,42,49],index = [0,21,28,42,49])
     df_sig_array = pd.Series(data = None,index = [0,1])
     # df_sig_matrix_ks = pd.Series(data=None, index = [21,28,42,49])
-    
+    result_df.reset_index(inplace = True, drop  = True)
     result_df.fillna(0,inplace = True)
+    
     delta_c_bsl = result_df.iloc[:,0] - result_df.iloc[:,1]
     delta_c_bsl = delta_c_bsl.to_numpy(dtype=float)
     bsl_avg = (result_df.iloc[:,0] + result_df.iloc[:,1])/2
@@ -139,22 +144,35 @@ def full_panel_plot_fig6(result_df,output_folder,str_filesave_flag):
     delta_c_bsl = delta_c_bsl.to_numpy(dtype=float)
     bsl_avg = (result_df.iloc[:,0] + result_df.iloc[:,1])/2     
 
-    delta_c_bsl_21 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,2].to_numpy(dtype = float)
-    delta_c_bsl_28 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,3].to_numpy(dtype = float)
-    delta_c_bsl_42 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,4].to_numpy(dtype = float)
-    delta_c_bsl_49 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,5].to_numpy(dtype = float)
+    # delta_c_bsl_21 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,2].to_numpy(dtype = float)
+    # delta_c_bsl_28 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,3].to_numpy(dtype = float)
+    # delta_c_bsl_42 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,4].to_numpy(dtype = float)
+    # delta_c_bsl_49 = bsl_avg.to_numpy(dtype = float) - result_df.iloc[:,5].to_numpy(dtype = float)
 
     # df_sig_matrix.at[0,14] = sc_st.ttest_ind(delta_c_bsl,delta_c_bsl_14)[1]
-    df_sig_matrix.at[0,21] = sc_st.ttest_ind(delta_c_bsl,delta_c_bsl_21)[1]
-    df_sig_matrix.at[0,28] = sc_st.ttest_ind(delta_c_bsl,delta_c_bsl_28)[1]
-    df_sig_matrix.at[0,42] = sc_st.ttest_ind(delta_c_bsl,delta_c_bsl_42)[1]
-    df_sig_matrix.at[0,49] = sc_st.ttest_ind(delta_c_bsl,delta_c_bsl_49)[1]
-    df_sig_matrix.at[21,28] = sc_st.ttest_ind(delta_c_bsl,result_df.iloc[:,3].to_numpy(dtype = float) - result_df.iloc[:,2].to_numpy(dtype = float))[1]
-    df_sig_matrix.at[21,42] = sc_st.ttest_ind(delta_c_bsl,result_df.iloc[:,4].to_numpy(dtype = float) - result_df.iloc[:,2].to_numpy(dtype = float))[1]
-    df_sig_matrix.at[21,49] = sc_st.ttest_ind(delta_c_bsl,result_df.iloc[:,5].to_numpy(dtype = float) - result_df.iloc[:,2].to_numpy(dtype = float))[1]
-    df_sig_matrix.at[28,42] = sc_st.ttest_ind(delta_c_bsl,result_df.iloc[:,4].to_numpy(dtype = float) - result_df.iloc[:,3].to_numpy(dtype = float))[1]
-    df_sig_matrix.at[28,49] = sc_st.ttest_ind(delta_c_bsl,result_df.iloc[:,5].to_numpy(dtype = float) - result_df.iloc[:,3].to_numpy(dtype = float))[1]
-    df_sig_matrix.at[42,49] = sc_st.ttest_ind(delta_c_bsl,result_df.iloc[:,5].to_numpy(dtype = float) - result_df.iloc[:,4].to_numpy(dtype = float))[1]
+    # df_sig_matrix.at[0,21] = sc_st.ttest_ind(bsl_avg,result_df.iloc[:,2])[1]
+    # df_sig_matrix.at[0,28] = sc_st.ttest_ind(bsl_avg,result_df.iloc[:,3])[1]
+    # df_sig_matrix.at[0,42] = sc_st.ttest_ind(bsl_avg,result_df.loc[np.logical_not(result_df.iloc[:,4] == 0),42])[1]
+    # df_sig_matrix.at[0,49] = sc_st.ttest_ind(bsl_avg,result_df.loc[np.logical_not(result_df.iloc[:,5] == 0),49])[1]
+    # df_sig_matrix.at[21,28] = sc_st.ttest_ind(result_df.iloc[:,2],result_df.iloc[:,3])[1]
+    # df_sig_matrix.at[21,42] = sc_st.ttest_ind(result_df.iloc[np.logical_not(result_df.iloc[:,4] == 0),2],result_df.loc[np.logical_not(result_df.iloc[:,4] == 0),42])[1]
+    # df_sig_matrix.at[21,49] = sc_st.ttest_ind(result_df.iloc[np.logical_not(result_df.iloc[:,5] == 0),2],result_df.loc[np.logical_not(result_df.iloc[:,5] == 0),49])[1]
+    # df_sig_matrix.at[28,42] = sc_st.ttest_ind(result_df.iloc[np.logical_not(result_df.iloc[:,4] == 0),3],result_df.loc[np.logical_not(result_df.iloc[:,4] == 0),42])[1]
+    # df_sig_matrix.at[28,49] = sc_st.ttest_ind(result_df.iloc[np.logical_not(result_df.iloc[:,5] == 0),3],result_df.loc[np.logical_not(result_df.iloc[:,5] == 0),49])[1]
+    # df_sig_matrix.at[42,49] = sc_st.ttest_ind(result_df.loc[np.logical_not(result_df.iloc[:,4] == 0),42],result_df.loc[np.logical_not(result_df.iloc[:,5] == 0),49])[1]
+    
+    
+    # df_sig_matrix.at[0,14] = sc_st.ttest_ind(delta_c_bsl,delta_c_bsl_14)[1]
+    df_sig_matrix.at[0,21] = sc_st.ttest_ind(bsl_avg,result_df.iloc[:,2])[1]
+    df_sig_matrix.at[0,28] = sc_st.ttest_ind(bsl_avg,result_df.iloc[:,3])[1]
+    df_sig_matrix.at[0,42] = sc_st.ttest_ind(bsl_avg[np.logical_not(result_df.iloc[:,4] == 0).to_numpy()],result_df.loc[np.logical_not(result_df.iloc[:,4] == 0).to_numpy(),42])[1]
+    df_sig_matrix.at[0,49] = sc_st.ttest_ind(bsl_avg[np.logical_not(result_df.iloc[:,5] == 0).to_numpy()],result_df.loc[np.logical_not(result_df.iloc[:,5] == 0).to_numpy(),49])[1]
+    df_sig_matrix.at[21,28] = sc_st.ttest_ind(result_df.iloc[:,2],result_df.iloc[:,3])[1]
+    df_sig_matrix.at[21,42] = sc_st.ttest_ind(result_df.loc[np.logical_not(result_df.iloc[:,4] == 0).to_numpy(),21],result_df.loc[np.logical_not(result_df.iloc[:,4] == 0).to_numpy(),42])[1]
+    df_sig_matrix.at[21,49] = sc_st.ttest_ind(result_df.loc[np.logical_not(result_df.iloc[:,5] == 0).to_numpy(),21],result_df.loc[np.logical_not(result_df.iloc[:,5] == 0).to_numpy(),49])[1]
+    df_sig_matrix.at[28,42] = sc_st.ttest_ind(result_df.loc[np.logical_not(result_df.iloc[:,4] == 0).to_numpy(),28],result_df.loc[np.logical_not(result_df.iloc[:,4] == 0).to_numpy(),42])[1]
+    df_sig_matrix.at[28,49] = sc_st.ttest_ind(result_df.loc[np.logical_not(result_df.iloc[:,5] == 0).to_numpy(),28],result_df.loc[np.logical_not(result_df.iloc[:,5] == 0).to_numpy(),49])[1]
+    df_sig_matrix.at[42,49] = sc_st.ttest_ind(result_df.loc[51:,42],result_df.loc[51:,49])[1]
     
     get_lower_tri_heatmap(df_sig_matrix,os.path.join(output_folder,f'{str_filesave_flag}_significance_matrix_variation_lan.png'))     # plotting significance matrix
     
@@ -439,7 +457,9 @@ if __name__ == '__main__':
     dict_config['rh11'] = np.array([-3,-2,14,21,28,35,42,49])
     dict_config['rh7'] = np.array([-3,-2,14,21,28,35,42,49])
     result_df = pd.DataFrame(data=None,columns = [dict_config['rh8'].tolist()])
+    result_df_fr = pd.DataFrame(data=None,columns = [dict_config['rh8'].tolist()])
     result_df.columns = dict_config['rh8'].tolist()
+    result_df_fr.columns = dict_config['rh8'].tolist()
     for shank_id in input_dir_list:
         
         # Get session for the mouse (using regular expressions)
@@ -447,21 +467,28 @@ if __name__ == '__main__':
         match = pattern.search(shank_id)
         indx_str = match.group()[15:-1]
         # Call main processing function for c_i ie coupling coefficient
-        df_c_i_pr = process_single_shank(shank_id,dict_config[indx_str].tolist())
+        df_c_i_pr,df_fr_spont = process_single_shank(shank_id,dict_config[indx_str].tolist())
         df_c_i_pr.columns = dict_config[indx_str].tolist()
+        df_fr_spont.columns = dict_config[indx_str].tolist()
         result_df = pd.concat([result_df, df_c_i_pr], axis=0)
+        result_df_fr = pd.concat([result_df_fr, df_fr_spont], axis=0)
         
     result_df.drop(columns=[14,35,56],inplace=True)     # keeping only chronic phase of the stroke
+    result_df_fr.drop(columns=[14,35,56],inplace=True)     # keeping only chronic phase of the stroke
     with open(os.path.join(output_folder,'pop_coupling_tracked.pkl'), 'wb') as f:    # saves all spike times 
         pickle.dump(result_df,f)
+    with open(os.path.join(output_folder,'fr_tracked.pkl'), 'wb') as f:    # saves all spike times 
+        pickle.dump(result_df_fr,f)
         
+        
+    # -------------------------- RUN FROM HERE -------------------------- NO NEED TO RUN PREVIOUS SCRIPTS IF pop_coupling_tracked.pkl exists
     with open(os.path.join('/home/hyr2-office/Documents/Data/NVC/Results/04_02_2024_10_21_pop_coupling','pop_coupling_tracked.pkl'), 'rb') as f:    # load all spike times 
         result_df = pickle.load(f)
     # this function is used to plot everything for c_i statistics
     output_foldertmp = os.path.join(output_folder,'all') 
     os.makedirs(output_foldertmp)
     full_panel_plot_fig6(result_df,output_foldertmp,'all')
-    
+        
     # Importing data from Figure 5 and correlating with Figure 5's PCA clusters
     # Note that the numbers of clustered into each category are slighlty different because this was a 2nd code run from the one used to generate Fig5.
     with open(os.path.join('/home/hyr2-office/Documents/Data/NVC/Results/PAPER_RESULTS/Fig5/Fig5_plots_04_19_2024_10_25','Fig6_dictionary.pkl'), 'rb') as f:
@@ -541,3 +568,127 @@ if __name__ == '__main__':
     filename_l = f'Ci_potnetiatedonly_preVSpost.png'
     fig.savefig(os.path.join(output_folder,filename_l),dpi = 300)
     sc_st.ttest_ind(df_potentiate_final.loc[df_potentiate_final['potentiate'] == 'Y','c_i'],df_potentiate_final.loc[df_potentiate_final['potentiate'] == 'N','c_i'])[1]  # stat test for bar plot
+    
+    
+    # -------------------------- RUN FROM HERE -------------------------- NO NEED TO RUN PREVIOUS SCRIPTS If fr_tracked.pkl exists
+    with open(os.path.join('/home/hyr2-office/Documents/Data/NVC/Results/PAPER_RESULTS/SF_x8/05_18_2024_17_37_pop_coupling','fr_tracked.pkl'), 'rb') as f:    # load all spike times 
+        result_df_fr = pickle.load(f)
+    # Sx8 
+    
+    # read on linear regression: https://www.colorado.edu/amath/sites/default/files/attached-files/ch12_0.pdf
+    
+    df_bsl = pd.DataFrame(data=None, columns = ['day','FR','Ci'])
+    df_bsl.loc[:,'FR'] = result_df_fr.iloc[:,0:2].melt(var_name='day', value_name='FR')
+    df_bsl.loc[:,'Ci'] = result_df.iloc[:,0:2].melt(var_name='day', value_name='Ci')
+    
+    df_bsl = df_bsl.loc[(df_bsl['FR'] > 0.1),:]
+    
+    df_chr = pd.DataFrame(data=None, columns = ['day','FR','Ci'])
+    df_chr.loc[:,'FR'] = result_df_fr.iloc[:,2:].melt(var_name='day', value_name='FR')
+    df_chr.loc[:,'Ci'] = result_df.iloc[:,0:2:].melt(var_name='day', value_name='Ci')
+    
+    df_chr = df_chr.loc[(df_chr['FR'] > 0.1),:]
+    
+    fig,ax = plt.subplots(1,2)
+    
+    sns.scatterplot(data= df_bsl,x = 'FR', y = 'Ci',ax  = ax[0],s = 35,alpha = 0.6,c = '#4f85b0')
+    ax[0].set_xlim(-2,30)    
+    ax[0].set_xlabel('')
+    ax[0].set_ylabel('')
+    sns.scatterplot(data= df_chr,x = 'FR', y = 'Ci', ax = ax[1],s = 35,alpha = 0.6,c = '#060606' )
+    ax[1].set_xlim(-2,37)  
+    ax[1].set_xlabel('')
+    ax[1].set_ylabel('')
+
+    # baseline datasets
+    x = df_bsl['FR'].to_numpy(dtype ='float')
+    y = df_bsl['Ci'].to_numpy(dtype = 'float')
+    np.savez(os.path.join(output_folder,'bsl_regr.npz'),X = x, Y = y)
+    
+
+    # Assuming x and y are your data
+    correlation_matrix = np.corrcoef(x, y)
+    correlation_xy = correlation_matrix[0,1]
+    r_squared1 = correlation_xy**2
+    print("Coefficient of determination(correlation): %.4f" % r_squared1)      # The coefficient of determination: 1 is perfect prediction
+    # using scikit-learn 
+    X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3)
+    X_train = X_train.reshape(-1,1)
+    X_test = X_test.reshape(-1,1)
+    y_train = y_train.reshape(-1,1)
+    y_test = y_test.reshape(-1,1)
+    regr = linear_model.LinearRegression()
+    fitted = regr.fit(X_train, y_train)
+    y_pred = regr.predict(X_test)
+    # The coefficients
+    print("Coefficients: \n", fitted.coef_)
+    print("Mean squared error: %.4f" % mean_squared_error(y_test, y_pred))      # The mean squared error
+    print("Coefficient of determination: %.4f" % r2_score(y_test, y_pred))      # The coefficient of determination: 1 is perfect prediction
+    beta_predict = fitted.coef_[0][0]
+    SSE = ((y_test-y_pred)**2).sum()
+    Sxx = ((X_test - X_test.mean())**2).sum()
+    s = np.sqrt(SSE/(X_test.shape[0] - 2))
+    sigma_beta1 = s/np.sqrt(Sxx)
+    
+    CI_min = beta_predict - sigma_beta1 * 1.984     #(t-test with alpha = 0.05 two-sided)
+    CI_min = beta_predict + sigma_beta1 * 1.984 
+    # plt.scatter(X_test, y_test, color="blue", linewidth=3)
+    ax[0].plot(X_test, y_pred, color="r", alpha = 0.5, linestyle = '-',linewidth=3)
+    ax[0].title.set_text(f'{r2_score(y_test, y_pred)}')
+    ax[0].tick_params(
+        axis='x',          # changes apply to the x-axis
+        which='both',      # both major and minor ticks are affected
+        top=False,      # ticks along the bottom edge are off
+        bottom=True) # labels along the bottom edge are off
+    ax[0].tick_params(
+        axis='y',          # changes apply to the x-axis
+        which='both',      # both major and minor ticks are affected
+        left=True,        # ticks along the bottom edge are off
+        right=False)          # labels along the bottom edge are off
+    
+    # chronic datasets
+    x = df_chr['FR'].to_numpy(dtype ='float')
+    y = df_chr['Ci'].to_numpy(dtype = 'float')
+    x = x[np.isfinite(y)]
+    y = y[np.isfinite(y)]
+    np.savez(os.path.join(output_folder,'chr_regr.npz'),X = x, Y = y)
+    # Assuming x and y are your data
+    correlation_matrix = np.corrcoef(x, y)
+    correlation_xy = correlation_matrix[0,1]
+    r_squared2 = correlation_xy**2
+    print("Coefficient of determination(correlation): %.4f" % r_squared2)      # The coefficient of determination: 1 is perfect prediction
+    # using scikit-learn 
+    X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3)
+    X_train = X_train.reshape(-1,1)
+    X_test = X_test.reshape(-1,1)
+    y_train = y_train.reshape(-1,1)
+    y_test = y_test.reshape(-1,1)
+    regr = linear_model.LinearRegression()
+    regr.fit(X_train, y_train)
+    y_pred = regr.predict(X_test)
+    # The coefficients
+    print("Coefficients: \n", regr.coef_)
+    print("Mean squared error: %.4f" % mean_squared_error(y_test, y_pred))      # The mean squared error
+    print("Coefficient of determination: %.4f" % r2_score(y_test, y_pred))      # The coefficient of determination: 1 is perfect prediction
+    # plt.scatter(X_test, y_test, color="blue", linewidth=3)
+    # plt.scatter(X_test, y_test, color="black")
+    ax[1].plot(X_test, y_pred, color="r", alpha = 0.5, linestyle = '-',linewidth=3)
+    ax[1].title.set_text(f'{r2_score(y_test, y_pred)}')
+    ax[1].tick_params(
+        axis='x',          # changes apply to the x-axis
+        which='both',      # both major and minor ticks are affected
+        top=False,      # ticks along the bottom edge are off
+        bottom=True) # labels along the bottom edge are off
+    ax[1].tick_params(
+        axis='y',          # changes apply to the x-axis
+        which='both',      # both major and minor ticks are affected
+        left=True,        # ticks along the bottom edge are off
+        right=False)          # labels along the bottom edge are off
+    
+    fig.set_size_inches(6,3)
+    # fig.suptitle(f'bsl:{r2_score(y_test, y_pred)} and chr:{}')
+    filename_save = os.path.join(output_folder,'Fig_Sx8.png')
+    fig.savefig(filename_save,format = 'png',dpi = 300)
+    
+    # Using Scipy for regression
+    slope, intercept, r_value, p_value, std_err = sc_st.linregress(np.squeeze(X_test),np.squeeze(y_test))

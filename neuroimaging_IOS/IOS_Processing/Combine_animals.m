@@ -45,6 +45,8 @@ for iter_filename = file_X
 end
 
 % BHC7
+shank_max_id_i = 2;   % Shank B
+shank_max_id_f = 2;   % Shank B
 file_X = dir_sorted(mouse_bhc7);
 file_X = {file_X.name};
 file_X =  file_X(~ismember(file_X,{'.','..'}));
@@ -62,9 +64,15 @@ for iter_filename = file_X
         struct_bhc7{iter_local} = load(File_load_local);
         File_load_local = fullfile(source_dir,'Processed','mat_files','580nm_processed.mat');
         struct_bhc7_580{iter_local} = load(File_load_local);
+        File_load_local = fullfile(source_dir,'Processed','mat_files','ROI.mat');
+        tmp_load = load(File_load_local);
+        struct_bhc7_shank{iter_local}.I = extract_centroid_from_mask(tmp_load.mask(:,:,shank_max_id_i));
+        struct_bhc7_shank{iter_local}.F = extract_centroid_from_mask(tmp_load.mask(:,:,shank_max_id_f));
     end
 end
 struct_bhc7 = [struct_bhc7(1) , struct_bhc7];   % copy the baseline since only one baseline session exists
+struct_bhc7_580 = [struct_bhc7_580(1) , struct_bhc7_580];   % copy the baseline since only one baseline session exists
+struct_bhc7_shank = [struct_bhc7_shank(1) , struct_bhc7_shank];   % copy the baseline since only one baseline session exists
 % BC7
 shank_max_id_i = 1;   % Shank A
 shank_max_id_f = 4;   % Shank D
@@ -261,11 +269,13 @@ filename_fig = fullfile(output_dir,'bhc7_out');
 out_bhc7 = func_plot3d(struct_bhc7,struct_bhc7_580,xaxis_bhc7,filename_fig,bsl_indx);
 filename_fig = fullfile(output_dir,'bc8_out');
 out_bc8 = func_plot3d(struct_bc8,struct_bc8_580,xaxis_bc8,filename_fig,bsl_indx);
+filename_fig = fullfile(output_dir,'bhc7_out');
+out_bhc7 = func_plot3d(struct_bhc7,struct_bhc7_580,xaxis_bhc7,filename_fig,bsl_indx);
 % filename_fig = fullfile(output_dir,'bbc5_out');
 % out_bbc5 = func_plot3d(struct_bbc5,xaxis_bbc5,filename_fig);
 
 % Distance between shanks and cortical activation center
-bsl_distances = zeros(1,2*7);
+bsl_distances = zeros(1,2*8);
 bsl_distances([1,2]) = [norm(struct_bc7_580{1,1}.wv_580.Coord_c - struct_bc7_shank{1,1}.I),norm(struct_bc7_580{1,2}.wv_580.Coord_c - struct_bc7_shank{1,2}.I)];
 bsl_distances([3,4]) = [norm(struct_bc8_580{1,1}.wv_580.Coord_c - struct_bc8_shank{1,1}.I),norm(struct_bc8_580{1,2}.wv_580.Coord_c - struct_bc8_shank{1,2}.I)];
 bsl_distances([5,6]) = [norm(struct_rh3_580{1,1}.wv_580.Coord_c - struct_rh3_shank{1,1}.I),norm(struct_rh3_580{1,2}.wv_580.Coord_c - struct_rh3_shank{1,2}.I)];
@@ -273,6 +283,7 @@ bsl_distances([7,8]) = [norm(struct_rh7_580{1,1}.wv_580.Coord_c - struct_rh7_sha
 bsl_distances([9,10]) = [norm(struct_rh8{1,1}.wv_480.Coord_c - struct_rh8_shank{1,1}.I),norm(struct_rh8{1,2}.wv_480.Coord_c - struct_rh8_shank{1,2}.I)];
 bsl_distances([11,12]) = [norm(struct_rh9_580{1,1}.wv_580.Coord_c - struct_rh9_shank{1,1}.I),norm(struct_rh9_580{1,2}.wv_580.Coord_c - struct_rh9_shank{1,2}.I)];
 bsl_distances([13,14]) = [norm(struct_rh11_580{1,1}.wv_580.Coord_c - struct_rh11_shank{1,1}.I),norm(struct_rh11_580{1,2}.wv_580.Coord_c - struct_rh11_shank{1,2}.I)];
+bsl_distances([15,16]) = [norm(struct_bhc7_580{1,1}.wv_580.Coord_c - struct_bhc7_shank{1,1}.I),norm(struct_bhc7_580{1,2}.wv_580.Coord_c - struct_bhc7_shank{1,2}.I)];
 bsl_distances = 8e-3 * bsl_distances;
 chr_distances = zeros(1,2*7);
 chr_distances([1,2]) = [norm(struct_bc7_580{1,7}.wv_580.Coord_c - struct_bc7_shank{1,7}.F),norm(struct_bc7_580{1,8}.wv_580.Coord_c - struct_bc7_shank{1,8}.F)];
@@ -284,22 +295,23 @@ chr_distances([11,12]) = [norm(struct_rh9_580{1,8}.wv_580.Coord_c - struct_rh9_s
 chr_distances([13,14]) = [norm(struct_rh11_580{1,8}.wv_580.Coord_c - struct_rh11_shank{1,8}.F),norm(struct_rh11_580{1,9}.wv_580.Coord_c - struct_rh11_shank{1,9}.F)];
 chr_distances = 8e-3 * chr_distances;
 [h,p] = ttest2(bsl_distances,chr_distances,'Tail','left');
+fprintf('Quote in Fig1 caption. Ephys vs IOS shift has a p-value: %0.3f', p);
 
 
 % Statistics on average shifts post stroke
-X_vec = abs([out_rh3{2},out_rh7{2},out_rh8{2},out_rh9{2},out_rh11{2},out_bc8{2}]);
-avg_X = mean(X_vec);
-sem_X = std(X_vec)/sqrt(length(X_vec));
+X_vec = abs([out_rh3{2},out_rh7{2},out_rh8{2},out_rh9{2},out_rh11{2},out_bc8{2},out_bc7{2},out_bhc7{2}]);
+avg_X = nanmean(X_vec);
+sem_X = nanstd(X_vec)/sqrt(sum(~isnan(X_vec)));
 
 % Statistics on average shifts post stroke
-Y_vec = abs([out_rh3{3},out_rh7{3},out_rh8{3},out_rh9{3},out_rh11{3},out_bc8{3}]);
-avg_Y = mean(Y_vec);
-sem_Y = std(Y_vec)/sqrt(length(Y_vec));
+Y_vec = abs([out_rh3{3},out_rh7{3},out_rh8{3},out_rh9{3},out_rh11{3},out_bc8{3},out_bc7{3},out_bhc7{3}]);
+avg_Y = nanmean(Y_vec);
+sem_Y = nanstd(Y_vec)/sqrt(sum(~isnan(Y_vec)));
 
 % Statistics on average relative area post stroke
-area_vec = [out_rh3{1},out_rh7{1},out_rh8{1},out_rh9{1},out_rh11{1},out_bc8{1}];   % bhc7,bbc5, bc7 not included. Bad animals
+area_vec = [out_rh3{1},out_rh7{1},out_rh8{1},out_rh9{1},out_rh11{1},out_bc8{1},out_bc7{1},out_bhc7{1}];   % bhc7,bbc5, bc7 not included. Bad animals
 avg_area = mean(area_vec);
-sem_area = std(area_vec)/sqrt(length(area_vec));
+sem_area = std(area_vec)/sqrt(sum(~isnan(area_vec)));
 
 % Statistics on average distance shifts post stroke
 % shift_vec_bsl = [out_rh3{5}(find(out_rh3{4} <= 2))',out_rh7{5}(find(out_rh7{4} <= 2))',...
@@ -309,13 +321,14 @@ sem_area = std(area_vec)/sqrt(length(area_vec));
 shift_vec_early = [out_rh3{5}(find(out_rh3{4} < 21))',out_rh7{5}(find(out_rh7{4} < 21))',...
     out_rh8{5}(find(out_rh8{4} < 21))',out_rh9{5}(find(out_rh9{4} < 21))',...
     out_rh11{5}(find(out_rh11{4} < 21))',out_bhc7{5}(find(out_bhc7{4} < 21))',...
-    out_bc8{5}(find(out_bc8{4} < 21))'];
+    out_bc8{5}(find(out_bc8{4} < 21))', out_bc7{5}(find(out_bc7{4} < 21))' ];
 shift_vec_chronic = [out_rh3{5}(find(out_rh3{4} >= 21))',out_rh7{5}(find(out_rh7{4} >= 21))',...
     out_rh8{5}(find(out_rh8{4} >= 21))',out_rh9{5}(find(out_rh9{4} >= 21))',...
-    out_rh11{5}(find(out_rh11{4} >= 21))',out_bc8{5}(find(out_bc8{4} >= 21))'];
+    out_rh11{5}(find(out_rh11{4} >= 21))',out_bc8{5}(find(out_bc8{4} >= 21))', ...
+    out_bc7{5}(find(out_bc7{4} >= 21))'];
 
 % For quoting value of shift during baseline sessions (averaged all mice)
-vec_bsl_shift = [out_rh3{6},out_rh7{6},out_rh8{6},out_rh9{6},out_rh11{6},out_bc8{6},out_bhc7{6},out_bc8{6},out_bc7{6}]; % I include bhc7 which has good baselines
+vec_bsl_shift = [out_rh3{6},out_rh7{6},out_rh8{6},out_rh9{6},out_rh11{6},out_bc8{6},out_bhc7{6},out_bc7{6}]; % I include bhc7 which has good baselines
 fprintf('Quote in Fig1 Text. Inter-session shift during pre-stroke sessions: %0.3f +/- %0.3f\n', mean(vec_bsl_shift),std(vec_bsl_shift)/sqrt(length(vec_bsl_shift)));
 
 % For Figure 1H (new)

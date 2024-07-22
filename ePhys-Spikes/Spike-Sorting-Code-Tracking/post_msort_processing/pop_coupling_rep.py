@@ -37,8 +37,52 @@ def replace_submatrix(mat, ind1, ind2, mat_replace):
   for i, index in enumerate(ind1):
     mat[index, ind2] = mat_replace[i, :]
   return mat
-    
 
+def compute_pop_coupling_single_session():
+
+def compute_pop_coupling(A1,num_sessions,num_units_on_shank):
+    dict_config = {}
+    dict_config['rh11'] = np.array([-3,-2,14,21,28,35,42,49])
+    df_c_i_pr = pd.DataFrame(data=None, index=range(num_units_on_shank) , columns = dict_config['rh11'].tolist())    # population coupling of unit i
+    for iter_s in range(num_sessions):
+        
+        f_i_M = np.empty((num_units_on_shank,A1[0]['FR_session'][iter_s].shape[0]),dtype = np.int8)     # input activity matrix
+        f_i_mod = np.empty((num_units_on_shank,),dtype = np.int64)  # number of spikes for each unit
+        for iter_i in range(num_units_on_shank):
+            f_i_M[iter_i,:] = np.reshape(A1[iter_i]['FR_session'][iter_s],(1,-1))
+            f_i_mod[iter_i] = A1[iter_i]['spike_count_session'][iter_s]
+            
+        
+        f_i = sc_i.gaussian_filter1d(f_i_M,10.19/np.sqrt(2),axis = 1)
+        f_j_sum = np.zeros(f_i.shape,dtype = np.float64)    #initialize array
+        f_j_sum = np.sum(f_i[np.arange(f_i.shape[0]) != row_to_exclude], axis=0)
+        for iter_j in range(num_units_on_shank):            # this is the summation over the units except for i
+            if iter_j == iter_i:
+                continue
+            filtered_signal = sc_i.gaussian_filter1d(A1[iter_j]['FR_session'][iter_s],10.19/np.sqrt(2))
+            f_j = filtered_signal
+            f_j_sum = f_j_sum + f_j
+        
+        for iter_i in range(num_units_on_shank):
+            
+            f_i = sc_i.gaussian_filter1d(A1[iter_i]['FR_session'][iter_s],10.19/np.sqrt(2))
+            f_i_mod = A1[iter_i]['spike_count_session'][iter_s]
+            
+            f_j_sum = np.zeros(f_i.shape,dtype = np.float64)    #initialize array
+            for iter_j in range(num_units_on_shank):            # this is the summation over the units except for i
+                if iter_j == iter_i:
+                    continue
+                filtered_signal = sc_i.gaussian_filter1d(A1[iter_j]['FR_session'][iter_s],10.19/np.sqrt(2))
+                f_j = filtered_signal
+                f_j_sum = f_j_sum + f_j
+            f_j_sum = f_j_sum/(num_units_on_shank-1)    
+            df_c_i_pr.iat[iter_i,iter_s] = sc_ss.pearsonr(f_j_sum,f_i)[0]        # definition used is: DOI: https://doi.org/10.7554/eLife.56053
+            
+            
+    # plotting figure 6C
+    df_c_i_pr['x_jitter'] = np.random.random_integers(low = -4,high = 4,size=(len(df_c_i_pr),))
+    return df_c_i_pr
+    
 script_name = '_pop_coupling_representative'
 t = time.localtime()
 current_time = time.strftime("%m_%d_%Y_%H_%M", t)
@@ -61,26 +105,9 @@ depth_list = np.array(depth_list,dtype = np.int16)
 depth_list= depth_list
 
 # Population Coupling Coefficients with the population 
-dict_config = {}
-dict_config['rh11'] = np.array([-3,-2,14,21,28,35,42,49])
-df_c_i_pr = pd.DataFrame(data=None, index=range(num_units_on_shank) , columns = dict_config['rh11'].tolist())    # population coupling of unit i
-for iter_s in range(num_sessions):
-    for iter_i in range(num_units_on_shank):
-        
-        f_i = sc_i.gaussian_filter1d(A1[iter_i]['FR_session'][iter_s],10.19/np.sqrt(2))
-        f_i_mod = A1[iter_i]['spike_count_session'][iter_s]
-        
-        f_j_sum = np.zeros(f_i.shape,dtype = np.float64)    #initialize array
-        for iter_j in range(num_units_on_shank):            # this is the summation over the units except for i
-            if iter_j == iter_i:
-                continue
-            filtered_signal = sc_i.gaussian_filter1d(A1[iter_j]['FR_session'][iter_s],10.19/np.sqrt(2))
-            f_j = filtered_signal
-            f_j_sum = f_j_sum + f_j
-        f_j_sum = f_j_sum/(num_units_on_shank-1)    
-        df_c_i_pr.iat[iter_i,iter_s] = sc_ss.pearsonr(f_j_sum,f_i)[0]        # definition used is: DOI: https://doi.org/10.7554/eLife.56053
-# plotting figure 6C
-df_c_i_pr['x_jitter'] = np.random.random_integers(low = -4,high = 4,size=(len(df_c_i_pr),))
+df_c_i_pr = compute_pop_coupling(A1,num_sessions,num_units_on_shank)
+df_c_i_pr['depth'] = depth_list
+
 for iter_ll in dict_config['rh11']:
     # df_c_i_pr['depth'] = 800 - depth_list
     df_c_i_pr_bsl = df_c_i_pr.filter(items = [iter_ll,'depth','x_jitter'])
@@ -229,10 +256,14 @@ fig.savefig(filename_save,dpi = 300, transparent = True)
     
 
 
-'''
+
 ## Raster Marginals Model (random shuffling) 
 # (single session) iter_s
 f_i_M = np.empty((num_units_on_shank,A1[0]['FR_session'][iter_s].shape[0]),dtype = np.int8)
+
+
+
+
 for iter_i in range(num_units_on_shank):
     f_i_M[iter_i,:] = np.reshape(A1[iter_i]['FR_session'][iter_s] * 1e-3,(1,-1))
 
@@ -240,7 +271,7 @@ f_i_M[f_i_M > 1] = 1    # Correcting for any double spikes in the time bin. This
 # important invariant parameters
 bin_edges,hist,spk_c_i = func_invariant_params(f_i_M)
 fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
-ax.plot(bin_edges,hist/hist.sum(),linewidth = 3)     # prob vs #synchronous spikes
+ax.plot(bin_edges,hist/hist.sum(),linewidth = 3,c = 'k',alpha = 0.7,linestyle = '--',marker = 'o',markersize=14)     # prob vs #synchronous spikes
 filename_save = os.path.join(output_folder,'prob_synchspikes_original.png')
 fig.savefig(filename_save,dpi = 300)
 # for finding submatrix
@@ -277,7 +308,8 @@ for iter_i in rows_o:
 # f_i_M is now the shuffled activity matrix
 bin_edges_new,hist_new,spk_c_i_new = func_invariant_params(f_i_M)
 fig, ax = plt.subplots(1,1, figsize=(10,12), dpi=100)
-ax.plot(bin_edges_new,hist_new/hist_new.sum(),linewidth = 3)     # prob vs #synchronous spikes
+ax.plot(bin_edges,hist/hist.sum(),linewidth = 3,c = 'r',alpha = 0.7,linestyle = '--',marker = 'o',markersize=14)     # prob vs #synchronous spikes
+ax.plot(bin_edges_new,hist_new/hist_new.sum(),linewidth = 3,c = 'k',alpha = 0.7,linestyle = '--',marker = 'o',markersize=14)     # prob vs #synchronous spikes
 filename_save = os.path.join(output_folder,'prob_synchspikes_shuffle.png')
 fig.savefig(filename_save,dpi = 300)
 '''
